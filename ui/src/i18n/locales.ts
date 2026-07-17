@@ -1,8 +1,9 @@
 import type { Resource } from "i18next";
 
 import { assertValidLocaleMessages } from "./locale-validation";
+import { uiMessages } from "./ui-messages";
 
-export const DEFAULT_LOCALE = "en" as const;
+export const DEFAULT_LOCALE = "zh-CN" as const;
 
 const localeModules = import.meta.glob("./locales/*.json", {
   eager: true,
@@ -35,7 +36,15 @@ for (const [locale, messages] of Object.entries(localeMessages)) {
 export const supportedLocales = Object.keys(localeMessages);
 
 export const i18nextResources: Resource = Object.fromEntries(
-  Object.entries(localeMessages).map(([locale, messages]) => [locale, { translation: messages }]),
+  Object.entries(localeMessages).map(([locale, messages]) => [
+    locale,
+    {
+      translation: {
+        ...(messages as Record<string, unknown>),
+        ui: uiMessages[locale as keyof typeof uiMessages] ?? uiMessages.en,
+      },
+    },
+  ]),
 ) as Resource;
 
 export type SupportedLocale = keyof typeof localeMessages;
