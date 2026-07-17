@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type SVGProps } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "@/lib/router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useTranslation } from "@/i18n";
+import { t, useTranslation } from "@/i18n";
 import type {
   AgentDesiredSkillEntry,
   Agent,

@@ -77,7 +77,7 @@ export const uiMessages = {
       costs: "Costs",
       description: "Inference spend, platform fees, credits, and live quota windows.",
       selectCompany: "Select a company to view costs.",
-      presets: { today: "Today", "7d": "7 days", mtd: "Month to date", custom: "Custom" },
+      presets: { today: "Today", "7d": "7 days", "30d": "30 days", mtd: "Month to date", ytd: "Year to date", all: "All time", custom: "Custom" },
       to: "to",
       overview: "Overview",
       budgets: "Budgets",
@@ -2038,8 +2038,7 @@ export const uiMessages = {
       publicComingLater: "Public link sharing is coming later.", reset: "Reset", saveSettings: "Save settings", dangerZone: "Danger zone",
       removeDescription: "Remove this skill from the company library.", detachBeforeRemove: "Detach this skill from all agents before removing it.", removing: "Removing…", remove: "Remove",
     },
-    ui: {
-      breadcrumb: {
+    breadcrumb: {
         tasks: "Tasks",
         activity: "Activity",
         approvals: "Approvals",
@@ -2075,7 +2074,17 @@ export const uiMessages = {
         timeline: "Select a company to view its work timeline.",
         cases: "Select a company to view cases.",
       },
-      approvals: {
+      activity: {
+        filterByType: "Filter by type",
+        allTypes: "All types",
+        noActivityYet: "No activity yet.",
+        },
+        activity: {
+          filterByType: "按类型筛选",
+          allTypes: "所有类型",
+          noActivityYet: "暂无活动。",
+        },
+        approvals: {
         pending: "Pending",
         all: "All",
         noPending: "No pending approvals.",
@@ -2096,6 +2105,20 @@ export const uiMessages = {
         seeFullRequest: "See full request",
         approve: "Approve",
         reject: "Reject",
+        requestRevision: "Request revision",
+        markResubmitted: "Mark resubmitted",
+        deleteDisapprovedAgent: "Delete this disapproved agent? This cannot be undone.",
+        deleteDisapprovedAgentButton: "Delete disapproved agent",
+        comments: "Comments",
+        addComment: "Add a comment...",
+        posting: "Posting…",
+        postComment: "Post comment",
+        requestedBy: "Requested by",
+        decisionNote: "Decision note: ",
+        linkedTasksHint: "Linked tasks remain open until the requesting agent follows up and closes them.",
+        linkedTasks: "Linked tasks",
+        budgetHint: "Resolve this budget stop from the budget controls on",
+        board: "Board",
       },
       projects: {
         addProject: "Add Project",
@@ -2297,7 +2320,7 @@ export const uiMessages = {
           projects: "Projects",
         },
       },
-      profileSettings: {
+    profileSettings: {
         profile: "Profile",
         profileDescription: "Control how your account appears in the sidebar and other board surfaces.",
         uploadPhoto: "Upload photo",
@@ -2318,7 +2341,6 @@ export const uiMessages = {
         storedIn: "Stored in Paperclip file storage for",
         selectCompanyUpload: "Select a company to upload an avatar into Paperclip storage.",
         board: "Board",
-      },
     },
     access: {
       company: "Company",
@@ -2468,7 +2490,7 @@ export const uiMessages = {
       costs: "成本",
       description: "推理花费、平台费用、抵扣额度和实时额度窗口。",
       selectCompany: "请选择公司以查看成本。",
-      presets: { today: "今天", "7d": "近 7 天", mtd: "本月至今", custom: "自定义" },
+      presets: { today: "今天", "7d": "近 7 天", "30d": "近 30 天", mtd: "本月至今", ytd: "今年至今", all: "全部时间", custom: "自定义" },
       to: "至",
       overview: "概览",
       budgets: "预算",
@@ -4429,8 +4451,7 @@ export const uiMessages = {
       publicComingLater: "公开链接共享功能即将推出。", reset: "重置", saveSettings: "保存设置", dangerZone: "危险区域",
        removeDescription: "从公司技能库中移除此技能。", detachBeforeRemove: "请先从所有 Agent 中解除此技能，再执行移除。", removing: "移除中…", remove: "移除",
      },
-     ui: {
-       breadcrumb: {
+     breadcrumb: {
          tasks: "任务",
          activity: "活动",
          approvals: "审批",
@@ -4484,10 +4505,24 @@ export const uiMessages = {
          backToApprovals: "返回审批",
          approved: "审批已确认",
          approvalConfirmedBody: "发起请求的 Agent 已收到通知，将查看此审批和关联任务。",
-         seeFullRequest: "查看完整请求",
-         approve: "批准",
-         reject: "拒绝",
-       },
+          seeFullRequest: "查看完整请求",
+          approve: "批准",
+          reject: "拒绝",
+          requestRevision: "请求修订",
+          markResubmitted: "标记为已重新提交",
+          deleteDisapprovedAgent: "删除此被拒绝的 Agent？此操作无法撤销。",
+          deleteDisapprovedAgentButton: "删除被拒绝的 Agent",
+          comments: "评论",
+          addComment: "添加评论…",
+          posting: "发送中…",
+          postComment: "发表评论",
+          requestedBy: "请求者",
+          decisionNote: "决策说明：",
+          linkedTasksHint: "关联任务会保持打开状态，直到发起请求的 Agent 跟进并关闭它们。",
+          linkedTasks: "关联任务",
+          budgetHint: "在预算控制页面中解决此预算停止问题",
+          board: "工作面板",
+        },
        projects: {
          addProject: "添加项目",
          noProjectsYet: "还没有项目。",
@@ -4688,7 +4723,7 @@ export const uiMessages = {
            projects: "项目",
          },
        },
-       profileSettings: {
+     profileSettings: {
          profile: "个人资料",
          profileDescription: "控制你的账户在侧边栏和其他看板界面的显示方式。",
          uploadPhoto: "上传照片",
@@ -4709,7 +4744,6 @@ export const uiMessages = {
          storedIn: "存储在 Paperclip 文件存储中，用于",
          selectCompanyUpload: "请选择公司以将头像上传到 Paperclip 存储。",
          board: "Board",
-       },
      },
      access: {
       company: "公司",

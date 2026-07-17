@@ -125,10 +125,10 @@ export function Activity() {
       <div className="flex items-center justify-end">
           <Select value={filter} onValueChange={setFilter}>
             <SelectTrigger className="w-(--sz-140px) h-8 text-xs">
-              <SelectValue placeholder={t("ui.cases.filters")} />
+              <SelectValue placeholder={t("ui.activity.filterByType")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">{t("ui.approvals.all")}</SelectItem>
+              <SelectItem value="all">{t("ui.activity.allTypes")}</SelectItem>
             {entityTypes.map((type) => (
               <SelectItem key={type} value={type}>
                 {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -141,7 +141,7 @@ export function Activity() {
       {error && <p className="text-sm text-destructive">{error.message}</p>}
 
       {filtered && filtered.length === 0 && (
-        <EmptyState icon={History} message={t("costs.noCostEvents")} />
+        <EmptyState icon={History} message={t("ui.activity.noActivityYet")} />
       )}
 
       {filtered && filtered.length > 0 && (
