@@ -301,6 +301,7 @@ const MAX_RUN_EVENT_PAYLOAD_DEPTH = 6;
 const HEARTBEAT_MAX_CONCURRENT_RUNS_DEFAULT = AGENT_DEFAULT_MAX_CONCURRENT_RUNS;
 const HEARTBEAT_MAX_CONCURRENT_RUNS_MIN = 1;
 const HEARTBEAT_MAX_CONCURRENT_RUNS_MAX = 50;
+const SYSTEM_MAX_CONCURRENT_RUNS_DEFAULT = 2;
 const VLLM_LOCAL_RUNS_DEFAULT = 4;
 const ACTIVE_PROCESS_STALL_THRESHOLD_MS = 3 * 60 * 1000;
 const LIVENESS_BOOKKEEPING_ACTIVITY_ACTIONS = [
@@ -2015,6 +2016,12 @@ function normalizeMaxConcurrentRuns(value: unknown) {
 function normalizeVllmLocalRunLimit() {
   const configured = Math.floor(asNumber(process.env.PAPERCLIP_VLLM_MAX_CONCURRENT_RUNS, VLLM_LOCAL_RUNS_DEFAULT));
   if (!Number.isFinite(configured)) return VLLM_LOCAL_RUNS_DEFAULT;
+  return Math.max(1, Math.min(HEARTBEAT_MAX_CONCURRENT_RUNS_MAX, configured));
+}
+
+function normalizeSystemRunLimit() {
+  const configured = Math.floor(asNumber(process.env.PAPERCLIP_MAX_CONCURRENT_RUNS, SYSTEM_MAX_CONCURRENT_RUNS_DEFAULT));
+  if (!Number.isFinite(configured)) return SYSTEM_MAX_CONCURRENT_RUNS_DEFAULT;
   return Math.max(1, Math.min(HEARTBEAT_MAX_CONCURRENT_RUNS_MAX, configured));
 }
 
@@ -10634,6 +10641,14 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
     return Number(count ?? 0);
   }
 
+  async function countRunningRuns() {
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(heartbeatRuns)
+      .where(eq(heartbeatRuns.status, "running"));
+    return Number(count ?? 0);
+  }
+
   async function countRunningVllmModelRuns(model: string) {
     const [{ count }] = await db
       .select({ count: sql<number>`count(*)` })
@@ -11715,12 +11730,15 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
   }
 
   async function startNextQueuedRunForAgent(agentId: string) {
-    const agent = await getAgent(agentId);
-    const model = agent ? readAgentConfiguredModel(agent) : null;
-    if (model && isVllmLocalAgent(agent)) {
-      return withExecutionStartLock(`vllm:${model}`, () => startNextQueuedRunForAgentLocked(agentId));
-    }
-    return startNextQueuedRunForAgentLocked(agentId);
+    return withExecutionStartLock("paperclip:global", async () => {
+      const agent = await getAgent(agentId);
+      const model = agent ? readAgentConfiguredModel(agent) : null;
+      const start = () => startNextQueuedRunForAgentLocked(agentId);
+      if (model && isVllmLocalAgent(agent)) {
+        return withExecutionStartLock(`vllm:${model}`, start);
+      }
+      return start();
+    });
   }
 
   async function startNextQueuedRunForAgentLocked(agentId: string) {
@@ -11739,11 +11757,12 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
       }
       const policy = parseHeartbeatPolicy(agent);
       const runningCount = await countRunningRunsForAgent(agentId);
+      const systemSlots = Math.max(0, normalizeSystemRunLimit() - await countRunningRuns());
       const vllmModel = readAgentConfiguredModel(agent);
       const vllmSlots = vllmModel && isVllmLocalAgent(agent)
         ? Math.max(0, normalizeVllmLocalRunLimit() - await countRunningVllmModelRuns(vllmModel))
         : Number.POSITIVE_INFINITY;
-      const availableSlots = Math.max(0, Math.min(policy.maxConcurrentRuns - runningCount, vllmSlots));
+      const availableSlots = Math.max(0, Math.min(policy.maxConcurrentRuns - runningCount, systemSlots, vllmSlots));
       if (availableSlots <= 0) return [];
 
       const queuedRuns = await db
