@@ -124,6 +124,7 @@ function CaseRelationshipsSection({
   parent: CaseParentRef | null;
   children: CaseSummary[];
 }) {
+  const { t } = useTranslation();
   if (!parent && children.length === 0) return null;
 
   return (
@@ -195,6 +196,7 @@ function CaseStatusPicker({
   onChange: (next: CaseStatus) => void;
   disabled?: boolean;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -239,6 +241,7 @@ function CaseLabelsPicker({
   selected: IssueLabel[];
   onChange: (labelIds: string[]) => void;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [newColor, setNewColor] = useState<string>(PROJECT_COLORS[0]);
@@ -276,7 +279,7 @@ function CaseLabelsPicker({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-xs text-muted-foreground">
-          <Plus className="h-3.5 w-3.5" /> Labels
+          <Plus className="h-3.5 w-3.5" /> {t("ui.caseDetail.labels")}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-64 p-2">
@@ -344,6 +347,7 @@ function CasePropertiesContent({
   onLabelIdsChange: (labelIds: string[]) => void;
   mode: CasePropertyDisplayMode;
 }) {
+  const { t } = useTranslation();
   const propertyRows = casePropertyRows(caseData);
   const isFull = mode === "full";
 

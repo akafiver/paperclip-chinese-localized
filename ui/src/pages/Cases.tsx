@@ -637,6 +637,7 @@ function CaseColumnPicker({
   onToggle: (column: CaseColumn, enabled: boolean) => void;
   onReset: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <CaseToolbarButton icon={Columns3} title="Columns" active={!sameStringSet([...visibleColumns], DEFAULT_CASE_COLUMNS)}>
       <PopoverContent align="end" className="w-(--sz-300px) p-1.5">
