@@ -2330,7 +2330,7 @@ export const uiMessages = {
         requestFailed: "The request failed.",
         inputFiltersHere: "Your input and filters are still here, so you can retry or fall back to the Tasks filter.",
         retry: "Retry",
-        searching: "Searching for",
+        searching: "Searching for \"{{query}}\"…",
         scope: {
           all: "All",
           issues: "Tasks",
@@ -4755,7 +4755,7 @@ export const uiMessages = {
          requestFailed: "请求失败。",
          inputFiltersHere: "你的输入和筛选条件仍保留，可以重试或回退到任务筛选。",
          retry: "重试",
-         searching: "正在搜索",
+         searching: "正在搜索“{{query}}”…",
          scope: {
            all: "全部",
            issues: "任务",
