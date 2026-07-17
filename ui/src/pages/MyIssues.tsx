@@ -10,15 +10,17 @@ import { EntityRow } from "../components/EntityRow";
 import { EmptyState } from "../components/EmptyState";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { formatDate } from "../lib/utils";
+import { useTranslation } from "@/i18n";
 import { ListTodo } from "lucide-react";
 
 export function MyIssues() {
   const { selectedCompanyId } = useCompany();
   const { setBreadcrumbs } = useBreadcrumbs();
+  const { t } = useTranslation();
 
   useEffect(() => {
-    setBreadcrumbs([{ label: "My Tasks" }]);
-  }, [setBreadcrumbs]);
+    setBreadcrumbs([{ label: t("ui.myIssues.title") }]);
+  }, [setBreadcrumbs, t]);
 
   const { data: issues, isLoading, error } = useQuery({
     queryKey: queryKeys.issues.list(selectedCompanyId!),
@@ -27,7 +29,7 @@ export function MyIssues() {
   });
 
   if (!selectedCompanyId) {
-    return <EmptyState icon={ListTodo} message="Select a company to view your tasks." />;
+    return <EmptyState icon={ListTodo} message={t("ui.myIssues.selectCompany")} />;
   }
 
   if (isLoading) {
@@ -44,7 +46,7 @@ export function MyIssues() {
       {error && <p className="text-sm text-destructive">{error.message}</p>}
 
       {myIssues.length === 0 && (
-        <EmptyState icon={ListTodo} message="No tasks assigned to you." />
+        <EmptyState icon={ListTodo} message={t("ui.myIssues.empty")} />
       )}
 
       {myIssues.length > 0 && (
