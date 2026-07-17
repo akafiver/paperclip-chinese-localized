@@ -365,6 +365,8 @@ export const uiMessages = {
       recentActivity: "Recent Activity",
       recentTasks: "Recent Tasks",
       noTasks: "No tasks yet.",
+      welcomeMessage: "Welcome to Paperclip. Set up your first company and agent to get started.",
+      getStarted: "Get Started",
     },
     inbox: {
       title: "Inbox",
@@ -2799,7 +2801,9 @@ export const uiMessages = {
       successRate: "成功率",
       recentActivity: "最近活动",
       recentTasks: "最近任务",
-      noTasks: "还没有任务。",
+       noTasks: "还没有任务。",
+       welcomeMessage: "欢迎使用 Paperclip。请创建第一个公司和 Agent 以开始使用。",
+       getStarted: "开始使用",
     },
     inbox: {
       title: "收件箱",
