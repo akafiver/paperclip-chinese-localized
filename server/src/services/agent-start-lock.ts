@@ -2,6 +2,7 @@ import { logger } from "../middleware/logger.js";
 
 const AGENT_START_LOCK_STALE_MS = 30_000;
 const startLocksByAgent = new Map<string, { promise: Promise<void>; startedAtMs: number }>();
+const startLocksByExecutionKey = new Map<string, { promise: Promise<void>; startedAtMs: number }>();
 
 async function waitForAgentStartLock(agentId: string, lock: { promise: Promise<void>; startedAtMs: number }) {
   const elapsedMs = Date.now() - lock.startedAtMs;
@@ -43,6 +44,24 @@ export async function withAgentStartLock<T>(agentId: string, fn: () => Promise<T
   } finally {
     if (startLocksByAgent.get(agentId)?.promise === marker) {
       startLocksByAgent.delete(agentId);
+    }
+  }
+}
+
+export async function withExecutionStartLock<T>(executionKey: string, fn: () => Promise<T>) {
+  const previous = startLocksByExecutionKey.get(executionKey);
+  const waitForPrevious = previous ? waitForAgentStartLock(executionKey, previous) : Promise.resolve();
+  const run = waitForPrevious.then(fn);
+  const marker = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  startLocksByExecutionKey.set(executionKey, { promise: marker, startedAtMs: Date.now() });
+  try {
+    return await run;
+  } finally {
+    if (startLocksByExecutionKey.get(executionKey)?.promise === marker) {
+      startLocksByExecutionKey.delete(executionKey);
     }
   }
 }

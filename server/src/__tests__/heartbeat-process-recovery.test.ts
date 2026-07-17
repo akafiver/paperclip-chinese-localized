@@ -1213,6 +1213,35 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
     expect(wakeup?.status).toBe("failed");
   });
 
+  it("terminates an active local child that stops producing progress", async () => {
+    const child = spawnAliveProcess();
+    childProcesses.add(child);
+    expect(child.pid).toBeTypeOf("number");
+
+    const { runId } = await seedRunFixture({
+      adapterType: "process",
+      agentStatus: "idle",
+      processPid: child.pid ?? null,
+      processLossRetryCount: 1,
+      includeIssue: false,
+    });
+    runningProcesses.set(runId, {
+      child,
+      graceSec: 1,
+      processGroupId: null,
+    });
+    const heartbeat = heartbeatService(db);
+
+    const result = await heartbeat.reapOrphanedRuns({ staleThresholdMs: 5 * 60 * 1000 });
+    expect(result.reaped).toBe(1);
+
+    const run = await heartbeat.getRun(runId);
+    expect(run?.status).toBe("failed");
+    expect(run?.errorCode).toBe("process_stalled");
+    expect(run?.error).toContain("produced no progress");
+    expect(child.pid ? await waitForPidExit(child.pid) : true).toBe(true);
+  });
+
   it("skips generic timer wakes without invoking an adapter when no assigned work is actionable", async () => {
     const { companyId, agentId } = await seedIdleTimerAgentFixture();
     const heartbeat = heartbeatService(db);

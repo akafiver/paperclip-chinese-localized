@@ -211,7 +211,7 @@ import { recoveryService } from "./recovery/service.js";
 import { productivityReviewService } from "./productivity-review.js";
 import { resolveRequiredSuccessfulRunHandoffOnValidPath } from "./successful-run-handoff-state.js";
 import { taskWatchdogService } from "./task-watchdogs.js";
-import { withAgentStartLock } from "./agent-start-lock.js";
+import { withAgentStartLock, withExecutionStartLock } from "./agent-start-lock.js";
 import {
   evaluateAgentInvokability,
   evaluateAgentInvokabilityFromDb,
@@ -301,6 +301,8 @@ const MAX_RUN_EVENT_PAYLOAD_DEPTH = 6;
 const HEARTBEAT_MAX_CONCURRENT_RUNS_DEFAULT = AGENT_DEFAULT_MAX_CONCURRENT_RUNS;
 const HEARTBEAT_MAX_CONCURRENT_RUNS_MIN = 1;
 const HEARTBEAT_MAX_CONCURRENT_RUNS_MAX = 50;
+const VLLM_LOCAL_RUNS_DEFAULT = 4;
+const ACTIVE_PROCESS_STALL_THRESHOLD_MS = 3 * 60 * 1000;
 const LIVENESS_BOOKKEEPING_ACTIVITY_ACTIONS = [
   "environment.lease_acquired",
   "environment.lease_released",
@@ -2008,6 +2010,23 @@ function normalizeMaxConcurrentRuns(value: unknown) {
   const parsed = Math.floor(asNumber(value, HEARTBEAT_MAX_CONCURRENT_RUNS_DEFAULT));
   if (!Number.isFinite(parsed)) return HEARTBEAT_MAX_CONCURRENT_RUNS_DEFAULT;
   return Math.max(HEARTBEAT_MAX_CONCURRENT_RUNS_MIN, Math.min(HEARTBEAT_MAX_CONCURRENT_RUNS_MAX, parsed));
+}
+
+function normalizeVllmLocalRunLimit() {
+  const configured = Math.floor(asNumber(process.env.PAPERCLIP_VLLM_MAX_CONCURRENT_RUNS, VLLM_LOCAL_RUNS_DEFAULT));
+  if (!Number.isFinite(configured)) return VLLM_LOCAL_RUNS_DEFAULT;
+  return Math.max(1, Math.min(HEARTBEAT_MAX_CONCURRENT_RUNS_MAX, configured));
+}
+
+function readAgentConfiguredModel(agent: Pick<typeof agents.$inferSelect, "adapterType" | "adapterConfig">) {
+  if (agent.adapterType !== "opencode_local") return null;
+  const model = readNonEmptyString(parseObject(agent.adapterConfig).model);
+  return model ?? null;
+}
+
+function isVllmLocalAgent(agent: Pick<typeof agents.$inferSelect, "adapterType" | "adapterConfig">) {
+  const model = readAgentConfiguredModel(agent);
+  return model !== null && model.toLowerCase().startsWith("vllm/");
 }
 
 interface WakeupOptions {
@@ -5063,9 +5082,15 @@ async function terminateHeartbeatRunProcess(input: {
 function buildProcessLossMessage(run: {
   processPid: number | null;
   processGroupId: number | null;
-}, options?: { descendantOnly?: boolean; orphaned?: boolean }) {
+}, options?: { descendantOnly?: boolean; orphaned?: boolean; stalled?: boolean }) {
   if (options?.descendantOnly && run.processGroupId) {
     return `Process lost -- parent pid ${run.processPid ?? "unknown"} exited, but descendant process group ${run.processGroupId} was still alive and was terminated`;
+  }
+  if (options?.stalled && run.processPid) {
+    return `Process stalled -- child pid ${run.processPid} produced no progress for ${Math.round(ACTIVE_PROCESS_STALL_THRESHOLD_MS / 1000)} seconds and was terminated`;
+  }
+  if (options?.stalled && run.processGroupId) {
+    return `Process stalled -- process group ${run.processGroupId} produced no progress for ${Math.round(ACTIVE_PROCESS_STALL_THRESHOLD_MS / 1000)} seconds and was terminated`;
   }
   if (options?.orphaned && run.processPid) {
     return `Process lost -- orphaned child pid ${run.processPid} was still alive after the server lost its in-memory handle and was terminated`;
@@ -10384,12 +10409,16 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
   function parseHeartbeatPolicy(agent: typeof agents.$inferSelect) {
     const runtimeConfig = parseObject(agent.runtimeConfig);
     const heartbeat = parseObject(runtimeConfig.heartbeat);
+    const configuredMaxConcurrentRuns = normalizeMaxConcurrentRuns(heartbeat.maxConcurrentRuns);
+    const maxConcurrentRuns = isVllmLocalAgent(agent)
+      ? Math.min(configuredMaxConcurrentRuns, normalizeVllmLocalRunLimit())
+      : configuredMaxConcurrentRuns;
 
     return {
       enabled: asBoolean(heartbeat.enabled, false),
       intervalSec: Math.max(0, asNumber(heartbeat.intervalSec, 0)),
       wakeOnDemand: asBoolean(heartbeat.wakeOnDemand ?? heartbeat.wakeOnAssignment ?? heartbeat.wakeOnOnDemand ?? heartbeat.wakeOnAutomation, true),
-      maxConcurrentRuns: normalizeMaxConcurrentRuns(heartbeat.maxConcurrentRuns),
+      maxConcurrentRuns,
       skipTimerWhenNoActionableWork: asBoolean(
         heartbeat.skipTimerWhenNoActionableWork ??
           heartbeat.requireActionableTimerWork ??
@@ -10602,6 +10631,19 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
       .select({ count: sql<number>`count(*)` })
       .from(heartbeatRuns)
       .where(and(eq(heartbeatRuns.agentId, agentId), eq(heartbeatRuns.status, "running")));
+    return Number(count ?? 0);
+  }
+
+  async function countRunningVllmModelRuns(model: string) {
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(heartbeatRuns)
+      .innerJoin(agents, eq(heartbeatRuns.agentId, agents.id))
+      .where(and(
+        eq(heartbeatRuns.status, "running"),
+        eq(agents.adapterType, "opencode_local"),
+        sql`${agents.adapterConfig} ->> 'model' = ${model}`,
+      ));
     return Number(count ?? 0);
   }
 
@@ -11357,15 +11399,19 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
     const reaped: string[] = [];
 
     for (const { run, adapterType, adapterConfig } of activeRuns) {
-      if (runningProcesses.has(run.id) || activeRunExecutions.has(run.id)) continue;
-
-      // Apply staleness threshold to avoid false positives
-      if (staleThresholdMs > 0) {
-        const refTime = run.updatedAt ? new Date(run.updatedAt).getTime() : 0;
-        if (now.getTime() - refTime < staleThresholdMs) continue;
-      }
-
       const processManaged = hasProcessMetadata(run.processPid, run.processGroupId);
+      const processAgeMs = run.updatedAt ? now.getTime() - new Date(run.updatedAt).getTime() : Number.POSITIVE_INFINITY;
+      const activeProcessStalled =
+        processManaged &&
+        processAgeMs >= ACTIVE_PROCESS_STALL_THRESHOLD_MS &&
+        (runningProcesses.has(run.id) || activeRunExecutions.has(run.id));
+      if ((runningProcesses.has(run.id) || activeRunExecutions.has(run.id)) && !activeProcessStalled) continue;
+
+      // Apply staleness threshold to avoid false positives. An active local
+      // process gets its own shorter no-progress threshold so a live-but-
+      // wedged CLI cannot occupy a provider slot forever.
+      if (staleThresholdMs > 0 && processAgeMs < staleThresholdMs && !activeProcessStalled) continue;
+
       const processPidAlive = processManaged && isProcessAlive(run.processPid);
       const processGroupAlive = processManaged && isProcessGroupAlive(run.processGroupId);
       if (
@@ -11425,8 +11471,12 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
       );
       const baseMessage = buildProcessLossMessage(
         run,
-        descendantOnlyCleanup || orphanedProcessCleanup
-          ? { descendantOnly: descendantOnlyCleanup, orphaned: orphanedProcessCleanup }
+        descendantOnlyCleanup || orphanedProcessCleanup || activeProcessStalled
+          ? {
+            descendantOnly: descendantOnlyCleanup,
+            orphaned: orphanedProcessCleanup,
+            stalled: activeProcessStalled,
+          }
           : undefined,
       );
       const unmanagedBackgroundTaskEvidence = descendantOnlyCleanup
@@ -11442,7 +11492,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
 
       const finalizedStatus = await setRunStatusIfRunning(run.id, "failed", {
         error: shouldRetry ? `${baseMessage}; retrying once` : baseMessage,
-        errorCode: "process_lost",
+        errorCode: activeProcessStalled ? "process_stalled" : "process_lost",
         finishedAt: now,
         resultJson: (() => {
           const result = mergeRunStopMetadataForAgent(
@@ -11450,7 +11500,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
             "failed",
             {
               resultJson: parseObject(run.resultJson),
-              errorCode: "process_lost",
+              errorCode: activeProcessStalled ? "process_stalled" : "process_lost",
               errorMessage: shouldRetry ? `${baseMessage}; retrying once` : baseMessage,
             },
           );
@@ -11508,6 +11558,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
           ...(run.processGroupId ? { processGroupId: run.processGroupId } : {}),
           ...(descendantOnlyCleanup ? { descendantOnlyCleanup: true } : {}),
           ...(orphanedProcessCleanup ? { orphanedProcessCleanup: true } : {}),
+          ...(activeProcessStalled ? { activeProcessStalled: true } : {}),
           ...(retriedRun ? { retryRunId: retriedRun.id } : {}),
         },
       });
@@ -11664,6 +11715,15 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
   }
 
   async function startNextQueuedRunForAgent(agentId: string) {
+    const agent = await getAgent(agentId);
+    const model = agent ? readAgentConfiguredModel(agent) : null;
+    if (model && isVllmLocalAgent(agent)) {
+      return withExecutionStartLock(`vllm:${model}`, () => startNextQueuedRunForAgentLocked(agentId));
+    }
+    return startNextQueuedRunForAgentLocked(agentId);
+  }
+
+  async function startNextQueuedRunForAgentLocked(agentId: string) {
     if ((await getSchedulingSuppression()).suppressed) return [];
     const cutoff = await getWorktreeExecutionCutoff();
 
@@ -11679,7 +11739,11 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
       }
       const policy = parseHeartbeatPolicy(agent);
       const runningCount = await countRunningRunsForAgent(agentId);
-      const availableSlots = Math.max(0, policy.maxConcurrentRuns - runningCount);
+      const vllmModel = readAgentConfiguredModel(agent);
+      const vllmSlots = vllmModel && isVllmLocalAgent(agent)
+        ? Math.max(0, normalizeVllmLocalRunLimit() - await countRunningVllmModelRuns(vllmModel))
+        : Number.POSITIVE_INFINITY;
+      const availableSlots = Math.max(0, Math.min(policy.maxConcurrentRuns - runningCount, vllmSlots));
       if (availableSlots <= 0) return [];
 
       const queuedRuns = await db
