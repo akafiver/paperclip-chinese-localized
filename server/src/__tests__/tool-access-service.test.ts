@@ -71,13 +71,23 @@ function mcpHttpResponse(
   opts: { contentType?: string; body?: string } = {},
 ): Response {
   const contentType = opts.contentType ?? "application/json";
-  const body = opts.body ?? JSON.stringify(payload);
+  const normalizedPayload = (() => {
+    if (typeof payload !== "object" || payload === null || Array.isArray(payload)) return payload;
+    const record = payload as Record<string, unknown>;
+    const result = record.result;
+    if (typeof result !== "object" || result === null || Array.isArray(result)) return payload;
+    return {
+      ...record,
+      result: { protocolVersion: "2025-03-26", ...(result as Record<string, unknown>) },
+    };
+  })();
+  const body = opts.body ?? JSON.stringify(normalizedPayload);
   return {
     ok: true,
     status: 200,
     headers: { get: (name: string) => (name.toLowerCase() === "content-type" ? contentType : null) },
     text: async () => body,
-    json: async () => payload,
+    json: async () => normalizedPayload,
   } as unknown as Response;
 }
 
@@ -85,9 +95,16 @@ function mcpHttpResponse(
 // response, the shape a spec-compliant server returns once the request carries
 // the `Accept: application/json, text/event-stream` header.
 function mcpSseResponse(payload: unknown): Response {
+  const normalizedPayload = (() => {
+    if (typeof payload !== "object" || payload === null || Array.isArray(payload)) return payload;
+    const record = payload as Record<string, unknown>;
+    const result = record.result;
+    if (typeof result !== "object" || result === null || Array.isArray(result)) return payload;
+    return { ...record, result: { protocolVersion: "2025-03-26", ...(result as Record<string, unknown>) } };
+  })();
   return mcpHttpResponse(payload, {
     contentType: "text/event-stream",
-    body: `event: message\ndata: ${JSON.stringify(payload)}\n\n`,
+    body: `event: message\ndata: ${JSON.stringify(normalizedPayload)}\n\n`,
   });
 }
 
@@ -775,7 +792,7 @@ describeEmbeddedPostgres("tool access service", () => {
       .update(toolCatalogEntries)
       .set({ status: "active", reviewedAt: new Date(), quarantineReason: null, quarantinedAt: null })
       .where(eq(toolCatalogEntries.toolName, "send_email"));
-    fetchMock.mockResolvedValueOnce(mcpHttpResponse({
+    const changedCatalogResponse = mcpHttpResponse({
       jsonrpc: "2.0",
       id: "paperclip-catalog-refresh",
       result: {
@@ -788,7 +805,19 @@ describeEmbeddedPostgres("tool access service", () => {
           },
         ],
       },
-    }));
+    });
+    fetchMock.mockImplementation(async (_url, init) => {
+      const body = JSON.parse(String(init?.body ?? "{}")) as { method?: string };
+      if (body.method === "initialize") {
+        return mcpHttpResponse({
+          jsonrpc: "2.0",
+          id: "paperclip-mcp-initialize",
+          result: { protocolVersion: "2025-03-26" },
+        });
+      }
+      if (body.method === "notifications/initialized") return mcpHttpResponse({ jsonrpc: "2.0", result: {} });
+      return changedCatalogResponse;
+    });
 
     const secondRefresh = await service.refreshCatalog(connection.id);
 
@@ -1206,7 +1235,7 @@ describeEmbeddedPostgres("tool access service", () => {
       decision: "allowed",
       result: { data: expect.objectContaining({ isError: false, transport: "mcp_http" }) },
     });
-    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     const [invocation] = await db.select().from(toolInvocations).where(eq(toolInvocations.companyId, company.id));
     expect(invocation).toMatchObject({
       actorType: "user",
@@ -2780,7 +2809,7 @@ describeEmbeddedPostgres("tool access service", () => {
       .query({ state, code: "oauth-code" });
 
     expect(callbackRes.status).toBe(200);
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(7);
     expect(callbackRes.body.connection).toMatchObject({
       id: connectRes.body.connectionId,
       status: "active",
@@ -2812,7 +2841,7 @@ describeEmbeddedPostgres("tool access service", () => {
     expect(redirectCallbackRes.headers.location).toBe(
       `/${company.issuePrefix}/apps/${redirectConnectRes.body.connectionId}/setup?oauth=connected`,
     );
-    expect(fetchMock).toHaveBeenCalledTimes(6);
+    expect(fetchMock).toHaveBeenCalledTimes(14);
     await expect(db.select().from(toolOauthStates)).resolves.toHaveLength(0);
     await expect(db.select().from(companySecretBindings)).resolves.toHaveLength(6);
     const [connection] = await db.select().from(toolConnections).where(eq(toolConnections.id, connectRes.body.connectionId));
@@ -3125,7 +3154,7 @@ describeEmbeddedPostgres("tool access service", () => {
 
     const health = await service.checkHealth(connection.id, { actorType: "system", actorId: "health-check" });
     expect(health.connection.healthStatus).toBe("ok");
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
     const [updated] = await db.select().from(toolConnections).where(eq(toolConnections.id, connection.id));
     expect(updated.credentialSecretRefs).toEqual([
       expect.objectContaining({ configPath: "oauth.access_token", label: "OAuth access token" }),
@@ -4243,7 +4272,7 @@ describeEmbeddedPostgres("tool access service", () => {
       credentialValues: { "credentials.authorization": "zap-secret" },
     }, { actorType: "user", actorId: "board" });
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(6);
     expect(fetchMock).toHaveBeenCalledWith(
       "https://mcp.zapier.com/api/mcp",
       expect.objectContaining({
@@ -4333,7 +4362,14 @@ describeEmbeddedPostgres("tool access service", () => {
       ]),
     );
 
-    fetchMock.mockResolvedValueOnce(mcpHttpResponse({
+    fetchMock
+      .mockResolvedValueOnce(mcpHttpResponse({
+        jsonrpc: "2.0",
+        id: "paperclip-mcp-initialize",
+        result: { protocolVersion: "2025-03-26" },
+      }))
+      .mockResolvedValueOnce(mcpHttpResponse({ jsonrpc: "2.0", result: {} }))
+      .mockResolvedValueOnce(mcpHttpResponse({
       jsonrpc: "2.0",
       id: "paperclip-catalog-refresh",
       result: {
@@ -4358,7 +4394,7 @@ describeEmbeddedPostgres("tool access service", () => {
           },
         ],
       },
-    }));
+      }));
     const rereview = await service.refreshCatalog(connect.connectionId, { actorType: "user", actorId: "board" });
     expect(rereview.quarantinedCount).toBe(2);
     expect(rereview.catalog).toEqual(

@@ -14,6 +14,116 @@
 /** The Accept header value required by the MCP Streamable HTTP transport. */
 export const MCP_HTTP_ACCEPT = "application/json, text/event-stream";
 
+export type McpHttpSession = {
+  protocolVersion: string;
+  sessionId: string | null;
+};
+
+type McpHttpFetchOptions = Omit<RequestInit, "body" | "headers" | "method">;
+
+export class McpHttpResponseError extends Error {
+  constructor(
+    message: string,
+    public readonly response: Response,
+  ) {
+    super(message);
+  }
+}
+
+function sessionHeaders(headers: Record<string, string>, session: McpHttpSession): Record<string, string> {
+  return session.sessionId
+    ? { ...headers, "mcp-session-id": session.sessionId }
+    : headers;
+}
+
+/**
+ * Open a Streamable HTTP MCP session.
+ *
+ * Streamable HTTP servers may be stateless, but a server that returns an
+ * mcp-session-id requires every subsequent request to use that session. The
+ * initialize handshake is therefore mandatory before tools/list or
+ * tools/call; callers must not guess that an endpoint is stateless.
+ */
+export async function initializeMcpHttpSession(
+  endpoint: string,
+  headers: Record<string, string> = {},
+  options: McpHttpFetchOptions = {},
+): Promise<McpHttpSession> {
+  const response = await fetch(endpoint, {
+    ...options,
+    method: "POST",
+    headers: mcpHttpRequestHeaders(headers),
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: "paperclip-mcp-initialize",
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-03-26",
+        capabilities: {},
+        clientInfo: { name: "paperclip", version: "0.3.1" },
+      },
+    }),
+  });
+  if (!response.ok) {
+    throw new McpHttpResponseError(`MCP initialize failed with HTTP ${response.status}`, response);
+  }
+
+  const payload = parseMcpHttpResponseBody(await response.text(), response.headers.get("content-type"));
+  const record = payload as { error?: unknown; result?: unknown };
+  if (record.error !== undefined) {
+    throw new Error(`MCP initialize returned a JSON-RPC error: ${JSON.stringify(record.error)}`);
+  }
+  const result = record.result as { protocolVersion?: unknown } | undefined;
+  if (!result || typeof result.protocolVersion !== "string") {
+    throw new Error("MCP initialize returned an invalid result");
+  }
+
+  const session: McpHttpSession = {
+    protocolVersion: result.protocolVersion,
+    sessionId: response.headers.get("mcp-session-id"),
+  };
+
+  // The initialized notification completes the MCP lifecycle handshake. A
+  // server may answer with 202 or an empty 200 response, so no body is read.
+  const initialized = await fetch(endpoint, {
+    ...options,
+    method: "POST",
+    headers: mcpHttpRequestHeaders(sessionHeaders(headers, session)),
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      method: "notifications/initialized",
+      params: {},
+    }),
+  });
+  if (!initialized.ok) {
+    throw new McpHttpResponseError(`MCP initialized notification failed with HTTP ${initialized.status}`, initialized);
+  }
+
+  return session;
+}
+
+export async function mcpHttpSessionRequest(
+  endpoint: string,
+  session: McpHttpSession,
+  method: "tools/list" | "tools/call",
+  params: Record<string, unknown>,
+  headers: Record<string, string> = {},
+  options: McpHttpFetchOptions = {},
+  requestId = `paperclip-mcp-${method.replace("/", "-")}`,
+): Promise<Response> {
+  return fetch(endpoint, {
+    ...options,
+    method: "POST",
+    headers: mcpHttpRequestHeaders(sessionHeaders(headers, session)),
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: requestId,
+      method,
+      params,
+    }),
+  });
+}
+
 /**
  * Default headers for an MCP Streamable HTTP JSON-RPC POST. Caller-supplied
  * headers (e.g. resolved credentials) are preserved, while the required

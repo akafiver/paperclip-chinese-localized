@@ -444,6 +444,27 @@ async function startFakeRemoteMcpServer(handler: (request: FakeMcpRequest) => Pr
         body = null;
       }
       const requestRecord = { headers: req.headers, body };
+      const method = body?.method;
+      if (method === "initialize") {
+        res.statusCode = 200;
+        res.setHeader("content-type", "application/json");
+        res.setHeader("mcp-session-id", "test-session");
+        res.end(JSON.stringify({
+          jsonrpc: "2.0",
+          id: body?.id ?? "initialize",
+          result: {
+            protocolVersion: "2025-03-26",
+            capabilities: { tools: { listChanged: false } },
+            serverInfo: { name: "Paperclip test MCP", version: "1.0.0" },
+          },
+        }));
+        return;
+      }
+      if (method === "notifications/initialized") {
+        res.statusCode = 202;
+        res.end();
+        return;
+      }
       requests.push(requestRecord);
       const response = await handler(requestRecord);
       if (response.delayMs) {

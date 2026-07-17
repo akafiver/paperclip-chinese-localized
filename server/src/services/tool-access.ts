@@ -107,7 +107,12 @@ import type {
 import { CLASS3_STATIC_LEASE_ALLOWLIST, getToolAppGalleryEntry, isToolConnectionAttentionHealth } from "@paperclipai/shared";
 import { badRequest, conflict, forbidden, HttpError, notFound, unprocessable } from "../errors.js";
 import { logActivity } from "./activity-log.js";
-import { mcpHttpRequestHeaders, parseMcpHttpResponseBody } from "./mcp-http.js";
+import {
+  initializeMcpHttpSession,
+  McpHttpResponseError,
+  mcpHttpSessionRequest,
+  parseMcpHttpResponseBody,
+} from "./mcp-http.js";
 import { assertPublicRemoteHttpEndpoint, parseRemoteHttpEndpoint } from "./remote-http-endpoint-guard.js";
 import { secretService } from "./secrets.js";
 import { toolAccessPolicyService } from "./tool-access-policy.js";
@@ -2715,18 +2720,53 @@ export function toolAccessService(db: Db, options: ToolAccessServiceOptions = {}
   async function remoteTools(connection: typeof toolConnections.$inferSelect): Promise<McpToolDescriptor[]> {
     const headers = await resolveCredentialHeaders(connection);
     const endpoint = await assertRemoteEndpointAllowed(connection.config);
-    const response = await fetch(endpoint, {
-      method: "POST",
-      // MCP Streamable HTTP requires advertising that we accept both a JSON body
-      // and an SSE stream; spec-compliant servers 406 without it (see mcp-http.ts).
-      headers: mcpHttpRequestHeaders(headers),
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: "paperclip-catalog-refresh",
-        method: "tools/list",
-        params: {},
-      }),
-    });
+    let session;
+    try {
+      session = await initializeMcpHttpSession(endpoint, headers);
+    } catch (error) {
+      if (error instanceof McpHttpResponseError && error.response.status === 401) {
+        const authenticate = error.response.headers.get("www-authenticate") ?? "";
+        if (/bearer|oauth|authorization/i.test(authenticate)) {
+          const endpoints = await discoverOAuthEndpoints(connection, authenticate);
+          if (endpoints) {
+            const nextConfig = {
+              ...connection.config,
+              oauth: {
+                ...oauthConfig(connection),
+                provider: endpoints.provider,
+                authorizationUrl: endpoints.authorizationUrl,
+                tokenUrl: endpoints.tokenUrl,
+                metadataUrl: endpoints.metadataUrl ?? null,
+                scopes: endpoints.scopes,
+                grantType: endpoints.grantType ?? "authorization_code",
+                discoveredAt: new Date().toISOString(),
+              },
+            };
+            await db
+              .update(toolConnections)
+              .set({ config: nextConfig, transportConfig: nextConfig, updatedAt: new Date() })
+              .where(eq(toolConnections.id, connection.id));
+          }
+          throw new HttpError(502, "This app needs you to sign in.", {
+            code: "oauth_challenge",
+            status: error.response.status,
+            setupUrl: connectionSetupUrl(connection),
+            reconnectUrl: connectionReconnectUrl(connection),
+            oauthSupported: Boolean(endpoints),
+          });
+        }
+      }
+      throw error;
+    }
+    const response = await mcpHttpSessionRequest(
+      endpoint,
+      session,
+      "tools/list",
+      {},
+      headers,
+      {},
+      "paperclip-catalog-refresh",
+    );
     if (!response.ok) {
       const authenticate = response.headers.get("www-authenticate") ?? "";
       if (response.status === 401 && /bearer|oauth|authorization/i.test(authenticate)) {

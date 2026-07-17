@@ -38,6 +38,17 @@ export interface LocalServiceIdentityInput {
   scope: Record<string, unknown> | null;
 }
 
+/**
+ * A heartbeat run is process-managed when it has a valid child PID or process
+ * group recorded by the spawn callback. Keep this check independent of the
+ * adapter name so custom process adapters receive the same cleanup guarantees.
+ */
+export function hasProcessMetadata(pid: number | null | undefined, processGroupId: number | null | undefined) {
+  return [pid, processGroupId].some(
+    (value) => typeof value === "number" && Number.isInteger(value) && value > 0,
+  );
+}
+
 function stableStringify(value: unknown): string {
   if (Array.isArray(value)) {
     return `[${value.map((entry) => stableStringify(entry)).join(",")}]`;

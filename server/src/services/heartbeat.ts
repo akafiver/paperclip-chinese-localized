@@ -156,7 +156,7 @@ import {
 import { buildPlanReviewContext } from "./plan-review-context.js";
 import { executionWorkspaceService, mergeExecutionWorkspaceConfig } from "./execution-workspaces.js";
 import { workspaceOperationService, type WorkspaceOperationRecorder } from "./workspace-operations.js";
-import { isProcessGroupAlive, terminateLocalService } from "./local-service-supervisor.js";
+import { hasProcessMetadata, isProcessGroupAlive, terminateLocalService } from "./local-service-supervisor.js";
 import {
   HEARTBEAT_RUN_SCRATCH_MARKER,
   buildHeartbeatRunScratchEnv,
@@ -541,15 +541,6 @@ const ISSUE_RESPONSIBLE_USER_WAKE_REASONS = new Set([
   "execution_approval_requested",
   "execution_changes_requested",
   "approval_approved",
-]);
-const SESSIONED_LOCAL_ADAPTERS = new Set([
-  "claude_local",
-  "codex_local",
-  "cursor",
-  "gemini_local",
-  "hermes_local",
-  "opencode_local",
-  "pi_local",
 ]);
 // Routes and the scheduler construct separate heartbeatService instances, but
 // they must agree on in-process adapter executions when reaping stale runs.
@@ -4685,10 +4676,6 @@ function isSameTaskScope(left: string | null, right: string | null) {
   return (left ?? null) === (right ?? null);
 }
 
-function isTrackedLocalChildProcessAdapter(adapterType: string) {
-  return SESSIONED_LOCAL_ADAPTERS.has(adapterType);
-}
-
 function isHeartbeatRunTerminalStatus(
   status: string | null | undefined,
 ): status is (typeof HEARTBEAT_RUN_TERMINAL_STATUSES)[number] {
@@ -5076,9 +5063,15 @@ async function terminateHeartbeatRunProcess(input: {
 function buildProcessLossMessage(run: {
   processPid: number | null;
   processGroupId: number | null;
-}, options?: { descendantOnly?: boolean }) {
+}, options?: { descendantOnly?: boolean; orphaned?: boolean }) {
   if (options?.descendantOnly && run.processGroupId) {
     return `Process lost -- parent pid ${run.processPid ?? "unknown"} exited, but descendant process group ${run.processGroupId} was still alive and was terminated`;
+  }
+  if (options?.orphaned && run.processPid) {
+    return `Process lost -- orphaned child pid ${run.processPid} was still alive after the server lost its in-memory handle and was terminated`;
+  }
+  if (options?.orphaned && run.processGroupId) {
+    return `Process lost -- orphaned process group ${run.processGroupId} was still alive after the server lost its in-memory handle and was terminated`;
   }
   if (run.processPid) {
     return `Process lost -- child pid ${run.processPid} is no longer running`;
@@ -8913,19 +8906,14 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         continue;
       }
 
-      if (!isTrackedLocalChildProcessAdapter(adapterType)) {
-        classify(candidate, "skipped", "adapter_not_local_child_process", patch);
-        continue;
-      }
-
       const processPid = run.processPid ?? candidate.processPid;
       const processGroupId = run.processGroupId ?? candidate.processGroupId;
-      const processPidAlive = isProcessAlive(processPid);
-      const processGroupAlive = isProcessGroupAlive(processGroupId);
-      if (!processPid && !processGroupId) {
-        classify(candidate, "lost", "missing_process_metadata", patch);
+      if (!hasProcessMetadata(processPid, processGroupId)) {
+        classify(candidate, "skipped", "missing_process_metadata", patch);
         continue;
       }
+      const processPidAlive = isProcessAlive(processPid);
+      const processGroupAlive = isProcessGroupAlive(processGroupId);
       if (!processPidAlive && !processGroupAlive) {
         classify(candidate, "lost", "process_not_alive", patch);
         continue;
@@ -9043,7 +9031,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
             processGroupId: running.processGroupId ?? run.processGroupId,
             graceMs: Math.max(1, running.graceSec) * 1000,
           });
-        } else if (run.processPid || run.processGroupId) {
+        } else if (hasProcessMetadata(run.processPid, run.processGroupId)) {
           await terminateHeartbeatRunProcess({
             pid: run.processPid,
             processGroupId: run.processGroupId,
@@ -11377,40 +11365,45 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         if (now.getTime() - refTime < staleThresholdMs) continue;
       }
 
-      const tracksLocalChild = isTrackedLocalChildProcessAdapter(adapterType);
-      const processPidAlive = tracksLocalChild && run.processPid && isProcessAlive(run.processPid);
-      const processGroupAlive = tracksLocalChild && run.processGroupId && isProcessGroupAlive(run.processGroupId);
+      const processManaged = hasProcessMetadata(run.processPid, run.processGroupId);
+      const processPidAlive = processManaged && isProcessAlive(run.processPid);
+      const processGroupAlive = processManaged && isProcessGroupAlive(run.processGroupId);
       if (
         (processPidAlive || processGroupAlive) &&
         readHotRestartAdoptionMetadata(parseObject(run.resultJson))
       ) {
         continue;
       }
-      if (processPidAlive) {
-        if (run.errorCode !== DETACHED_PROCESS_ERROR_CODE) {
-          const detachedMessage = `Lost in-memory process handle, but child pid ${run.processPid} is still alive`;
-          const detachedRun = await setRunStatus(run.id, "running", {
-            error: detachedMessage,
-            errorCode: DETACHED_PROCESS_ERROR_CODE,
-          });
-          if (detachedRun) {
-            await appendRunEvent(detachedRun, await nextRunEventSeq(detachedRun.id), {
-              eventType: "lifecycle",
-              stream: "system",
-              level: "warn",
-              message: detachedMessage,
-              payload: {
-                processPid: run.processPid,
-              },
-            });
-          }
-        }
-        continue;
-      }
+
+      // Claim the row before touching the child. This makes orphan recovery
+      // safe when startup recovery and the periodic scheduler overlap, or
+      // when two Paperclip service instances inspect the same run.
+      const claimed = await db
+        .update(heartbeatRuns)
+        .set({
+          error: "Recovering orphaned process",
+          errorCode: "process_reaping",
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(heartbeatRuns.id, run.id),
+          eq(heartbeatRuns.status, "running"),
+          eq(heartbeatRuns.updatedAt, run.updatedAt),
+        ))
+        .returning({ id: heartbeatRuns.id });
+      if (claimed.length === 0) continue;
 
       let descendantOnlyCleanup = false;
+      let orphanedProcessCleanup = false;
       if (processGroupAlive) {
-        descendantOnlyCleanup = true;
+        descendantOnlyCleanup = !processPidAlive;
+        orphanedProcessCleanup = true;
+        await terminateHeartbeatRunProcess({
+          pid: run.processPid,
+          processGroupId: run.processGroupId,
+        });
+      } else if (processPidAlive) {
+        orphanedProcessCleanup = true;
         await terminateHeartbeatRunProcess({
           pid: run.processPid,
           processGroupId: run.processGroupId,
@@ -11427,10 +11420,15 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         monitorNextCheckAt !== undefined &&
         (!monitorNextCheckAt || monitorNextCheckAt.getTime() <= now.getTime());
       const shouldRetry = (run.processLossRetryCount ?? 0) < 1 && (
-        (tracksLocalChild && (!!run.processPid || !!run.processGroupId)) ||
+        processManaged ||
         monitorDispatchLostWithoutFutureWake
       );
-      const baseMessage = buildProcessLossMessage(run, descendantOnlyCleanup ? { descendantOnly: true } : undefined);
+      const baseMessage = buildProcessLossMessage(
+        run,
+        descendantOnlyCleanup || orphanedProcessCleanup
+          ? { descendantOnly: descendantOnlyCleanup, orphaned: orphanedProcessCleanup }
+          : undefined,
+      );
       const unmanagedBackgroundTaskEvidence = descendantOnlyCleanup
         ? {
           kind: "orphaned_process_group_cleanup",
@@ -11442,7 +11440,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         }
         : null;
 
-      let finalizedRun = await setRunStatus(run.id, "failed", {
+      const finalizedStatus = await setRunStatusIfRunning(run.id, "failed", {
         error: shouldRetry ? `${baseMessage}; retrying once` : baseMessage,
         errorCode: "process_lost",
         finishedAt: now,
@@ -11465,12 +11463,15 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
             : result;
         })(),
       });
+      if (!finalizedStatus.updated || !finalizedStatus.run) {
+        runningProcesses.delete(run.id);
+        continue;
+      }
+      let finalizedRun = finalizedStatus.run;
       await setWakeupStatus(run.wakeupRequestId, "failed", {
         finishedAt: now,
         error: shouldRetry ? `${baseMessage}; retrying once` : baseMessage,
       });
-      if (!finalizedRun) finalizedRun = await getRun(run.id);
-      if (!finalizedRun) continue;
       finalizedRun = await classifyAndPersistRunLiveness(finalizedRun, parseObject(finalizedRun.resultJson)) ?? finalizedRun;
       await releaseEnvironmentLeasesForRun({
         runId: finalizedRun.id,
@@ -11506,6 +11507,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
           ...(run.processPid ? { processPid: run.processPid } : {}),
           ...(run.processGroupId ? { processGroupId: run.processGroupId } : {}),
           ...(descendantOnlyCleanup ? { descendantOnlyCleanup: true } : {}),
+          ...(orphanedProcessCleanup ? { orphanedProcessCleanup: true } : {}),
           ...(retriedRun ? { retryRunId: retriedRun.id } : {}),
         },
       });
@@ -16475,7 +16477,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
           processGroupId: running.processGroupId ?? run.processGroupId,
           graceMs: Math.max(1, running.graceSec) * 1000,
         });
-      } else if (run.processPid || run.processGroupId) {
+      } else if (hasProcessMetadata(run.processPid, run.processGroupId)) {
         await terminateHeartbeatRunProcess({
           pid: run.processPid,
           processGroupId: run.processGroupId,
@@ -16522,6 +16524,24 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
       .where(and(eq(heartbeatRuns.agentId, agentId), inArray(heartbeatRuns.status, [...CANCELLABLE_HEARTBEAT_RUN_STATUSES])));
 
     for (const run of runs) {
+      // Stop the child before publishing terminal state. This preserves the
+      // invariant that a cancelled run cannot leave its external CLI alive
+      // while the scheduler starts another run for the same agent.
+      const running = runningProcesses.get(run.id);
+      if (running) {
+        await terminateHeartbeatRunProcess({
+          pid: running.child.pid ?? run.processPid,
+          processGroupId: running.processGroupId ?? run.processGroupId,
+          graceMs: Math.max(1, running.graceSec) * 1000,
+        });
+        runningProcesses.delete(run.id);
+      } else if (hasProcessMetadata(run.processPid, run.processGroupId)) {
+        await terminateHeartbeatRunProcess({
+          pid: run.processPid,
+          processGroupId: run.processGroupId,
+        });
+      }
+
       await setRunStatus(run.id, "cancelled", {
         finishedAt: new Date(),
         error: reason,
@@ -16539,21 +16559,6 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         finishedAt: new Date(),
         error: reason,
       });
-
-      const running = runningProcesses.get(run.id);
-      if (running) {
-        await terminateHeartbeatRunProcess({
-          pid: running.child.pid ?? run.processPid,
-          processGroupId: running.processGroupId ?? run.processGroupId,
-          graceMs: Math.max(1, running.graceSec) * 1000,
-        });
-        runningProcesses.delete(run.id);
-      } else if (run.processPid || run.processGroupId) {
-        await terminateHeartbeatRunProcess({
-          pid: run.processPid,
-          processGroupId: run.processGroupId,
-        });
-      }
       await releaseIssueExecutionAndPromote(run);
     }
 

@@ -53,7 +53,12 @@ import type {
 import type { AgentToolDescriptor, PluginToolDispatcher } from "./plugin-tool-dispatcher.js";
 import { logActivity, type LogActivityInput } from "./activity-log.js";
 import { secretService } from "./secrets.js";
-import { mcpHttpRequestHeaders, parseMcpHttpResponseBody } from "./mcp-http.js";
+import {
+  initializeMcpHttpSession,
+  McpHttpResponseError,
+  mcpHttpSessionRequest,
+  parseMcpHttpResponseBody,
+} from "./mcp-http.js";
 import { assertPublicRemoteHttpEndpoint, parseRemoteHttpEndpoint } from "./remote-http-endpoint-guard.js";
 import { toolAccessPolicyService } from "./tool-access-policy.js";
 import { issueThreadInteractionService } from "./issue-thread-interactions.js";
@@ -3032,23 +3037,21 @@ export function createToolGatewayService(
     const timer = setTimeout(() => controller.abort(), ms);
     timer.unref?.();
     try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        redirect: "manual",
-        // MCP Streamable HTTP requires the Accept header advertising both a JSON
-        // body and an SSE stream; spec-compliant servers 406 without it.
-        headers: mcpHttpRequestHeaders(headers),
+      const mcpSession = await initializeMcpHttpSession(endpoint, headers, {
         signal: controller.signal,
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: requestId,
-          method: "tools/call",
-          params: {
-            name: entry.toolName,
-            arguments: parameters ?? {},
-          },
-        }),
       });
+      const response = await mcpHttpSessionRequest(
+        endpoint,
+        mcpSession,
+        "tools/call",
+        {
+          name: entry.toolName,
+          arguments: parameters ?? {},
+        },
+        headers,
+        { signal: controller.signal },
+        requestId,
+      );
       const body = await readBoundedRemoteResponse(response);
       execution.response = {
         httpStatus: response.status,
@@ -3110,6 +3113,15 @@ export function createToolGatewayService(
         throw new ToolGatewayHttpError(error.status, error.message, error.reasonCode, {
           ...error.details,
           execution: error.details.execution ?? execution,
+        });
+      }
+      if (error instanceof McpHttpResponseError) {
+        await markRemoteConnectionHealth(connection, "error", "Remote MCP server returned an HTTP error.");
+        throw new ToolGatewayHttpError(502, "Remote MCP server returned an HTTP error", "remote_http_status", {
+          status: error.response.status,
+          connectionId: connection.id,
+          catalogEntryId: entry.id,
+          execution,
         });
       }
       if (error instanceof Error && error.name === "AbortError") {

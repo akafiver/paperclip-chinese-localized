@@ -1,5 +1,20 @@
-import { describe, expect, it } from "vitest";
-import { MCP_HTTP_ACCEPT, mcpHttpRequestHeaders, parseMcpHttpResponseBody } from "../services/mcp-http.js";
+import { describe, expect, it, vi } from "vitest";
+import {
+  MCP_HTTP_ACCEPT,
+  initializeMcpHttpSession,
+  mcpHttpRequestHeaders,
+  mcpHttpSessionRequest,
+  parseMcpHttpResponseBody,
+} from "../services/mcp-http.js";
+
+function response(payload: unknown, headers: Record<string, string> = {}, status = 200): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    headers: { get: (name: string) => headers[name.toLowerCase()] ?? null },
+    text: async () => JSON.stringify(payload),
+  } as unknown as Response;
+}
 
 describe("mcpHttpRequestHeaders", () => {
   it("advertises both JSON and SSE on every request", () => {
@@ -15,6 +30,38 @@ describe("mcpHttpRequestHeaders", () => {
       accept: "application/json, text/event-stream",
       Authorization: "Bearer x",
     });
+  });
+});
+
+describe("MCP Streamable HTTP session", () => {
+  it("initializes before tools/list and carries the returned session id", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
+      const body = JSON.parse(String(init?.body ?? "{}")) as { method?: string };
+      if (body.method === "initialize") {
+        return response(
+          { jsonrpc: "2.0", id: "paperclip-mcp-initialize", result: { protocolVersion: "2025-03-26" } },
+          { "mcp-session-id": "mir-test-session" },
+        );
+      }
+      if (body.method === "notifications/initialized") return response({}, {}, 202);
+      return response({ jsonrpc: "2.0", id: "catalog", result: { tools: [] } });
+    });
+
+    try {
+      const session = await initializeMcpHttpSession("http://mir.test/mcp");
+      await mcpHttpSessionRequest("http://mir.test/mcp", session, "tools/list", {});
+
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      const initializeBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { method?: string };
+      const notificationBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as { method?: string };
+      const listBody = JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body)) as { method?: string };
+      expect(initializeBody.method).toBe("initialize");
+      expect(notificationBody.method).toBe("notifications/initialized");
+      expect(listBody.method).toBe("tools/list");
+      expect(fetchMock.mock.calls[2]?.[1]?.headers).toMatchObject({ "mcp-session-id": "mir-test-session" });
+    } finally {
+      fetchMock.mockRestore();
+    }
   });
 });
 
