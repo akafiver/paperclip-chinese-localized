@@ -20,6 +20,7 @@ import { useNavigate, useSearchParams } from "@/lib/router";
 import { useCompany } from "../context/CompanyContext";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { useDialogActions } from "../context/DialogContext";
+import { useTranslation } from "@/i18n";
 import { searchApi } from "../api/search";
 import { agentsApi } from "../api/agents";
 import { authApi } from "../api/auth";
@@ -174,6 +175,7 @@ export function Search() {
   const { selectedCompanyId } = useCompany();
   const { setBreadcrumbs } = useBreadcrumbs();
   const { openNewIssue } = useDialogActions();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -196,8 +198,8 @@ export function Search() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
   useEffect(() => {
-    setBreadcrumbs([{ label: "Search" }]);
-  }, [setBreadcrumbs]);
+    setBreadcrumbs([{ label: t("ui.breadcrumb.search") }]);
+  }, [setBreadcrumbs, t]);
 
   useEffect(() => {
     if (!selectedCompanyId) return;
