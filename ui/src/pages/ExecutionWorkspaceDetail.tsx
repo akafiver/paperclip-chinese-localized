@@ -37,6 +37,7 @@ import { WorkspaceServiceControlBar } from "../components/WorkspaceServiceContro
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { useCompany } from "../context/CompanyContext";
 import { useToastActions } from "../context/ToastContext";
+import { useTranslation } from "@/i18n";
 import { collectLiveIssueIds } from "../lib/liveIssueIds";
 import { queryKeys } from "../lib/queryKeys";
 import { cn, formatDateTime, issueUrl, projectRouteRef, projectWorkspaceUrl } from "../lib/utils";
@@ -78,13 +79,16 @@ type OrderedExecutionWorkspaceTabItem = {
 };
 
 const DEFAULT_PLUGIN_DETAIL_TAB_ORDER = 100;
-const EXECUTION_WORKSPACE_BASE_TAB_ITEMS: OrderedExecutionWorkspaceTabItem[] = [
-  { value: "issues", label: "Tasks", order: 10 },
-  { value: "services", label: "Services", order: 20 },
-  { value: "configuration", label: "Configuration", order: 30 },
-  { value: "runtime_logs", label: "Runtime logs", order: 40 },
-  { value: "routines", label: "Routines", order: 60 },
-];
+
+function getBaseTabItems(t: (key: string) => string): OrderedExecutionWorkspaceTabItem[] {
+  return [
+    { value: "issues" as ExecutionWorkspaceTab, label: t("ui.executionWorkspace.tasks"), order: 10 },
+    { value: "services" as ExecutionWorkspaceTab, label: t("ui.executionWorkspace.services"), order: 20 },
+    { value: "configuration" as ExecutionWorkspaceTab, label: t("ui.executionWorkspace.configuration"), order: 30 },
+    { value: "runtime_logs" as ExecutionWorkspaceTab, label: t("ui.executionWorkspace.runtimeLogs"), order: 40 },
+    { value: "routines" as ExecutionWorkspaceTab, label: t("ui.executionWorkspace.routines"), order: 60 },
+  ];
+}
 
 function isExecutionWorkspacePluginTab(value: string | null): value is ExecutionWorkspacePluginTab {
   return typeof value === "string" && value.startsWith("plugin:");
@@ -697,6 +701,7 @@ export function ExecutionWorkspaceDetail() {
   const [runtimeActionErrorMessage, setRuntimeActionErrorMessage] = useState<string | null>(null);
   const [runtimeActionMessage, setRuntimeActionMessage] = useState<string | null>(null);
   const [pendingRuntimeActions, setPendingRuntimeActions] = useState<WorkspaceRuntimeControlRequest[]>([]);
+  const { t } = useTranslation();
   const activeRouteTab = workspaceId ? resolveExecutionWorkspaceTab(location.pathname, workspaceId) : null;
   const pluginTabFromSearch = useMemo(() => {
     const tab = new URLSearchParams(location.search).get("tab");
@@ -767,7 +772,7 @@ export function ExecutionWorkspaceDetail() {
     [workspacePluginDetailSlots],
   );
   const workspaceTabItems = useMemo(
-    () => orderExecutionWorkspaceTabItems([...EXECUTION_WORKSPACE_BASE_TAB_ITEMS, ...workspacePluginTabItems]),
+    () => orderExecutionWorkspaceTabItems([...getBaseTabItems(t), ...workspacePluginTabItems]),
     [workspacePluginTabItems],
   );
   const inheritedRuntimeConfig = linkedProjectWorkspace?.runtimeConfig?.workspaceRuntime ?? null;
