@@ -183,9 +183,9 @@ export function ApprovalDetail() {
                 <Sparkles className="h-3 w-3 text-green-500 dark:text-green-200 absolute -right-2 -top-1 animate-pulse" />
               </div>
               <div>
-                <p className="text-sm text-green-800 dark:text-green-100 font-medium">Approval confirmed</p>
+                <p className="text-sm text-green-800 dark:text-green-100 font-medium">{t("ui.approvals.approved")}</p>
                 <p className="text-xs text-green-700 dark:text-green-200/90">
-                  Requesting agent was notified to review this approval and linked tasks.
+                  {t("ui.issueDetail.approvalConfirmedBody")}
                 </p>
               </div>
             </div>
@@ -222,14 +222,14 @@ export function ApprovalDetail() {
             </div>
           )}
           <ApprovalPayloadRenderer type={approval.type} payload={payload} />
-          <button
-            type="button"
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mt-2"
-            onClick={() => setShowRawPayload((v) => !v)}
-          >
-            <ChevronRight className={`h-3 w-3 transition-transform ${showRawPayload ? "rotate-90" : ""}`} />
-            See full request
-          </button>
+            <button
+              type="button"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mt-2"
+              onClick={() => setShowRawPayload((v) => !v)}
+            >
+              <ChevronRight className={`h-3 w-3 transition-transform ${showRawPayload ? "rotate-90" : ""}`} />
+              {t("ui.issueDetail.seeFullRequest")}
+            </button>
           {showRawPayload && (
             <pre className="text-xs bg-muted/40 rounded-md p-3 overflow-x-auto">
               {JSON.stringify(payload, null, 2)}
