@@ -477,6 +477,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         env,
         timeoutSec,
         graceSec,
+        signal: ctx.signal,
         onSpawn,
         onRuntimeProgress: ctx.onRuntimeProgress,
         onLog,

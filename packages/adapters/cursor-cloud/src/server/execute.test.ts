@@ -43,6 +43,7 @@ function createMockRun(options: MockRunOptions = {}) {
   };
   const streamMessages = options.streamMessages ?? [];
   const streamError = options.streamError ?? null;
+  const cancel = vi.fn(async () => {});
 
   return {
     id: runId,
@@ -62,6 +63,7 @@ function createMockRun(options: MockRunOptions = {}) {
     async wait() {
       return waitResult;
     },
+    cancel,
   };
 }
 
@@ -202,6 +204,25 @@ describe("cursor_cloud execute", () => {
         expect.stringContaining('"type":"cursor_cloud.result"'),
       ]),
     );
+  });
+
+  it("cancels the provider run when Paperclip aborts the execution", async () => {
+    const run = createMockRun();
+    const sdkAgent = createMockSdkAgent({ sendRun: run });
+    createMock.mockResolvedValue(sdkAgent);
+    const controller = new AbortController();
+    const ctx = createContext({ signal: controller.signal });
+    controller.abort(new Error("Paperclip cancellation"));
+
+    const result = await execute(ctx);
+
+    expect(run.cancel).toHaveBeenCalled();
+    expect(result).toMatchObject({
+      exitCode: 1,
+      signal: "SIGTERM",
+      errorCode: "cancelled",
+      errorMessage: "Cancelled by Paperclip.",
+    });
   });
 
   it("resumes a matching saved session when no active run can be reattached", async () => {

@@ -3012,6 +3012,7 @@ export async function runChildProcess(
     env: Record<string, string>;
     timeoutSec: number;
     graceSec: number;
+    signal?: AbortSignal;
     onLog: (stream: "stdout" | "stderr", chunk: string) => Promise<void>;
     onLogError?: (err: unknown, runId: string, message: string) => void;
     onSpawn?: (meta: { pid: number; processGroupId: number | null; startedAt: string }) => Promise<void>;
@@ -3086,6 +3087,7 @@ export async function runChildProcess(
         let terminalCleanupForceKilled = false;
         let terminalCleanupTimer: NodeJS.Timeout | null = null;
         let terminalCleanupKillTimer: NodeJS.Timeout | null = null;
+        let abortKillTimer: NodeJS.Timeout | null = null;
         let terminalResultStdoutScanOffset = 0;
         let terminalResultStderrScanOffset = 0;
 
@@ -3095,6 +3097,20 @@ export async function runChildProcess(
           terminalCleanupTimer = null;
           terminalCleanupKillTimer = null;
         };
+
+        const terminateForCancellation = () => {
+          if (child.exitCode !== null || child.signalCode !== null) return;
+          signalRunningProcess({ child, processGroupId }, "SIGTERM");
+          if (abortKillTimer) clearTimeout(abortKillTimer);
+          abortKillTimer = setTimeout(() => {
+            abortKillTimer = null;
+            signalRunningProcess({ child, processGroupId }, "SIGKILL");
+          }, Math.max(1, opts.graceSec) * 1000);
+        };
+
+        const abortListener = () => terminateForCancellation();
+        opts.signal?.addEventListener("abort", abortListener, { once: true });
+        if (opts.signal?.aborted) terminateForCancellation();
 
         const maybeArmTerminalResultCleanup = () => {
           const terminalCleanup = opts.terminalResultCleanup;
@@ -3189,6 +3205,8 @@ export async function runChildProcess(
 
         child.on("error", (err: Error) => {
           if (timeout) clearTimeout(timeout);
+          if (abortKillTimer) clearTimeout(abortKillTimer);
+          opts.signal?.removeEventListener("abort", abortListener);
           clearTerminalCleanupTimers();
           runningProcesses.delete(runId);
           void target.cleanup?.();
@@ -3207,6 +3225,8 @@ export async function runChildProcess(
 
         child.on("close", (code: number | null, signal: NodeJS.Signals | null) => {
           if (timeout) clearTimeout(timeout);
+          if (abortKillTimer) clearTimeout(abortKillTimer);
+          opts.signal?.removeEventListener("abort", abortListener);
           clearTerminalCleanupTimers();
           runningProcesses.delete(runId);
           void logChain.finally(() => {

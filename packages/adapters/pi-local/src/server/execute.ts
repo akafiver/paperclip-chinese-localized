@@ -712,6 +712,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         env: executionTargetIsRemote ? env : runtimeEnv,
         timeoutSec,
         graceSec,
+        signal: ctx.signal,
         onSpawn,
         onRuntimeProgress: ctx.onRuntimeProgress,
         onLog: bufferedOnLog,

@@ -14,6 +14,11 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
 
   const controller = new AbortController();
   const timer = timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  const onCancel = ctx.signal ? () => controller.abort(ctx.signal?.reason) : null;
+  if (onCancel) {
+    ctx.signal?.addEventListener("abort", onCancel, { once: true });
+    if (ctx.signal?.aborted) controller.abort(ctx.signal.reason);
+  }
 
   try {
     const res = await fetch(url, {
@@ -49,5 +54,6 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     throw err;
   } finally {
     if (timer) clearTimeout(timer);
+    if (onCancel) ctx.signal?.removeEventListener("abort", onCancel);
   }
 }

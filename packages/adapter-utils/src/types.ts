@@ -155,6 +155,12 @@ export interface AdapterRuntimeEvent {
 
 export interface AdapterExecutionContext {
   runId: string;
+  /**
+   * Aborts every request owned by this Paperclip run when the control plane
+   * cancels or reaps it. Adapters must pass this signal to their network and
+   * session runtimes instead of maintaining an unrelated cancellation path.
+   */
+  signal?: AbortSignal;
   agent: AdapterAgent;
   runtime: AdapterRuntime;
   config: Record<string, unknown>;

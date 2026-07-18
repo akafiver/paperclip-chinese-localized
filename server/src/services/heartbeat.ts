@@ -548,6 +548,14 @@ const ISSUE_RESPONSIBLE_USER_WAKE_REASONS = new Set([
 // Routes and the scheduler construct separate heartbeatService instances, but
 // they must agree on in-process adapter executions when reaping stale runs.
 const activeRunExecutions = new Set<string>();
+const runCancellationControllers = new Map<string, AbortController>();
+
+function requestRunCancellation(runId: string, reason: string) {
+  const controller = runCancellationControllers.get(runId);
+  if (!controller || controller.signal.aborted) return false;
+  controller.abort(new Error(reason));
+  return true;
+}
 const INLINE_BASE64_IMAGE_DATA_RE = /("type":"image","source":\{"type":"base64","data":")([A-Za-z0-9+/=]{1024,})(")/g;
 
 type RuntimeConfigSecretResolver = Pick<
@@ -9055,6 +9063,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
     const retryRunIds: string[] = [];
 
     for (const { run, agent } of activeRuns) {
+      requestRunCancellation(run.id, `Paperclip shutdown: ${signal}`);
       const running = runningProcesses.get(run.id);
       try {
         if (running) {
@@ -11456,6 +11465,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
 
       let descendantOnlyCleanup = false;
       let orphanedProcessCleanup = false;
+      requestRunCancellation(run.id, "Paperclip orphan recovery");
       if (processGroupAlive) {
         descendantOnlyCleanup = !processPidAlive;
         orphanedProcessCleanup = true;
@@ -11848,6 +11858,8 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
     }
 
     activeRunExecutions.add(run.id);
+    const cancellationController = new AbortController();
+    runCancellationControllers.set(run.id, cancellationController);
     let runScratch: HeartbeatRunScratch | null = null;
 
     try {
@@ -13642,6 +13654,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         }
         adapterResult = await adapter.execute({
           runId: run.id,
+          signal: cancellationController.signal,
           agent,
           runtime: runtimeForAdapter,
           config: runtimeConfig,
@@ -14357,6 +14370,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
             }
           }
           activeRunExecutions.delete(run.id);
+          runCancellationControllers.delete(run.id);
           await startNextQueuedRunForAgent(run.agentId);
         }
   }
@@ -16553,6 +16567,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
       : options.resultJson;
 
     const running = runningProcesses.get(run.id);
+    requestRunCancellation(run.id, reason);
     try {
       if (running) {
         await terminateHeartbeatRunProcess({
@@ -16611,6 +16626,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
       // invariant that a cancelled run cannot leave its external CLI alive
       // while the scheduler starts another run for the same agent.
       const running = runningProcesses.get(run.id);
+      requestRunCancellation(run.id, reason);
       if (running) {
         await terminateHeartbeatRunProcess({
           pid: running.child.pid ?? run.processPid,

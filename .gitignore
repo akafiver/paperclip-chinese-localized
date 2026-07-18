@@ -15,6 +15,18 @@ data/
 .pnpm-store/
 tmp-*
 cli/tmp/
+# Local tool state and agent skill overlays are workspace-only. Repository
+# metadata such as .github/, .gitignore, and .env.example remains trackable.
+.*/
+!.github/
+!.github/**
+!.dockerignore
+!.env.example
+!.gitignore
+!.mailmap
+!.npmrc
+/.agents/
+/.claude/
 
 # Scratch/seed scripts (but not scripts/ dir)
 check-*.mjs
@@ -47,8 +59,6 @@ diagnostics/
 .paperclip-local/
 .paperclip-runtime/
 /.idea/
-/.agents/
-
 # Doc maintenance cursor
 .doc-review-cursor
 

@@ -881,6 +881,15 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
 
   const state = createExecutionState(runId);
   const controller = new AbortController();
+  let cancelResolve: ((value: "cancelled") => void) | null = null;
+  const cancellationPromise = new Promise<"cancelled">((resolve) => {
+    cancelResolve = resolve;
+  });
+  const onCancel = () => {
+    controller.abort(ctx.signal?.reason);
+    cancelResolve?.("cancelled");
+  };
+  ctx.signal?.addEventListener("abort", onCancel, { once: true });
   void consumeEvents({
     ctx,
     baseUrl,
@@ -906,9 +915,23 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     timeoutTimer = setTimeout(() => resolve("timeout"), timeoutMs);
   });
 
-  const outcome = await Promise.race([state.terminalPromise, timeoutPromise]);
+  const outcome = await Promise.race([state.terminalPromise, timeoutPromise, cancellationPromise]);
   if (timeoutTimer) clearTimeout(timeoutTimer);
+  ctx.signal?.removeEventListener("abort", onCancel);
   controller.abort();
+
+  if (outcome === "cancelled") {
+    await stopRun({ ctx, baseUrl, headers: eventHeaders, runId, redactText }).catch(() => undefined);
+    return {
+      exitCode: null,
+      signal: "SIGTERM",
+      timedOut: false,
+      errorCode: "cancelled",
+      errorMessage: "Cancelled by Paperclip.",
+      provider: "hermes_gateway",
+      resultJson: { run_id: runId, status: "cancelled" },
+    };
+  }
 
   if (outcome === "timeout") {
     await stopRun({ ctx, baseUrl, headers: eventHeaders, runId, redactText });

@@ -409,6 +409,41 @@ describe("runChildProcess", () => {
     expect(result.stdout).toBe("done");
   });
 
+  it.skipIf(process.platform === "win32")(
+    "terminates the child process group when the Paperclip run signal is aborted",
+    async () => {
+      const controller = new AbortController();
+      let observed = "";
+      const runId = randomUUID();
+      const resultPromise = runChildProcess(
+        runId,
+        process.execPath,
+        ["-e", "process.stdout.write(String(process.pid)); setInterval(() => {}, 1000);"],
+        {
+          cwd: process.cwd(),
+          env: {},
+          timeoutSec: 0,
+          graceSec: 1,
+          signal: controller.signal,
+          onLog: async (_stream, chunk) => {
+            observed += chunk;
+          },
+        },
+      );
+
+      const pidMatch = await waitForTextMatch(() => observed, /^\d+$/);
+      const childPid = Number.parseInt(pidMatch?.[0] ?? "", 10);
+      expect(Number.isInteger(childPid) && childPid > 0).toBe(true);
+
+      controller.abort(new Error("test cancellation"));
+      const result = await resultPromise;
+      expect(result.timedOut).toBe(false);
+      expect(result.signal).toBe("SIGTERM");
+      expect(await waitForPidExit(childPid, 2_000)).toBe(true);
+      expect(runningProcesses.has(runId)).toBe(false);
+    },
+  );
+
   it("waits for onSpawn before sending stdin to the child", async () => {
     const spawnDelayMs = 150;
     const startedAt = Date.now();

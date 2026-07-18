@@ -462,6 +462,13 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   let sdkAgent: SDKAgent | null = null;
   let run: Run | null = null;
   let streamError: string | null = null;
+  let cancelled = false;
+  const onCancel = () => {
+    cancelled = true;
+    void run?.cancel().catch(() => {});
+  };
+  ctx.signal?.addEventListener("abort", onCancel, { once: true });
+  if (ctx.signal?.aborted) onCancel();
   try {
     const attachedRun = canReuseSession
       ? await getAttachedRun({ apiKey, session })
@@ -495,6 +502,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     run = await sdkAgent.send(finalPrompt, {
       ...(model ? { model } : {}),
     });
+    if (cancelled) await run.cancel().catch(() => {});
     await onLog("stdout", eventLine({
       type: "cursor_cloud.init",
       sessionId: sdkAgent.agentId,
@@ -538,12 +546,16 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       ...(envName ? { envName } : {}),
       repos,
     };
-    const isError = result.status !== "finished";
+    const isError = cancelled || result.status !== "finished";
     return {
       exitCode: isError ? 1 : 0,
-      signal: null,
+      signal: cancelled ? "SIGTERM" : null,
       timedOut: false,
-      errorMessage: isError ? (trimNullable(result.result) ?? streamError ?? `Cursor run ${result.status}`) : null,
+      errorMessage: cancelled
+        ? "Cancelled by Paperclip."
+        : isError
+          ? (trimNullable(result.result) ?? streamError ?? `Cursor run ${result.status}`)
+          : null,
       sessionId: run.agentId,
       sessionDisplayId: run.agentId,
       sessionParams: nextSession,
@@ -552,6 +564,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       billingType: "api",
       model: modelId,
       costUsd: null,
+      errorCode: cancelled ? "cancelled" : undefined,
       summary: toSummary(result),
       resultJson: {
         status: result.status,
@@ -578,9 +591,10 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     }
     return {
       exitCode: 1,
-      signal: null,
+      signal: cancelled ? "SIGTERM" : null,
       timedOut: false,
-      errorMessage: reason,
+      errorMessage: cancelled ? "Cancelled by Paperclip." : reason,
+      errorCode: cancelled ? "cancelled" : undefined,
       sessionId: session?.cursorAgentId ?? null,
       sessionDisplayId: session?.cursorAgentId ?? null,
       sessionParams: session,
@@ -597,6 +611,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       },
     };
   } finally {
+    ctx.signal?.removeEventListener("abort", onCancel);
     if (sdkAgent) {
       try {
         await sdkAgent[Symbol.asyncDispose]();

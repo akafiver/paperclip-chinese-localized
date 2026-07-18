@@ -1219,6 +1219,8 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       onEvent,
       onLog: ctx.onLog,
     });
+    const onCancel = ctx.signal ? () => client.close() : null;
+    if (onCancel) ctx.signal?.addEventListener("abort", onCancel, { once: true });
 
     try {
       deviceIdentity = disableDeviceAuth ? null : resolveDeviceIdentity(parseObject(ctx.config));
@@ -1485,6 +1487,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         resultJson: asRecord(latestResultPayload),
       };
     } finally {
+      if (onCancel) ctx.signal?.removeEventListener("abort", onCancel);
       client.close();
     }
   }

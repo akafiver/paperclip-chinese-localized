@@ -2147,6 +2147,17 @@ export function createAcpxEngineExecutor(deps: AcpxEngineExecutorOptions = {}) {
     const textParts: string[] = [];
     let eventBreakdown: AcpRuntimeUsageBreakdown | null = null;
     let eventCostUsd: number | null = null;
+    let externallyCancelled = false;
+    const onExternalAbort = () => {
+      externallyCancelled = true;
+      controller?.abort(ctx.signal?.reason);
+      void cancelActiveTurn?.("Cancelled by Paperclip.").catch(() => {});
+    };
+    const removeExternalAbortListener = () => {
+      ctx.signal?.removeEventListener("abort", onExternalAbort);
+    };
+    ctx.signal?.addEventListener("abort", onExternalAbort, { once: true });
+    if (ctx.signal?.aborted) onExternalAbort();
     try {
       // Snapshot pre-turn usage so cumulative agent-reported cost can be
       // attributed to this run alone.
@@ -2168,6 +2179,7 @@ export function createAcpxEngineExecutor(deps: AcpxEngineExecutorOptions = {}) {
         timeoutMs,
         signal: controller?.signal,
       });
+      if (ctx.signal?.aborted) controller.abort(ctx.signal.reason);
       cancelActiveTurn = async (reason: string) => {
         await turn.cancel({ reason });
       };
@@ -2259,12 +2271,19 @@ export function createAcpxEngineExecutor(deps: AcpxEngineExecutorOptions = {}) {
         message: errorMessage,
       });
       await cleanupRemoteBridges(prepared);
+      removeExternalAbortListener();
       return {
         exitCode: terminal.status === "completed" ? 0 : 1,
-        signal: timedOut ? "SIGTERM" : null,
+        signal: timedOut || externallyCancelled ? "SIGTERM" : null,
         timedOut,
         errorMessage,
-        errorCode: terminal.status === "failed" ? "acpx_turn_failed" : timedOut ? "acpx_timeout" : null,
+        errorCode: externallyCancelled
+          ? "cancelled"
+          : terminal.status === "failed"
+            ? "acpx_turn_failed"
+            : timedOut
+              ? "acpx_timeout"
+              : null,
         sessionId: sessionHandle.backendSessionId ?? sessionHandle.runtimeSessionName,
         sessionParams: buildSessionParams({ prepared, handle: sessionHandle }),
         sessionDisplayId: sessionHandle.agentSessionId ?? sessionHandle.backendSessionId ?? sessionHandle.runtimeSessionName,
@@ -2290,8 +2309,11 @@ export function createAcpxEngineExecutor(deps: AcpxEngineExecutorOptions = {}) {
       };
     } catch (err) {
       if (timeout) clearTimeout(timeout);
+      removeExternalAbortListener();
       const messageOverride = timedOut
         ? formatAdapterExecutionTimeoutErrorMessage(prepared.timeoutResolution)
+        : externallyCancelled
+          ? "Cancelled by Paperclip."
         : undefined;
       const cancel = cancelActiveTurn as ((reason: string) => Promise<void>) | null;
       const preEmitMessage =
@@ -2317,10 +2339,10 @@ export function createAcpxEngineExecutor(deps: AcpxEngineExecutorOptions = {}) {
       await cleanupRemoteBridges(prepared);
       return {
         exitCode: 1,
-        signal: timedOut ? "SIGTERM" : null,
+        signal: timedOut || externallyCancelled ? "SIGTERM" : null,
         timedOut,
         errorMessage: message,
-        errorCode: timedOut ? "acpx_timeout" : classified.errorCode,
+        errorCode: externallyCancelled ? "cancelled" : timedOut ? "acpx_timeout" : classified.errorCode,
         errorMeta: classified.errorMeta,
         ...billingFields,
         model: prepared.requestedModel || null,

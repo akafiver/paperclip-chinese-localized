@@ -43,6 +43,17 @@ This starts:
 
 `pnpm dev` and `pnpm dev:once` are now idempotent for the current repo and instance: if the matching Paperclip dev runner is already alive, Paperclip reports the existing process instead of starting a duplicate.
 
+### Run cancellation ownership
+
+Every heartbeat run receives one Paperclip-owned cancellation signal. Explicit
+cancellation, shutdown draining, and orphan recovery abort that signal before
+the local process-group fallback runs. Local CLI adapters pass it to their
+child process, the HTTP adapter passes it to `fetch`, and session-based
+adapters use their provider cancellation/close operation when available. An
+adapter that starts another network or session runtime must consume
+`AdapterExecutionContext.signal`; otherwise Paperclip can stop waiting locally
+while the provider request continues remotely.
+
 Issue execution may also use project execution workspace policies and workspace runtime services for per-project worktrees, preview servers, and managed dev commands. Configure those through the project workspace/runtime surfaces rather than starting long-running unmanaged processes when a task needs a reusable service.
 
 ## Storybook

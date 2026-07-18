@@ -529,6 +529,7 @@ export async function execute(
     env,
     timeoutSec,
     graceSec,
+    signal: ctx.signal,
     onLog: wrappedOnLog,
     onSpawn: ctx.onSpawn,
   });

@@ -96,6 +96,7 @@ export interface PreparedAdapterExecutionTargetRuntime {
 export interface AdapterExecutionTargetProcessOptions {
   cwd: string;
   env: Record<string, string>;
+  signal?: AbortSignal;
   stdin?: string;
   timeoutSec: number;
   graceSec: number;
@@ -552,6 +553,7 @@ export async function runAdapterExecutionTargetProcess(
         env,
         stdin: options.stdin,
         timeoutMs: options.timeoutSec > 0 ? options.timeoutSec * 1000 : target.timeoutMs ?? undefined,
+        signal: options.signal,
         // The tail loop already streams incremental chunks; suppress the
         // runner's end-of-run batched onLog to avoid duplicate log bytes.
         onLog: runLogTail ? undefined : options.onLog,
@@ -579,6 +581,7 @@ export async function runAdapterExecutionTargetProcess(
   return await runChildProcess(runId, command, args, {
     cwd: options.cwd,
     env,
+    signal: options.signal,
     stdin: options.stdin,
     timeoutSec: options.timeoutSec,
     graceSec: options.graceSec,
