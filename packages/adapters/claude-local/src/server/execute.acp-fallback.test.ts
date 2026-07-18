@@ -79,7 +79,7 @@ function buildContext(config: Record<string, unknown> = {}) {
       taskKey: null,
     },
     config,
-    context: {},
+    context: { paperclipWorkspace: { cwd: process.env.TMPDIR ?? "/tmp", source: "agent_home" } },
     onLog: vi.fn(async () => {}),
   };
 }

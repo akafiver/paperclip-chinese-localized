@@ -8,6 +8,7 @@ import type { Agent, Environment } from "@paperclipai/shared";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AgentConfigForm } from "./AgentConfigForm";
 import { defaultCreateValues } from "./agent-config-defaults";
+import { t as translate } from "@/i18n";
 
 const mockAgentsApi = vi.hoisted(() => ({
   adapterModelProfiles: vi.fn(),
@@ -30,6 +31,8 @@ const mockInstanceSettingsApi = vi.hoisted(() => ({
 const mockSecretsApi = vi.hoisted(() => ({
   list: vi.fn(),
 }));
+
+const environmentOverrideLabel = translate("ui.agentConfig.environmentOverride");
 
 vi.mock("../api/agents", () => ({
   agentsApi: mockAgentsApi,
@@ -328,7 +331,7 @@ describe("AgentConfigForm environment selector", () => {
     const selector = result.container.querySelector("select");
 
     expect(text).toContain("Environment");
-    expect(text).toContain("Environment override");
+    expect(text).toContain(environmentOverrideLabel);
     expect(selector?.textContent).toContain("Default: Local");
     expect(selector?.textContent).toContain("E2B · sandbox");
     expect(text).not.toContain("Execution");
@@ -354,7 +357,7 @@ describe("AgentConfigForm environment selector", () => {
     const text = result.container.textContent ?? "";
     const selector = result.container.querySelector("select");
 
-    expect(text).toContain("Environment override");
+    expect(text).toContain(environmentOverrideLabel);
     expect(selector?.textContent).toContain("E2B · sandbox");
   });
 
@@ -376,7 +379,7 @@ describe("AgentConfigForm environment selector", () => {
     const text = result.container.textContent ?? "";
     const selector = result.container.querySelector("select");
 
-    expect(text).toContain("Environment override");
+    expect(text).toContain(environmentOverrideLabel);
     expect(selector?.textContent).toContain("Default: Local");
     expect(selector?.textContent).toContain("Fake Sandbox · sandbox");
   });

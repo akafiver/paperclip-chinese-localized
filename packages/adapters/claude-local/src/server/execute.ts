@@ -44,6 +44,7 @@ import {
   shapePaperclipWorkspaceEnvForExecution,
   stringifyPaperclipWakePayload,
   DEFAULT_PAPERCLIP_AGENT_PROMPT_TEMPLATE,
+  resolveRequiredAdapterWorkspaceCwd,
 } from "@paperclipai/adapter-utils/server-utils";
 import {
   parseLocalProcessFilesystemScope,
@@ -185,10 +186,8 @@ async function buildClaudeRuntimeConfig(input: ClaudeExecutionInput): Promise<Cl
       )
     : [];
   const runtimePrimaryUrl = asString(context.paperclipRuntimePrimaryUrl, "");
-  const configuredCwd = asString(config.cwd, "");
-  const useConfiguredInsteadOfAgentHome = workspaceSource === "agent_home" && configuredCwd.length > 0;
-  const effectiveWorkspaceCwd = useConfiguredInsteadOfAgentHome ? "" : workspaceCwd;
-  const cwd = effectiveWorkspaceCwd || configuredCwd || process.cwd();
+  const cwd = await resolveRequiredAdapterWorkspaceCwd(context, config);
+  const effectiveWorkspaceCwd = cwd;
   const executionTargetIsRemote = adapterExecutionTargetIsRemote(executionTarget);
   let effectiveExecutionCwd = adapterExecutionTargetRemoteCwd(executionTarget, cwd);
   const shapedWorkspaceEnv = shapePaperclipWorkspaceEnvForExecution({

@@ -1,4 +1,5 @@
 import type { AdapterExecutionContext, AdapterExecutionResult } from "../types.js";
+import { resolveRequiredAdapterWorkspaceCwd } from "@paperclipai/adapter-utils/server-utils";
 import {
   asString,
   asNumber,
@@ -17,7 +18,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   if (!command) throw new Error("Process adapter missing command");
 
   const args = asStringArray(config.args);
-  const cwd = asString(config.cwd, process.cwd());
+  const cwd = await resolveRequiredAdapterWorkspaceCwd(ctx.context, config);
   const envConfig = parseObject(config.env);
   const env: Record<string, string> = {
     ...buildPaperclipEnv(agent),

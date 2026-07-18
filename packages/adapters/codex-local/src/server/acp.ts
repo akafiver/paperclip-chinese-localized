@@ -279,7 +279,7 @@ async function commandIsResolvable(
       await ensureAdapterExecutionTargetCommandResolvable(
         trimmed,
         target,
-        resolveAdapterExecutionTargetCwd(target, asString(input?.config.cwd, ""), process.cwd()),
+        resolveAdapterExecutionTargetCwd(target, asString(input?.config.cwd, ""), ""),
         process.env,
       );
       return true;
@@ -387,7 +387,7 @@ export async function testCodexAcpEnvironment(
     });
   }
 
-  const cwd = asString(config.cwd, process.cwd());
+  const cwd = asString(config.cwd, "");
   try {
     await fs.mkdir(cwd, { recursive: true });
     checks.push({

@@ -2264,6 +2264,69 @@ export async function ensureAbsoluteDirectory(
   }
 }
 
+export async function resolveRequiredAdapterWorkspaceCwd(
+  context: Record<string, unknown>,
+  config: Record<string, unknown>,
+): Promise<string> {
+  const workspace = context.paperclipWorkspace;
+  const workspaceRecord = workspace && typeof workspace === "object"
+    ? workspace as Record<string, unknown>
+    : null;
+  const workspaceSource = typeof workspaceRecord?.source === "string"
+    ? workspaceRecord.source.trim()
+    : "";
+  const workspaceCwd = typeof workspaceRecord?.cwd === "string"
+    ? workspaceRecord.cwd.trim()
+    : "";
+  const configuredCwd = typeof config.cwd === "string" ? config.cwd.trim() : "";
+  const cwd = workspaceSource === "agent_home" && configuredCwd
+    ? configuredCwd
+    : workspaceCwd || configuredCwd;
+
+  if (!cwd) {
+    throw new Error(
+      "workspace_validation_failed: no resolved workspace cwd was provided; configure a project workspace before starting the agent",
+    );
+  }
+  if (!path.isAbsolute(cwd)) {
+    throw new Error(`workspace_validation_failed: workspace cwd must be absolute: "${cwd}"`);
+  }
+  if (await isPaperclipSourceTreePath(cwd)) {
+    throw new Error(
+      `workspace_validation_failed: refusing to run an agent in the Paperclip source tree: "${cwd}"`,
+    );
+  }
+  return cwd;
+}
+
+async function isPaperclipSourceTreePath(candidate: string): Promise<boolean> {
+  let current = path.resolve(candidate);
+  while (true) {
+    try {
+      const packageJson = JSON.parse(await fs.readFile(path.join(current, "package.json"), "utf8")) as { name?: unknown };
+      if (
+        packageJson.name === "paperclip" &&
+        (await isDirectory(path.join(current, "server"))) &&
+        (await isDirectory(path.join(current, "packages"))) &&
+        (await isDirectory(path.join(current, "ui")))
+      ) return true;
+    } catch {
+      // Continue to the next ancestor when this directory has no package.json.
+    }
+    const parent = path.dirname(current);
+    if (parent === current) return false;
+    current = parent;
+  }
+}
+
+async function isDirectory(directory: string): Promise<boolean> {
+  try {
+    return (await fs.stat(directory)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
 export async function resolvePaperclipSkillsDir(
   moduleDir: string,
   additionalCandidates: string[] = [],

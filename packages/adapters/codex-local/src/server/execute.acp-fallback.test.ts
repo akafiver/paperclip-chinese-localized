@@ -122,7 +122,7 @@ function buildContext(config: Record<string, unknown> = {}) {
       env: { OPENAI_API_KEY: "test-key" },
       ...config,
     },
-    context: {},
+    context: { paperclipWorkspace: { cwd: process.env.TMPDIR ?? "/tmp", source: "agent_home" } },
     onLog: vi.fn(async () => {}),
   };
 }

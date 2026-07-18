@@ -23,7 +23,7 @@ export async function testEnvironment(
   const checks: AdapterEnvironmentCheck[] = [];
   const config = parseObject(ctx.config);
   const command = asString(config.command, "");
-  const cwd = asString(config.cwd, process.cwd());
+  const cwd = asString(config.cwd, "");
 
   if (!command) {
     checks.push({

@@ -15,6 +15,7 @@ import {
   refreshPaperclipWorkspaceEnvForExecution,
   renderPaperclipWakePrompt,
   runningProcesses,
+  resolveRequiredAdapterWorkspaceCwd,
   runChildProcess,
   sanitizeSshRemoteEnv,
   signalRunningProcess,
@@ -25,6 +26,34 @@ import {
   UNMANAGED_BACKGROUND_TASK_STOP_REASON,
   WATCHDOG_DEFAULT_MANDATE,
 } from "./server-utils.js";
+
+describe("resolveRequiredAdapterWorkspaceCwd", () => {
+  it("requires a workspace or explicit advanced cwd", async () => {
+    await expect(resolveRequiredAdapterWorkspaceCwd({}, {})).rejects.toThrow(
+      "workspace_validation_failed",
+    );
+  });
+
+  it("accepts the server-resolved workspace cwd", async () => {
+    const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-workspace-"));
+    await expect(
+      resolveRequiredAdapterWorkspaceCwd(
+        { paperclipWorkspace: { cwd: workspace, source: "project_primary" } },
+        {},
+      ),
+    ).resolves.toBe(workspace);
+    await fs.rm(workspace, { recursive: true, force: true });
+  });
+
+  it("rejects the Paperclip source tree", async () => {
+    await expect(
+      resolveRequiredAdapterWorkspaceCwd(
+        { paperclipWorkspace: { cwd: process.cwd(), source: "project_primary" } },
+        {},
+      ),
+    ).rejects.toThrow("Paperclip source tree");
+  });
+});
 
 function isPidAlive(pid: number) {
   try {

@@ -135,6 +135,13 @@ async function runExecutor(
     },
   });
 
+  const context = {
+    paperclipWorkspace: {
+      cwd: process.env.TMPDIR ?? "/tmp",
+      source: "agent_home",
+    },
+    ...(options.context ?? {}),
+  };
   const result = await execute({
     runId: "run-1",
     agent: {
@@ -143,7 +150,7 @@ async function runExecutor(
     },
       runtime: {},
       config,
-      context: options.context ?? {},
+      context,
       executionTransport: options.executionTransport,
       authToken: options.authToken,
       executionTarget: options.executionTarget,
@@ -343,7 +350,7 @@ describe("shared ACPX engine runtime behavior", () => {
       },
       runtime: {},
       config: { agent: "custom", agentCommand: "node ./fake-acp.js", stateDir },
-      context: {},
+      context: { paperclipWorkspace: { cwd: await makeTempRoot(), source: "agent_home" } },
       onLog: async (stream: "stdout" | "stderr", text: string) => {
         logs.push({ stream, text });
       },
@@ -418,7 +425,7 @@ describe("shared ACPX engine runtime behavior", () => {
       },
       runtime: {},
       config: { agent: "custom", agentCommand: "node ./fake-acp.js", stateDir },
-      context: {},
+      context: { paperclipWorkspace: { cwd: await makeTempRoot(), source: "agent_home" } },
       onLog: async (stream: "stdout" | "stderr", text: string) => {
         logs.push({ stream, text });
       },
@@ -482,7 +489,7 @@ describe("shared ACPX engine runtime behavior", () => {
       },
       runtime: {},
       config: { agent: "custom", agentCommand: "node ./fake-acp.js", stateDir },
-      context: {},
+      context: { paperclipWorkspace: { cwd: await makeTempRoot(), source: "agent_home" } },
       onLog: async () => {},
       onMeta: async () => {},
     } as never);
@@ -910,7 +917,7 @@ describe("shared ACPX engine runtime behavior", () => {
         agentCommand: "node ./fake-acp.js",
         stateDir,
       },
-      context: {},
+      context: { paperclipWorkspace: { cwd: await makeTempRoot(), source: "agent_home" } },
       onLog: async (stream: "stdout" | "stderr", text: string) => {
         logs.push({ stream, text });
       },
@@ -962,7 +969,7 @@ describe("shared ACPX engine runtime behavior", () => {
         agentCommand: "node ./fake-acp.js",
         stateDir,
       },
-      context: {},
+      context: { paperclipWorkspace: { cwd: await makeTempRoot(), source: "agent_home" } },
       onLog: async () => {},
       onMeta: async () => {},
     } as never);
@@ -1064,7 +1071,7 @@ describe("shared ACPX engine runtime behavior", () => {
         agentCommand: fakeAgentPath,
         stateDir,
       },
-      context: {},
+      context: { paperclipWorkspace: { cwd: await makeTempRoot(), source: "agent_home" } },
       onLog: async () => {},
       onMeta: async () => {},
     } as never);
@@ -1119,7 +1126,7 @@ describe("shared ACPX engine runtime behavior", () => {
         },
         runtime: {},
         config: { agent: "custom", agentCommand: "node ./fake-acp.js" },
-        context: {},
+        context: { paperclipWorkspace: { cwd: await makeTempRoot(), source: "agent_home" } },
         authToken: "runtime-key",
         onLog: async () => {},
         onMeta: async () => {},
@@ -1669,7 +1676,7 @@ describe("shared ACP engine execution timeouts", () => {
         cwd,
         timeoutSec: 1,
       },
-      context: {},
+      context: { paperclipWorkspace: { cwd: await makeTempRoot(), source: "agent_home" } },
       onLog: async () => {},
       onMeta: async () => {},
     } as never);

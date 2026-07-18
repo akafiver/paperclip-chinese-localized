@@ -108,7 +108,7 @@ export async function testEnvironment(
   const command = asString(config.command, "grok");
   const target = ctx.executionTarget ?? null;
   const targetIsRemote = target?.kind === "remote";
-  const cwd = resolveAdapterExecutionTargetCwd(target, asString(config.cwd, ""), process.cwd());
+  const cwd = resolveAdapterExecutionTargetCwd(target, asString(config.cwd, ""), "");
   const targetLabel = targetIsRemote
     ? ctx.environmentName ?? describeAdapterExecutionTarget(target)
     : null;

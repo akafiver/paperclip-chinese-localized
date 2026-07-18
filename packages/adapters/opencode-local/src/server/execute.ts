@@ -44,6 +44,7 @@ import {
   readPaperclipRuntimeSkillEntries,
   readPaperclipIssueWorkModeFromContext,
   resolvePaperclipDesiredSkillNames,
+  resolveRequiredAdapterWorkspaceCwd,
 } from "@paperclipai/adapter-utils/server-utils";
 import { isOpenCodeUnknownSessionError, parseOpenCodeJsonl } from "./parse.js";
 import {
@@ -235,10 +236,8 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         (value): value is Record<string, unknown> => typeof value === "object" && value !== null,
       )
     : [];
-  const configuredCwd = asString(config.cwd, "");
-  const useConfiguredInsteadOfAgentHome = workspaceSource === "agent_home" && configuredCwd.length > 0;
-  const effectiveWorkspaceCwd = useConfiguredInsteadOfAgentHome ? "" : workspaceCwd;
-  const cwd = effectiveWorkspaceCwd || configuredCwd || process.cwd();
+  const cwd = await resolveRequiredAdapterWorkspaceCwd(context, config);
+  const effectiveWorkspaceCwd = cwd;
   let effectiveExecutionCwd = adapterExecutionTargetRemoteCwd(executionTarget, cwd);
   await ensureAbsoluteDirectory(cwd, { createIfMissing: true });
   const openCodeSkillEntries = await readPaperclipRuntimeSkillEntries(config, __moduleDir);

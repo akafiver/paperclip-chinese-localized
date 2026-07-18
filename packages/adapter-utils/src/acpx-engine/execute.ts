@@ -43,6 +43,7 @@ import {
   renderTemplate,
   resolvePaperclipInstanceRootForAdapter,
   resolvePaperclipDesiredSkillNames,
+  resolveRequiredAdapterWorkspaceCwd,
   removeMaintainerOnlySkillSymlinks,
   rewriteWorkspaceCwdEnvVarsForExecution,
   shapePaperclipWorkspaceEnvForExecution,
@@ -991,10 +992,8 @@ async function buildRuntime(input: {
   const workspaceBranch = asString(workspaceContext.branchName, "");
   const workspaceWorktreePath = asString(workspaceContext.worktreePath, "");
   const agentHome = asString(workspaceContext.agentHome, "");
-  const configuredCwd = asString(config.cwd, "");
-  const useConfiguredInsteadOfAgentHome = workspaceSource === "agent_home" && configuredCwd.length > 0;
-  const effectiveWorkspaceCwd = useConfiguredInsteadOfAgentHome ? "" : workspaceCwd;
-  const cwd = effectiveWorkspaceCwd || configuredCwd || process.cwd();
+  const cwd = await resolveRequiredAdapterWorkspaceCwd(context, config);
+  const effectiveWorkspaceCwd = cwd;
   const executionTarget = readAdapterExecutionTarget({
     executionTarget: input.ctx.executionTarget,
     legacyRemoteExecution: input.ctx.executionTransport?.remoteExecution,

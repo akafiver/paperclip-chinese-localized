@@ -35,6 +35,7 @@ import {
   renderPaperclipWakePrompt,
   isPaperclipRecoveryWakePayload,
   resolvePaperclipDesiredSkillNames,
+  resolveRequiredAdapterWorkspaceCwd,
   stringifyPaperclipWakePayload,
   refreshPaperclipWorkspaceEnvForExecution,
   DEFAULT_PAPERCLIP_AGENT_PROMPT_TEMPLATE,
@@ -221,10 +222,8 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null,
       )
     : [];
-  const configuredCwd = asString(config.cwd, "");
-  const useConfiguredInsteadOfAgentHome = workspaceSource === "agent_home" && configuredCwd.length > 0;
-  const effectiveWorkspaceCwd = useConfiguredInsteadOfAgentHome ? "" : workspaceCwd;
-  const cwd = effectiveWorkspaceCwd || configuredCwd || process.cwd();
+  const cwd = await resolveRequiredAdapterWorkspaceCwd(context, config);
+  const effectiveWorkspaceCwd = cwd;
   let effectiveExecutionCwd = adapterExecutionTargetRemoteCwd(executionTarget, cwd);
   await ensureAbsoluteDirectory(cwd, { createIfMissing: true });
 

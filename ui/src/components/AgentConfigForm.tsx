@@ -51,7 +51,6 @@ import {
   EnvironmentVariablesEditor,
   type EnvironmentVariablesEditorHandle,
 } from "./environment-variables-editor";
-import { shouldShowLegacyWorkingDirectoryField } from "../lib/legacy-agent-config";
 import { listAdapterOptions, listVisibleAdapterTypes } from "../adapters/metadata";
 import { getAdapterDisplay, getAdapterLabel } from "../adapters/adapter-display-registry";
 import { useDisabledAdaptersSync } from "../adapters/use-disabled-adapters";
@@ -376,8 +375,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
   const adapterCaps = getCapabilities(adapterType);
   const isLocal = adapterCaps.supportsInstructionsBundle || adapterCaps.supportsSkills || adapterCaps.supportsLocalAgentJwt;
   
-  const showLegacyWorkingDirectoryField =
-    isLocal && shouldShowLegacyWorkingDirectoryField({ isCreate, adapterConfig: config });
+  const showWorkingDirectoryField = isLocal;
   const uiAdapter = useMemo(() => getUIAdapter(adapterType), [adapterType]);
   const supportedEnvironmentDrivers = useMemo(
     () => new Set(supportedEnvironmentDriversForAdapter(adapterType)),
@@ -1154,8 +1152,11 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
           )}
 
           {/* Working directory */}
-          {showLegacyWorkingDirectoryField && (
-            <Field label="Working directory (deprecated)" hint={help.cwd}>
+          {showWorkingDirectoryField && (
+            <Field
+              label="Working directory (advanced)"
+              hint="Prefer the project's primary Workspace. This path is only for local-agent overrides."
+            >
               <div className="flex items-center gap-2 rounded-md border border-border px-2.5 py-1.5">
                 <FolderOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                 <DraftInput
