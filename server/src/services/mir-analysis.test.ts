@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mirCompareSimilarity, mirExtractKeyFeatures, mirParseResponse, type MirAnalysisResult, type MirKeyFeatures } from "./mir-analysis.js";
+import { findMostSimilarTracks, findSimilarPairs, mirCompareSimilarity, mirExtractKeyFeatures, mirParseResponse, type MirAnalysisResult, type MirKeyFeatures } from "./mir-analysis.js";
 
 describe("mirParseResponse", () => {
   it("parses a minimal MIR response", () => {
@@ -671,6 +671,136 @@ describe("mirParseResponse", () => {
       expect(result.sections[2].start).toBe(60);
       expect(result.sections[2].end).toBe(90);
       expect(result.sections[3].role).toBe("outro");
+    });
+  });
+
+  describe("findMostSimilarTracks", () => {
+    const tracks: MirKeyFeatures[] = [
+      {
+        duration: 200, tempoBpm: 120, perceivedBpm: 60, tempoConfidence: 0.95, keyTonic: "C", keyScale: "major", keyLabel: "C major", keyConfidence: 0.9,
+        genres: ["pop"], emotions: ["upbeat"], instrumentation: ["synth"], structure: [], chordChangesPerMinute: 8, distinctChords: ["C"],
+        commercialHookScore: 0.8, memorabilityScore: 0.7, rmsDb: -10, integratedLoudness: -12, keyChanges: [], beatTimes: [], downbeatIndices: [], meter: "4/4",
+      },
+      {
+        duration: 210, tempoBpm: 121, perceivedBpm: 60, tempoConfidence: 0.93, keyTonic: "C", keyScale: "major", keyLabel: "C major", keyConfidence: 0.88,
+        genres: ["pop"], emotions: ["upbeat"], instrumentation: ["piano"], structure: [], chordChangesPerMinute: 9, distinctChords: ["C"],
+        commercialHookScore: 0.75, memorabilityScore: 0.65, rmsDb: -11, integratedLoudness: -13, keyChanges: [], beatTimes: [], downbeatIndices: [], meter: "4/4",
+      },
+      {
+        duration: 180, tempoBpm: 180, perceivedBpm: 90, tempoConfidence: 0.9, keyTonic: "Am", keyScale: "minor", keyLabel: "A minor", keyConfidence: 0.85,
+        genres: ["metal"], emotions: ["aggressive"], instrumentation: ["guitar"], structure: [], chordChangesPerMinute: 6, distinctChords: ["Am"],
+        commercialHookScore: 0.3, memorabilityScore: 0.2, rmsDb: -6, integratedLoudness: -8, keyChanges: [], beatTimes: [], downbeatIndices: [], meter: "4/4",
+      },
+    ];
+
+    it("returns tracks sorted by descending similarity", () => {
+      const reference = tracks[0];
+      const results = findMostSimilarTracks(tracks, reference);
+      expect(results).toHaveLength(2);
+      expect(results[0].track).toBe(tracks[1]); // Most similar (same key, similar tempo)
+      expect(results[1].track).toBe(tracks[2]); // Less similar (different key, much different tempo)
+      expect(results[0].similarity.score).toBeGreaterThan(results[1].similarity.score);
+    });
+
+    it("returns empty array when only the reference track exists", () => {
+      const results = findMostSimilarTracks([tracks[0]], tracks[0]);
+      expect(results).toHaveLength(0);
+    });
+  });
+
+  describe("findSimilarPairs", () => {
+    const tracks: MirKeyFeatures[] = [
+      {
+        duration: 200, tempoBpm: 120, perceivedBpm: 60, tempoConfidence: 0.95, keyTonic: "C", keyScale: "major", keyLabel: "C major", keyConfidence: 0.9,
+        genres: ["pop"], emotions: ["upbeat"], instrumentation: ["synth"], structure: [], chordChangesPerMinute: 8, distinctChords: ["C"],
+        commercialHookScore: 0.8, memorabilityScore: 0.7, rmsDb: -10, integratedLoudness: -12, keyChanges: [], beatTimes: [], downbeatIndices: [], meter: "4/4",
+      },
+      {
+        duration: 210, tempoBpm: 122, perceivedBpm: 61, tempoConfidence: 0.93, keyTonic: "C", keyScale: "major", keyLabel: "C major", keyConfidence: 0.88,
+        genres: ["pop"], emotions: ["upbeat"], instrumentation: ["piano"], structure: [], chordChangesPerMinute: 9, distinctChords: ["C"],
+        commercialHookScore: 0.75, memorabilityScore: 0.65, rmsDb: -11, integratedLoudness: -13, keyChanges: [], beatTimes: [], downbeatIndices: [], meter: "4/4",
+      },
+      {
+        duration: 180, tempoBpm: 180, perceivedBpm: 90, tempoConfidence: 0.9, keyTonic: "Am", keyScale: "minor", keyLabel: "A minor", keyConfidence: 0.85,
+        genres: ["metal"], emotions: ["aggressive"], instrumentation: ["guitar"], structure: [], chordChangesPerMinute: 6, distinctChords: ["Am"],
+        commercialHookScore: 0.3, memorabilityScore: 0.2, rmsDb: -6, integratedLoudness: -8, keyChanges: [], beatTimes: [], downbeatIndices: [], meter: "4/4",
+      },
+      {
+        duration: 190, tempoBpm: 185, perceivedBpm: 92, tempoConfidence: 0.92, keyTonic: "Am", keyScale: "minor", keyLabel: "A minor", keyConfidence: 0.87,
+        genres: ["metal"], emotions: ["aggressive"], instrumentation: ["drums"], structure: [], chordChangesPerMinute: 7, distinctChords: ["Am"],
+        commercialHookScore: 0.35, memorabilityScore: 0.25, rmsDb: -7, integratedLoudness: -9, keyChanges: [], beatTimes: [], downbeatIndices: [], meter: "4/4",
+      },
+    ];
+
+    it("returns pairs above the threshold", () => {
+      const pairs = findSimilarPairs(tracks, 0.5);
+      expect(pairs.length).toBeGreaterThan(0);
+      for (const pair of pairs) {
+        expect(pair.similarity.score).toBeGreaterThanOrEqual(0.5);
+      }
+    });
+
+    it("returns no pairs when threshold is too high", () => {
+      const pairs = findSimilarPairs(tracks, 0.99);
+      expect(pairs).toHaveLength(0);
+    });
+
+    it("returns no pairs for empty array", () => {
+      const pairs = findSimilarPairs([], 0.5);
+      expect(pairs).toHaveLength(0);
+    });
+
+    it("returns no pairs for single track", () => {
+      const pairs = findSimilarPairs([tracks[0]], 0.5);
+      expect(pairs).toHaveLength(0);
+    });
+  });
+
+  describe("mirCompareSimilarity edge cases", () => {
+    const emptyTrack: MirKeyFeatures = {
+      duration: 0, tempoBpm: 0, perceivedBpm: 0, tempoConfidence: 0, keyTonic: "", keyScale: "", keyLabel: "", keyConfidence: 0,
+      genres: [], emotions: [], instrumentation: [], structure: [], chordChangesPerMinute: 0, distinctChords: [],
+      commercialHookScore: 0, memorabilityScore: 0, rmsDb: 0, integratedLoudness: 0, keyChanges: [], beatTimes: [], downbeatIndices: [], meter: null,
+    };
+
+    it("returns 1.0 for identical tracks", () => {
+      const track: MirKeyFeatures = {
+        duration: 200, tempoBpm: 120, perceivedBpm: 60, tempoConfidence: 0.95, keyTonic: "C", keyScale: "major", keyLabel: "C major", keyConfidence: 0.9,
+        genres: ["pop"], emotions: ["upbeat"], instrumentation: ["synth"], structure: [{ role: "verse", start: 0, end: 30, duration: 30 }],
+        chordChangesPerMinute: 8, distinctChords: ["C"], commercialHookScore: 0.8, memorabilityScore: 0.7, rmsDb: -10, integratedLoudness: -12,
+        keyChanges: [], beatTimes: [], downbeatIndices: [], meter: "4/4",
+      };
+      const sim = mirCompareSimilarity(track, track);
+      expect(sim.score).toBe(1.0);
+    });
+
+    it("returns 1.0 for two empty tracks (all fields empty)", () => {
+      const sim = mirCompareSimilarity(emptyTrack, emptyTrack);
+      expect(sim.score).toBeGreaterThanOrEqual(0.8);
+    });
+  });
+
+  describe("mirParseResponse error cases", () => {
+    it("throws on null input", () => {
+      expect(() => mirParseResponse(null)).toThrow("not a valid object");
+    });
+
+    it("throws on string input", () => {
+      expect(() => mirParseResponse("not a MIR response")).toThrow("not a valid object");
+    });
+
+    it("throws on boolean input", () => {
+      expect(() => mirParseResponse(true)).toThrow("not a valid object");
+    });
+
+    it("throws on undefined input", () => {
+      expect(() => mirParseResponse(undefined)).toThrow("not a valid object");
+    });
+
+    it("returns defaults for plain array (arrays are objects in JS)", () => {
+      const result = mirParseResponse([1, 2, 3] as unknown as Record<string, unknown>);
+      expect(result.status).toBe("quick");
+      expect(result.analysisId).toBe("");
     });
   });
 });

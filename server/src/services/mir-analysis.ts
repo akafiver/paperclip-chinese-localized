@@ -1278,6 +1278,48 @@ export function mirCompareSimilarity(a: MirKeyFeatures, b: MirKeyFeatures): MirT
   };
 }
 
+/**
+ * Find the most similar tracks from a collection, sorted by descending similarity.
+ * Useful for finding hit-sounding songs within a collection.
+ *
+ * @param tracks - Array of MirKeyFeatures to compare
+ * @param reference - Track to compare against (uses key features of this track)
+ * @returns Sorted array of { track, similarity } tuples
+ */
+export function findMostSimilarTracks(
+  tracks: MirKeyFeatures[],
+  reference: MirKeyFeatures,
+): Array<{ track: MirKeyFeatures; similarity: MirTrackSimilarity }> {
+  return tracks
+    .filter((t) => t !== reference)
+    .map((t) => ({ track: t, similarity: mirCompareSimilarity(reference, t) }))
+    .sort((a, b) => b.similarity.score - a.similarity.score);
+}
+
+/**
+ * Find pairs of tracks in a collection with similarity above a threshold.
+ * Useful for detecting songs with similar musical characteristics.
+ *
+ * @param tracks - Array of MirKeyFeatures to compare
+ * @param threshold - Minimum similarity score (0-1, default 0.5)
+ * @returns Array of { trackA, trackB, similarity } tuples
+ */
+export function findSimilarPairs(
+  tracks: MirKeyFeatures[],
+  threshold: number = 0.5,
+): Array<{ trackA: MirKeyFeatures; trackB: MirKeyFeatures; similarity: MirTrackSimilarity }> {
+  const pairs: Array<{ trackA: MirKeyFeatures; trackB: MirKeyFeatures; similarity: MirTrackSimilarity }> = [];
+  for (let i = 0; i < tracks.length; i++) {
+    for (let j = i + 1; j < tracks.length; j++) {
+      const sim = mirCompareSimilarity(tracks[i], tracks[j]);
+      if (sim.score >= threshold) {
+        pairs.push({ trackA: tracks[i], trackB: tracks[j], similarity: sim });
+      }
+    }
+  }
+  return pairs;
+}
+
 // ── Safe field accessors ─────────────────────────────────────────────────────
 // These accept either a known Record type or any `object`/`unknown` value,
 // making them safe to use after typeof narrowing.
