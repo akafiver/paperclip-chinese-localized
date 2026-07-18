@@ -241,14 +241,6 @@ export interface MirMixAnalysis {
   mixRisks: Array<{ type: string; severity: string }>;
 }
 
-export interface MirMelodyEvent {
-  start: number;
-  end: number;
-  midiNote: number;
-  note: string;
-  amplitude: number;
-}
-
 export interface MirMelody {
   status?: string;
   backend?: string;
