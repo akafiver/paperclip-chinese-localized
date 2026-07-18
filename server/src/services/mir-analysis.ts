@@ -10,6 +10,11 @@
 // The MIR tool (`mir_analyze_music`) is invoked by the agent framework directly.
 // This module exports types and extraction helpers so the agent can interpret
 // the response without manually navigating the raw MIR shape.
+//
+// Supports two response formats:
+//   1. Nested format (legacy): { global_features: { rhythm: { tempo: { ... } }, ... }, sections: [...], ... }
+//   2. Flat MCP format: { tempo_bpm, key: { tonic }, commercial: { hook_score }, structure: [...], ... }
+// The parser auto-detects the format and normalizes to MirAnalysisResult.
 
 // ── MIR response types (trimmed to the fields the Music Engineer needs) ──────
 
@@ -164,6 +169,21 @@ export interface MirGlobalFeatures {
   mixAnalysis?: MirMixAnalysis;
   /** Vocal range data if vocals detected */
   vocalRange?: MirVocalRange;
+  // ── Convenience accessors (populated from nested fields) ─────────────────
+  /** @deprecated Use tags.genre instead */
+  genres?: string[];
+  /** @deprecated Use tags.emotion instead */
+  emotions?: string[];
+  /** @deprecated Use tags.instrumentation instead */
+  instrumentation?: string[];
+  /** @deprecated Use commercialAssessment.hookAssessment.score instead */
+  commercialHookScore?: number;
+  /** @deprecated Use commercialAssessment.memorability.score instead */
+  memorabilityScore?: number;
+  /** @deprecated Use professionalLoudness.integrated_lufs instead */
+  integratedLoudness?: number;
+  /** @deprecated Use professionalLoudness.loudness_range_lu instead */
+  loudnessRange?: number;
 }
 
 export interface MirStemSummary {
@@ -438,15 +458,17 @@ function keyTimelineFromResult(result: MirAnalysisResult): MirKeyTimelineSegment
 }
 
 // ── MIR result to MirAnalysisResult converter ────────────────────────────────
-// Bridges the actual MIR tool response (snake_case, deeply nested) to our
-// typed MirAnalysisResult interface.
+// Bridges the actual MIR tool response (either nested or flat MCP format) to our
+// typed MirAnalysisResult interface. Auto-detects the response format.
 
 /**
  * Convert the raw MIR tool response into a typed MirAnalysisResult.
  *
- * The MIR tool returns a JSON object with snake_case keys and deeply nested
- * structures. This function normalizes the keys to camelCase and extracts
- * the fields needed by the Music Engineer agent.
+ * Supports two response formats:
+ *   1. Nested format: { global_features: { rhythm: { tempo: { ... } }, ... }, sections: [...], ... }
+ *   2. Flat MCP format: { tempo_bpm, key: { tonic }, commercial: { hook_score }, structure: [...], ... }
+ *
+ * This function normalizes both formats to the same MirAnalysisResult shape.
  */
 export function mirParseResponse(raw: unknown): MirAnalysisResult {
   if (!raw || typeof raw !== "object") {
@@ -454,6 +476,22 @@ export function mirParseResponse(raw: unknown): MirAnalysisResult {
   }
 
   const r = raw as Record<string, unknown>;
+
+  // Detect format: nested (has global_features) vs flat MCP
+  const hasGlobalFeatures = r.global_features !== undefined || r.globalFeatures !== undefined;
+
+  if (hasGlobalFeatures) {
+    return parseNestedFormat(r);
+  }
+
+  return parseFlatMcpFormat(r);
+}
+
+function parseNestedFormat(r: Record<string, unknown>): MirAnalysisResult {
+  const gf = (r.global_features ?? r.globalFeatures) as Record<string, unknown> | undefined;
+  if (!gf || typeof gf !== "object") {
+    throw new Error("Missing global_features in MIR response");
+  }
 
   const sourceObj = (r.source ?? r.source) as Record<string, unknown> | undefined;
   const source: MirSource = {
@@ -466,7 +504,7 @@ export function mirParseResponse(raw: unknown): MirAnalysisResult {
     trackId: safeNullable(sourceObj, "track_id"),
   };
 
-  const globalFeatures = parseGlobalFeatures(r);
+  const globalFeatures = parseGlobalFeatures(gf);
   const sections = parseSections(r);
   const chords = parseChords(r);
   const chordSummary = parseChordSummary(r);
@@ -487,16 +525,394 @@ export function mirParseResponse(raw: unknown): MirAnalysisResult {
   };
 }
 
-function parseGlobalFeatures(r: Record<string, unknown>): MirGlobalFeatures {
-  const gf = (r.global_features ?? r.globalFeatures) as Record<string, unknown> | undefined;
-  if (!gf || typeof gf !== "object") {
-    throw new Error("Missing global_features in MIR response");
+function parseFlatMcpFormat(r: Record<string, unknown>): MirAnalysisResult {
+  // Flat MCP format: keys at top level, no global_features wrapper
+
+  // Source / metadata
+  const source: MirSource = {
+    path: safeString(r, "source_path") || safeString(r, "path") || "",
+    filename: safeString(r, "filename") || "",
+    inputUrl: safeString(r, "input_url") || safeString(r, "source_url") || "",
+    platform: safeString(r, "platform") || "direct",
+    resolutionStatus: safeString(r, "resolution_status") || "direct",
+    resolvedUrl: safeString(r, "resolved_url") || "",
+    trackId: safeNullable(r, "track_id"),
+  };
+
+  // Duration
+  const durationSeconds = safeNumber(r, "duration_seconds") ?? safeNumber(r, "durationSeconds") ?? 0;
+
+  // Rhythm (flat: tempo_bpm at top level, or nested)
+  const rhythm = parseFlatRhythm(r);
+
+  // Key (flat: key.tonic / key.mode, or compound string)
+  const key = parseFlatKey(r);
+
+  // Tags (flat: genres[], moods[], instruments[])
+  const tags: MirTag = {
+    instrumentation: safeArray(r, "instruments") ?? safeArray(r, "instrumentation") ?? [],
+    genre: safeArray(r, "genres") ?? [],
+    emotion: safeArray(r, "moods") ?? safeArray(r, "moods_labels") ?? [],
+    confidence: 0,
+  };
+
+  // Commercial assessment (flat: commercial.{hook_score, memorability})
+  const commercialAssessment = parseFlatCommercial(r);
+
+  // Professional loudness (flat: loudness.{integrated_lufs, loudness_range_lu})
+  const professionalLoudness = parseFlatLoudness(r);
+
+  const globalFeatures: MirGlobalFeatures = {
+    durationSeconds,
+    sampleRateHz: 0,
+    channels: 0,
+    rmsDb: safeNumber(r, "rms_db") ?? safeNumber(r, "rmsDb") ?? 0,
+    peakDb: safeNumber(r, "peak_db") ?? safeNumber(r, "peakDb") ?? 0,
+    spectralCentroidHz: safeNumber(r, "spectral_centroid_hz") ?? safeNumber(r, "spectralCentroidHz") ?? 0,
+    rhythm,
+    key,
+    keyTimeline: [],
+    tags,
+    commercialAssessment,
+    professionalLoudness,
+    mixAnalysis: undefined,
+    vocalRange: undefined,
+    // Convenience accessors
+    genres: tags.genre,
+    emotions: tags.emotion,
+    instrumentation: tags.instrumentation,
+    commercialHookScore: commercialAssessment.hookAssessment.score,
+    memorabilityScore: commercialAssessment.memorability.score,
+    integratedLoudness: professionalLoudness?.integrated_lufs,
+    loudnessRange: professionalLoudness?.loudness_range_lu,
+  };
+
+  // Sections / structure (flat: structure[{ section, start, end, role, energy }])
+  const sections = parseFlatSections(r);
+
+  // Chords (flat: chords.{ count, distinct, changes_per_minute } -> summary; no individual chord array)
+  const chordSummary = parseFlatChordSummary(r);
+  const chords: MirChord[] = [];
+
+  // Stem separation (flat: stem_separation.{ stems, model })
+  const stemSep = (r.stem_separation ?? r.stemSeparation) as Record<string, unknown> | undefined;
+  let stemsDetected: string[] = [];
+  if (stemSep && typeof stemSep === "object") {
+    stemsDetected = safeArray(stemSep, "stems") ?? [];
+  }
+  if (stemsDetected.length === 0) {
+    stemsDetected = safeArray(r, "stems") ?? [];
   }
 
+  const stemSummary: MirStemSummary = { stemsDetected };
+
+  return {
+    analysisId: safeString(r, "analysis_id"),
+    status: safeString(r, "status") || (r.analysis_level === "deep" ? "completed" : "quick"),
+    source,
+    globalFeatures,
+    sections,
+    chords,
+    chordSummary,
+    stemSummary,
+    evidence: [],
+    goal: "",
+    level: safeString(r, "analysis_level") || "standard",
+  };
+}
+
+// ── Flat MCP format helpers ──────────────────────────────────────────────────
+// These handle the actual MIR MCP service response format (flat keys, no wrapper).
+
+function parseFlatRhythm(r: Record<string, unknown>): MirRhythm {
+  // Check for nested rhythm first (legacy nested format)
+  const rhythmNested = (r.rhythm ?? r.rhythm) as Record<string, unknown> | undefined;
+  if (rhythmNested && typeof rhythmNested === "object") {
+    // Check if it has the nested tempo structure
+    const tempoNested = rhythmNested.tempo;
+    if (tempoNested && typeof tempoNested === "object" && "selected_bpm" in tempoNested) {
+      return parseRhythm(rhythmNested);
+    }
+  }
+
+  // Flat MCP format: tempo_bpm at top level or in rhythm sub-object
+  const rhythmFlat = (r.rhythm ?? r.rhythm) as Record<string, unknown> | undefined;
+  let bpm = safeNumber(r, "tempo_bpm") ?? safeNumber(r, "tempoBpm") ?? 0;
+  let perceivedBpm = safeNumber(r, "perceived_bpm") ?? safeNumber(r, "perceivedBpm") ?? 0;
+  let meter: string | null = null;
+  let meterConfidence = 0;
+  let confidence = 0;
+
+  if (rhythmFlat && typeof rhythmFlat === "object") {
+    bpm = safeNumber(rhythmFlat, "tempo_bpm") ?? safeNumber(rhythmFlat, "tempoBpm") ?? bpm;
+    perceivedBpm = safeNumber(rhythmFlat, "perceived_bpm") ?? safeNumber(rhythmFlat, "perceivedBpm") ?? perceivedBpm;
+    meter = safeNullable(rhythmFlat, "time_signature") ?? safeNullable(rhythmFlat, "timeSignature");
+    meterConfidence = safeNumber(rhythmFlat, "confidence") ?? 0;
+    confidence = safeNumber(rhythmFlat, "confidence") ?? 0;
+  }
+
+  // Extract time_signature as meter string if available
+  const timeSig = safeString(r, "time_signature") || safeString(r, "timeSignature");
+  if (timeSig && timeSig !== "None" && timeSig !== "none") {
+    meter = meter || `${timeSig}/4`;
+  }
+
+  return {
+    tempo: {
+      selectedBpm: bpm,
+      perceivedBpm,
+      candidates: [],
+      confidence,
+    },
+    tempoCurve: { points: [] },
+    beats: [],
+    downbeats: [],
+    selectedMeter: meter,
+    meterCandidates: meter ? [{ meter, confidence: meterConfidence }] : [],
+    confidence,
+  };
+}
+
+function parseFlatKey(r: Record<string, unknown>): MirKey {
+  const keyFlat = (r.key ?? r.key) as Record<string, unknown> | undefined;
+
+  let tonic = "";
+  let scale = "";
+  let label = "";
+  let confidence = 0;
+  let reviewRequired = false;
+
+  if (keyFlat && typeof keyFlat === "object") {
+    tonic = safeString(keyFlat, "tonic") || "";
+    confidence = safeNumber(keyFlat, "confidence") ?? 0;
+    const status = safeString(keyFlat, "status") || "";
+    reviewRequired = status === "uncertain" || status === "ambiguous";
+
+    // Try to derive scale from tonic string (e.g. "C minor" -> scale: "minor")
+    if (tonic.toLowerCase().includes("minor") || tonic.toLowerCase().includes("m") && !tonic.toLowerCase().includes("maj")) {
+      scale = "minor";
+    } else if (tonic.toLowerCase().includes("major") || tonic.toLowerCase().includes("maj")) {
+      scale = "major";
+    }
+    if (tonic && !scale) {
+      // Try to extract from format like "C:m" or "C:min"
+      if (/:\w*m(?:in)?(?:or)?$/.test(tonic)) {
+        scale = "minor";
+      } else {
+        scale = "major";
+      }
+    }
+  } else {
+    // Key is a compound string like "E minor" or "C:maj"
+    const keyStr = safeString(r, "key");
+    if (keyStr) {
+      tonic = keyStr;
+      if (keyStr.toLowerCase().includes("minor") || /:\w*m(?:in)?(?:or)?$/i.test(keyStr)) {
+        tonic = keyStr.replace(/ minor$/i, "").replace(/:.*$/, "");
+        scale = "minor";
+      } else {
+        tonic = keyStr.replace(/ major$/i, "").replace(/:.*$/, "");
+        scale = "major";
+      }
+      label = keyStr;
+    }
+  }
+
+  // Try mode field
+  const mode = safeString(r, "mode") || (keyFlat && keyFlat.mode) as string | undefined;
+  if (mode) {
+    scale = mode.toLowerCase();
+    if (scale === "m" || scale === "min" || scale === "minor") scale = "minor";
+    else if (scale === "maj" || scale === "major") scale = "major";
+  }
+
+  if (tonic && scale) {
+    label = `${tonic} ${scale}`;
+  }
+
+  return {
+    tonic,
+    scale,
+    label,
+    confidence,
+    candidates: [],
+    reviewRequired,
+  };
+}
+
+function parseFlatCommercial(r: Record<string, unknown>): MirCommercialAssessment {
+  const commFlat = (r.commercial ?? r.commercial) as Record<string, unknown> | undefined;
+  const commNested = (r.commercial_assessment ?? r.commercialAssessment) as Record<string, unknown> | undefined;
+  const obj = commFlat || commNested;
+
+  if (!obj || typeof obj !== "object") {
+    return {
+      hookAssessment: { score: 0, label: "" },
+      memorability: { score: 0, label: "" },
+      targetMarketMatch: [],
+      confidence: 0,
+    };
+  }
+
+  let hookScore = 0, hookLabel = "", memoScore = 0, memoLabel = "", conf = 0;
+
+  if (commFlat && typeof commFlat === "object") {
+    hookScore = safeNumber(commFlat, "hook_score") ?? safeNumber(commFlat, "hookScore") ?? 0;
+    memoScore = safeNumber(commFlat, "memorability") ?? safeNumber(commFlat, "memorabilityScore") ?? 0;
+  }
+
+  if (commNested && typeof commNested === "object") {
+    const hook = (commNested.hook_assessment ?? commNested.hookAssessment) as Record<string, unknown> | undefined;
+    const memo = (commNested.memorability ?? commNested.memorability) as Record<string, unknown> | undefined;
+    if (hook) {
+      hookScore = safeNumber(hook, "score") ?? hookScore;
+      hookLabel = safeString(hook, "label") || "";
+    }
+    if (memo) {
+      memoScore = safeNumber(memo, "score") ?? memoScore;
+      memoLabel = safeString(memo, "label") || "";
+    }
+    conf = safeNumber(commNested, "confidence") ?? 0;
+  }
+
+  // Derive labels from scores if missing
+  if (!hookLabel) hookLabel = hookScore >= 0.9 ? "strong" : hookScore >= 0.7 ? "moderate" : hookScore >= 0.5 ? "moderate" : "weak";
+  if (!memoLabel) memoLabel = memoScore >= 0.8 ? "high" : memoScore >= 0.6 ? "medium" : "low";
+
+  return {
+    hookAssessment: { score: hookScore, label: hookLabel },
+    memorability: { score: memoScore, label: memoLabel },
+    targetMarketMatch: [],
+    confidence: conf,
+  };
+}
+
+function parseFlatLoudness(r: Record<string, unknown>): MirProfessionalLoudness | undefined {
+  const loudFlat = (r.loudness ?? r.loudness) as Record<string, unknown> | undefined;
+  const loudNested = (r.professional_loudness ?? r.professionalLoudness) as Record<string, unknown> | undefined;
+  const obj = loudFlat || loudNested;
+
+  if (!obj || typeof obj !== "object") return undefined;
+
+  return {
+    integrated_lufs: safeNumber(obj, "integrated_lufs") ?? safeNumber(obj, "integratedLufs") ?? 0,
+    loudness_range_lu: safeNumber(obj, "loudness_range_lu") ?? safeNumber(obj, "loudnessRangeLu") ?? 0,
+    true_peak_dbfs: safeNumber(obj, "true_peak_dbfs") ?? safeNumber(obj, "truePeakDbfs") ?? 0,
+    sample_peak_dbfs: safeNumber(obj, "sample_peak_dbfs") ?? safeNumber(obj, "samplePeakDbfs") ?? 0,
+  };
+}
+
+function parseFlatSections(r: Record<string, unknown>): MirSection[] {
+  // Check both formats: structure (flat MCP) and sections (nested)
+  const structureFlat = (r.structure ?? r.structure) as Record<string, unknown> | undefined;
+  const sectionsNested = (r.sections ?? r.sections) as Record<string, unknown>[] | undefined;
+
+  // Nested sections format
+  if (Array.isArray(sectionsNested) && sectionsNested.length > 0 && "role" in sectionsNested[0]) {
+    return sectionsNested.map((s) => ({
+      id: safeString(s, "id"),
+      start: safeNumber(s, "start") ?? 0,
+      end: safeNumber(s, "end") ?? 0,
+      role: safeString(s, "role") || "unknown",
+      confidence: safeNumber(s, "confidence") ?? 0,
+      energyNormalized: safeNumber(s, "energy_normalized") ?? safeNumber(s, "energyNormalized") ?? 0,
+      durationSeconds: safeNumber(s, "duration_seconds") ?? safeNumber(s, "durationSeconds") ?? 0,
+    }));
+  }
+
+  // Flat structure format: { segments: [{ label, start, duration, confidence }] }
+  if (structureFlat && typeof structureFlat === "object") {
+    const segments = (structureFlat.segments ?? structureFlat.segments) as Record<string, unknown>[] | undefined;
+    if (Array.isArray(segments)) {
+      let offset = 0;
+      return segments.map((s) => {
+        const start = safeNumber(s, "start") ?? offset;
+        const duration = safeNumber(s, "duration") ?? (start - offset);
+        const end = start + duration;
+        offset = end;
+        const role = safeString(s, "role") || safeString(s, "label") || "unknown";
+        return {
+          id: safeString(s, "section") || safeString(s, "id") || `section_${Math.round(start)}`,
+          start,
+          end,
+          role,
+          confidence: safeNumber(s, "confidence") ?? safeNumber(s, "confidence") ?? 0,
+          energyNormalized: safeNumber(s, "energy") ?? 0,
+          durationSeconds: duration,
+        };
+      });
+    }
+  }
+
+  // Also handle structure as a raw array: [{ section, start, end, role, energy }]
+  const structureRaw = (r.structure ?? r.structure) as Record<string, unknown>[] | undefined;
+  if (Array.isArray(structureRaw) && structureRaw.length > 0 && "section" in structureRaw[0]) {
+    return structureRaw.map((s) => {
+      const start = safeNumber(s, "start") ?? 0;
+      const end = safeNumber(s, "end") ?? start;
+      return {
+        id: safeString(s, "section") || `section_${Math.round(start)}`,
+        start,
+        end,
+        role: safeString(s, "role") || "unknown",
+        confidence: 0,
+        energyNormalized: safeNumber(s, "energy") ?? 0,
+        durationSeconds: end - start,
+      };
+    });
+  }
+
+  return [];
+}
+
+function parseFlatChordSummary(r: Record<string, unknown>): MirChordSummary {
+  // Flat: chords.{ count, distinct, changes_per_minute }
+  const chordsFlat = (r.chords ?? r.chords) as Record<string, unknown> | undefined;
+  const chordsNested = (r.chord_summary ?? r.chordSummary) as Record<string, unknown> | undefined;
+
+  if (!chordsFlat && !chordsNested) {
+    return { chordCount: 0, distinctChords: [], changesPerMinute: 0, meanConfidence: 0, interpretationStatus: "unknown" };
+  }
+
+  let chordCount = 0, cpm = 0, meanConf = 0;
+  let distinctChords: string[] = [];
+  let status = "unknown";
+
+  if (chordsFlat && typeof chordsFlat === "object") {
+    chordCount = safeNumber(chordsFlat, "count") ?? 0;
+    distinctChords = safeArray(chordsFlat, "distinct") ?? [];
+    cpm = safeNumber(chordsFlat, "changes_per_minute") ?? safeNumber(chordsFlat, "changesPerMinute") ?? 0;
+  }
+
+  if (chordsNested && typeof chordsNested === "object") {
+    chordCount = safeNumber(chordsNested, "chord_count") ?? safeNumber(chordsNested, "chordCount") ?? chordCount;
+    distinctChords = safeArray(chordsNested, "distinct_chords") ?? safeArray(chordsNested, "distinctChords") ?? distinctChords;
+    cpm = safeNumber(chordsNested, "changes_per_minute") ?? safeNumber(chordsNested, "changesPerMinute") ?? cpm;
+    meanConf = safeNumber(chordsNested, "mean_confidence") ?? safeNumber(chordsNested, "meanConfidence") ?? 0;
+    status = safeString(chordsNested, "interpretation_status") || status;
+  }
+
+  return {
+    chordCount,
+    distinctChords,
+    changesPerMinute: cpm,
+    meanConfidence: meanConf,
+    interpretationStatus: status,
+  };
+}
+
+// ── Legacy nested format helpers ─────────────────────────────────────────────
+// Original helpers for backward compatibility with the global_features format.
+
+function parseGlobalFeatures(gf: Record<string, unknown>): MirGlobalFeatures {
   const rhythm = parseRhythm(gf);
   const key = parseKey(gf);
   const tags = parseTags(gf);
   const commercialAssessment = parseCommercialAssessment(gf);
+
+  const professionalLoudnessVal = gf.professional_loudness ?? gf.professionalLoudness as MirProfessionalLoudness | undefined;
+  const mixAnalysisVal = parseMixAnalysis(gf);
+  const vocalRangeVal = parseVocalRange(gf);
 
   return {
     durationSeconds: safeNumber(gf, "duration_seconds") ?? safeNumber(gf, "durationSeconds") ?? 0,
@@ -510,9 +926,17 @@ function parseGlobalFeatures(r: Record<string, unknown>): MirGlobalFeatures {
     keyTimeline: parseKeyTimeline(gf),
     tags,
     commercialAssessment,
-    professionalLoudness: gf.professional_loudness ?? gf.professionalLoudness as MirProfessionalLoudness | undefined,
-    mixAnalysis: parseMixAnalysis(gf),
-    vocalRange: parseVocalRange(gf),
+    professionalLoudness: professionalLoudnessVal,
+    mixAnalysis: mixAnalysisVal,
+    vocalRange: vocalRangeVal,
+    // Convenience accessors
+    genres: tags.genre,
+    emotions: tags.emotion,
+    instrumentation: tags.instrumentation,
+    commercialHookScore: commercialAssessment.hookAssessment.score,
+    memorabilityScore: commercialAssessment.memorability.score,
+    integratedLoudness: (professionalLoudnessVal as MirProfessionalLoudness | undefined)?.integrated_lufs,
+    loudnessRange: (professionalLoudnessVal as MirProfessionalLoudness | undefined)?.loudness_range_lu,
   };
 }
 

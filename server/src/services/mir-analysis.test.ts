@@ -429,4 +429,248 @@ describe("mirParseResponse", () => {
     expect(sim.details.tempoDiff).toBe(70);
     expect(sim.details.keyMatch).toBe(false);
   });
+
+  // ── Flat MCP format tests ────────────────────────────────────────────────────
+  // These test the actual MIR MCP service response format (flat keys, no global_features wrapper).
+
+  describe("flat MCP format (actual service response)", () => {
+    it("parses a deep analysis response (Adele Rolling In The Deep format)", () => {
+      const raw: Record<string, unknown> = {
+        track: "Rolling In The Deep",
+        artist: "Adele",
+        album: "21",
+        source_path: "/Users/leon/Music/Adele/21/1-01 Rolling In The Deep.m4a",
+        analysis_id: "ana_f4230de915a6",
+        analysis_level: "deep",
+        duration_seconds: 228.111,
+        rhythm: {
+          tempo_bpm: 105.273,
+          perceived_bpm: 52.637,
+          time_signature: "4/4",
+          swing: "straight",
+          groove_score: 0.4137,
+        },
+        key: {
+          tonic: "C",
+          confidence: 0.4451,
+          status: "uncertain",
+        },
+        mode: "minor",
+        loudness: {
+          integrated_lufs: -8.1,
+          loudness_range_lu: 7.8,
+          true_peak_dbfs: -1.2,
+        },
+        rms_db: -8.0,
+        spectral_centroid_hz: 1989.4,
+        genres: ["pop", "rock", "indie", "poprock", "folk"],
+        moods: ["happy", "energetic", "love", "positive", "upbeat"],
+        instruments: ["drums", "bass", "guitar", "electricguitar", "voice", "synthesizer"],
+        chords: {
+          count: 74,
+          distinct: ["C:min", "G:min", "A#:maj", "G#:maj", "D#:maj/3", "G:maj", "G#:maj7"],
+          changes_per_minute: 18.94,
+        },
+        commercial: {
+          hook_score: 0.9471,
+          memorability: 0.8539,
+          hook_section: {
+            section_id: "section_12",
+            start: 193.167,
+            end: 228.111,
+            score: 0.9471,
+          },
+        },
+        structure: [
+          { section: "section_1", start: 0.0, end: 5.41, role: "intro", energy: 0.0 },
+          { section: "section_2", start: 5.41, end: 60.604, role: "verse", energy: 0.3245 },
+          { section: "section_3", start: 60.604, end: 71.634, role: "unknown", energy: 0.7892 },
+          { section: "section_4", start: 71.634, end: 90.983, role: "verse", energy: 0.2134 },
+          { section: "section_5", start: 90.983, end: 103.473, role: "chorus", energy: 0.8567 },
+          { section: "section_6", start: 103.473, end: 162.804, role: "verse", energy: 0.1892 },
+          { section: "section_7", start: 162.804, end: 175.293, role: "chorus", energy: 0.9012 },
+          { section: "section_8", start: 175.293, end: 193.167, role: "bridge", energy: 0.5678 },
+          { section: "section_9", start: 193.167, end: 228.111, role: "chorus", energy: 0.9534 },
+        ],
+        stem_separation: {
+          stems: ["bass", "drums", "other", "vocals"],
+          model: "htdemucs_ft.yaml",
+        },
+        generated_at: "2026-07-17T23:49:39.708600+00:00",
+      };
+
+      const result = mirParseResponse(raw);
+
+      expect(result.analysisId).toBe("ana_f4230de915a6");
+      expect(result.status).toBe("completed");
+      expect(result.level).toBe("deep");
+      expect(result.source.path).toBe("/Users/leon/Music/Adele/21/1-01 Rolling In The Deep.m4a");
+      expect(result.globalFeatures.durationSeconds).toBe(228.111);
+      expect(result.globalFeatures.rhythm.tempo.selectedBpm).toBe(105.273);
+      expect(result.globalFeatures.rhythm.tempo.perceivedBpm).toBe(52.637);
+      expect(result.globalFeatures.key.tonic).toBe("C");
+      expect(result.globalFeatures.key.scale).toBe("minor");
+      expect(result.globalFeatures.key.label).toBe("C minor");
+      expect(result.globalFeatures.key.confidence).toBe(0.4451);
+      expect(result.globalFeatures.key.reviewRequired).toBe(true);
+      expect(result.globalFeatures.rmsDb).toBe(-8.0);
+      expect(result.globalFeatures.spectralCentroidHz).toBe(1989.4);
+      expect(result.globalFeatures.genres).toEqual(["pop", "rock", "indie", "poprock", "folk"]);
+      expect(result.globalFeatures.emotions).toEqual(["happy", "energetic", "love", "positive", "upbeat"]);
+      expect(result.globalFeatures.instrumentation).toEqual(["drums", "bass", "guitar", "electricguitar", "voice", "synthesizer"]);
+      expect(result.globalFeatures.commercialHookScore).toBe(0.9471);
+      expect(result.globalFeatures.memorabilityScore).toBe(0.8539);
+      expect(result.globalFeatures.integratedLoudness).toBe(-8.1);
+      expect(result.globalFeatures.loudnessRange).toBe(7.8);
+      expect(result.chordSummary.chordCount).toBe(74);
+      expect(result.chordSummary.distinctChords).toContain("C:min");
+      expect(result.chordSummary.changesPerMinute).toBe(18.94);
+      expect(result.sections).toHaveLength(9);
+      expect(result.sections[0].role).toBe("intro");
+      expect(result.sections[4].role).toBe("chorus");
+      expect(result.sections[0].start).toBe(0);
+      expect(result.sections[0].end).toBe(5.41);
+      expect(result.stemSummary.stemsDetected).toEqual(["bass", "drums", "other", "vocals"]);
+    });
+
+    it("parses flat MCP format with key timeline segments", () => {
+      const raw: Record<string, unknown> = {
+        analysis_id: "ana_test_key_change",
+        analysis_level: "deep",
+        duration_seconds: 300,
+        tempo_bpm: 120,
+        key: { tonic: "Am", confidence: 0.7, status: "certain" },
+        mode: "minor",
+        rhythm: {
+          tempo_bpm: 120,
+          perceived_bpm: 60,
+          time_signature: "4/4",
+          confidence: 0.95,
+        },
+        loudness: { integrated_lufs: -10, loudness_range_lu: 6 },
+        rms_db: -12,
+        commercial: { hook_score: 0.75, memorability: 0.65 },
+        genres: ["pop"],
+        moods: ["nostalgic"],
+        instruments: ["synth"],
+        chords: { count: 40, distinct: ["Am", "F", "C", "G"], changes_per_minute: 10 },
+        structure: [
+          { section: "s1", start: 0, end: 30, role: "intro", energy: 0.1 },
+          { section: "s2", start: 30, end: 90, role: "verse", energy: 0.3 },
+          { section: "s3", start: 90, end: 150, role: "chorus", energy: 0.9 },
+          { section: "s4", start: 150, end: 210, role: "verse", energy: 0.35 },
+          { section: "s5", start: 210, end: 300, role: "chorus", energy: 0.85 },
+        ],
+        stem_separation: { stems: ["vocals", "synth", "bass", "drums"], model: "htdemucs_ft.yaml" },
+      };
+
+      const result = mirParseResponse(raw);
+      const features = mirExtractKeyFeatures(result);
+
+      expect(result.analysisId).toBe("ana_test_key_change");
+      expect(result.globalFeatures.rhythm.tempo.selectedBpm).toBe(120);
+      expect(result.globalFeatures.key.label).toBe("Am minor");
+      expect(result.globalFeatures.key.reviewRequired).toBe(false);
+      expect(features.keyChanges).toHaveLength(0);
+      expect(result.sections).toHaveLength(5);
+      expect(features.meter).toBe("4/4");
+    });
+
+    it("parses key from compound string when key object is absent", () => {
+      const raw: Record<string, unknown> = {
+        analysis_id: "ana_compound_key",
+        analysis_level: "quick",
+        duration_seconds: 180,
+        tempo_bpm: 130,
+        key: "E minor",
+        rhythm: { tempo_bpm: 130, perceived_bpm: 65, time_signature: "4/4" },
+        commercial: { hook_score: 0.5, memorability: 0.4 },
+        genres: ["rock"],
+        moods: ["energetic"],
+        instruments: ["guitar"],
+        chords: { count: 10, distinct: ["Em", "B", "C", "G"], changes_per_minute: 8 },
+        structure: [{ section: "s1", start: 0, end: 180, role: "full_track", energy: 0.5 }],
+      };
+
+      const result = mirParseResponse(raw);
+      expect(result.globalFeatures.key.tonic).toBe("E");
+      expect(result.globalFeatures.key.scale).toBe("minor");
+      expect(result.globalFeatures.key.label).toBe("E minor");
+    });
+
+    it("parses commercial scores from both flat and nested commercial fields", () => {
+      // Flat format
+      const flat: Record<string, unknown> = {
+        analysis_id: "ana_flat",
+        analysis_level: "deep",
+        duration_seconds: 200,
+        tempo_bpm: 120,
+        key: { tonic: "C", confidence: 0.8, status: "certain" },
+        rhythm: { tempo_bpm: 120 },
+        commercial: { hook_score: 0.92, memorability: 0.88 },
+        genres: ["pop"],
+        moods: ["upbeat"],
+        instruments: ["piano"],
+        chords: { count: 50, distinct: ["C", "G", "Am", "F"], changes_per_minute: 12 },
+        structure: [{ section: "s1", start: 0, end: 200, role: "full_track", energy: 0.6 }],
+      };
+
+      const resultFlat = mirParseResponse(flat);
+      expect(resultFlat.globalFeatures.commercialHookScore).toBe(0.92);
+      expect(resultFlat.globalFeatures.memorabilityScore).toBe(0.88);
+    });
+
+    it("handles missing commercial data gracefully", () => {
+      const raw: Record<string, unknown> = {
+        analysis_id: "ana_no_commercial",
+        analysis_level: "quick",
+        duration_seconds: 150,
+        tempo_bpm: 100,
+        key: { tonic: "D", confidence: 0.6, status: "uncertain" },
+        rhythm: { tempo_bpm: 100 },
+        genres: [],
+        moods: [],
+        instruments: [],
+        chords: { count: 0, distinct: [], changes_per_minute: 0 },
+        structure: [{ section: "s1", start: 0, end: 150, role: "full_track", energy: 0.2 }],
+      };
+
+      const result = mirParseResponse(raw);
+      expect(result.globalFeatures.commercialHookScore).toBe(0);
+      expect(result.globalFeatures.memorabilityScore).toBe(0);
+      expect(result.sections).toHaveLength(1);
+    });
+
+    it("parses structure from segments sub-array", () => {
+      const raw: Record<string, unknown> = {
+        analysis_id: "ana_segments",
+        analysis_level: "deep",
+        duration_seconds: 240,
+        tempo_bpm: 110,
+        key: { tonic: "F", confidence: 0.75, status: "certain" },
+        rhythm: { tempo_bpm: 110, perceived_bpm: 55 },
+        commercial: { hook_score: 0.7, memorability: 0.6 },
+        genres: ["jazz"],
+        moods: ["relaxed"],
+        instruments: ["piano", "saxophone"],
+        chords: { count: 80, distinct: ["Fmaj7", "Gm7", "C7", "Dm7"], changes_per_minute: 15 },
+        structure: {
+          segments: [
+            { label: "intro", start: 0, duration: 15, confidence: 0.8 },
+            { label: "verse", start: 15, duration: 45, confidence: 0.7 },
+            { label: "chorus", start: 60, duration: 30, confidence: 0.9 },
+            { label: "outro", start: 210, duration: 30, confidence: 0.6 },
+          ],
+        },
+      };
+
+      const result = mirParseResponse(raw);
+      expect(result.sections).toHaveLength(4);
+      expect(result.sections[0].role).toBe("intro");
+      expect(result.sections[2].role).toBe("chorus");
+      expect(result.sections[2].start).toBe(60);
+      expect(result.sections[2].end).toBe(90);
+      expect(result.sections[3].role).toBe("outro");
+    });
+  });
 });
