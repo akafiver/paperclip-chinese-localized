@@ -16,6 +16,7 @@ import {
 import { StatusIcon } from "./StatusIcon";
 import { hasAssignedBacklogBlocker } from "../lib/issue-blockers";
 import { ExternalObjectStatusSummary } from "./ExternalObjectStatusSummary";
+import { BlockedReasonChip } from "./BlockedReasonChip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/i18n";
@@ -50,6 +51,7 @@ interface IssueRowProps {
   archiveDisabled?: boolean;
   onRestore?: () => void;
   restoreDisabled?: boolean;
+  showBlockedReasonChip?: boolean;
   onHide?: () => void;
   hideDisabled?: boolean;
   onDelete?: () => void;
@@ -93,6 +95,7 @@ export function IssueRow({
   archiveDisabled,
   onRestore,
   restoreDisabled,
+  showBlockedReasonChip = true,
   onHide,
   hideDisabled,
   onDelete,
@@ -168,6 +171,14 @@ export function IssueRow({
   ) : null;
   const recoveryAction = issue.activeRecoveryAction ?? null;
   const recoveryIndicator = recoveryAction ? renderRecoveryChip(recoveryAction, selected, t) : null;
+  const blockedInboxAttention = showBlockedReasonChip ? issue.blockedInboxAttention ?? null : null;
+  const blockedReasonIndicator = blockedInboxAttention ? (
+    <BlockedReasonChip
+      reason={blockedInboxAttention.reason}
+      severity={blockedInboxAttention.severity}
+      className="ml-1.5 max-w-(--sz-12rem)"
+    />
+  ) : null;
   const parkedBlockerIndicator = hasAssignedBacklogBlocker(issue.blockedBy) ? (
     <Badge variant="outline"
       data-testid="issue-row-parked-blocker"
@@ -206,6 +217,7 @@ export function IssueRow({
         {productivityReviewIndicator}
         {parkedBlockerIndicator}
         {recoveryIndicator}
+        {blockedReasonIndicator}
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-1 sm:contents">
         <span className={cn("line-clamp-2 text-sm sm:order-2 sm:min-w-0 sm:flex-1 sm:truncate sm:line-clamp-none", titleClassName)}>
@@ -280,6 +292,7 @@ export function IssueRow({
               </span>
               {parkedBlockerIndicator}
               {recoveryIndicator}
+              {blockedReasonIndicator}
             </>
           )}
           {mobileMeta ? (

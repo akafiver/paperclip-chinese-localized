@@ -837,7 +837,7 @@ export function Inbox() {
   });
   usePublishSharedQueryData(sharedDashboard, dashboard, dashboardUpdatedAt);
 
-  const inboxIssuesQueryKey = [...queryKeys.issues.list(selectedCompanyId!), "compact", "with-routine-executions", "live-descendant-summary", INBOX_ISSUE_LIST_LIMIT] as const;
+  const inboxIssuesQueryKey = [...queryKeys.issues.list(selectedCompanyId!), "compact", "with-routine-executions", "with-blocked-inbox-attention", "live-descendant-summary", INBOX_ISSUE_LIST_LIMIT] as const;
   const sharedInboxIssues = useSharedPollingQuery<Issue[]>({
     companyId: selectedCompanyId,
     resourceKey: "inbox:issues",
@@ -849,6 +849,7 @@ export function Inbox() {
     queryFn: () =>
       issuesApi.listCompact(selectedCompanyId!, {
         includeRoutineExecutions: true,
+        includeBlockedInboxAttention: true,
         includeLiveDescendantSummary: true,
         limit: INBOX_ISSUE_LIST_LIMIT,
       }).then((rows) => rows as Issue[]),
@@ -862,13 +863,14 @@ export function Inbox() {
     isLoading: isMineIssuesLoading,
     dataUpdatedAt: mineIssuesUpdatedAt,
   } = useQuery({
-    queryKey: [...queryKeys.issues.listMineByMe(selectedCompanyId!), "compact", "with-routine-executions", "live-descendant-summary", INBOX_ISSUE_LIST_LIMIT] as const,
+    queryKey: [...queryKeys.issues.listMineByMe(selectedCompanyId!), "compact", "with-routine-executions", "with-blocked-inbox-attention", "live-descendant-summary", INBOX_ISSUE_LIST_LIMIT] as const,
     queryFn: () =>
       issuesApi.listCompact(selectedCompanyId!, {
         touchedByUserId: "me",
         inboxArchivedByUserId: "me",
         status: INBOX_MINE_ISSUE_STATUS_FILTER,
         includeRoutineExecutions: true,
+        includeBlockedInboxAttention: true,
         includeLiveDescendantSummary: true,
         limit: INBOX_ISSUE_LIST_LIMIT,
       }).then((rows) => rows as Issue[]),
@@ -889,12 +891,13 @@ export function Inbox() {
     isLoading: isTouchedIssuesLoading,
     dataUpdatedAt: touchedIssuesUpdatedAt,
   } = useQuery({
-    queryKey: [...queryKeys.issues.listTouchedByMe(selectedCompanyId!), "compact", "with-routine-executions", "live-descendant-summary", INBOX_ISSUE_LIST_LIMIT] as const,
+    queryKey: [...queryKeys.issues.listTouchedByMe(selectedCompanyId!), "compact", "with-routine-executions", "with-blocked-inbox-attention", "live-descendant-summary", INBOX_ISSUE_LIST_LIMIT] as const,
     queryFn: () =>
       issuesApi.listCompact(selectedCompanyId!, {
         touchedByUserId: "me",
         status: INBOX_MINE_ISSUE_STATUS_FILTER,
         includeRoutineExecutions: true,
+        includeBlockedInboxAttention: true,
         includeLiveDescendantSummary: true,
         limit: INBOX_ISSUE_LIST_LIMIT,
       }).then((rows) => rows as Issue[]),
@@ -962,6 +965,7 @@ export function Inbox() {
       ...queryKeys.issues.search(selectedCompanyId!, normalizedSearchQuery, undefined, 25),
       "compact",
       "inbox-supplement",
+      "with-blocked-inbox-attention",
       "live-descendant-summary",
     ],
     queryFn: () =>
@@ -969,6 +973,7 @@ export function Inbox() {
         q: normalizedSearchQuery,
         limit: 25,
         includeRoutineExecutions: true,
+        includeBlockedInboxAttention: true,
         includeLiveDescendantSummary: true,
       }).then((rows) => rows as Issue[]),
     enabled: shouldUseIssueSearchSupplement,

@@ -359,6 +359,7 @@ function BlockedInboxRow({
     <IssueRow
       issue={row.issue}
       issueLinkState={issueLinkState}
+      showBlockedReasonChip={false}
       desktopMetaLeading={
         <BlockedRowDesktopMeta
           row={row}

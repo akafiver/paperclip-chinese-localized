@@ -792,6 +792,7 @@ export function IssuesList({
       "compact",
       ISSUE_SEARCH_RESULT_LIMIT,
       enableRoutineVisibilityFilter ? "with-routine-executions" : "without-routine-executions",
+      "with-blocked-inbox-attention",
     ],
     queryFn: ({ signal }) =>
       issuesApi.listCompact(selectedCompanyId!, {
@@ -800,6 +801,7 @@ export function IssuesList({
         limit: ISSUE_SEARCH_RESULT_LIMIT,
         ...searchFilters,
         ...(enableRoutineVisibilityFilter ? { includeRoutineExecutions: true } : {}),
+        includeBlockedInboxAttention: true,
       }, { signal }).then((rows) => rows as Issue[]),
     enabled: !!selectedCompanyId && normalizedIssueSearch.length > 0 && !searchWithinLoadedIssues,
     placeholderData: (previousData) => previousData,
@@ -817,6 +819,7 @@ export function IssuesList({
         ISSUE_BOARD_COLUMN_RESULT_LIMIT,
         hiddenOnly ? "hidden" : "visible",
         enableRoutineVisibilityFilter ? "with-routine-executions" : "without-routine-executions",
+        "with-blocked-inbox-attention",
       ],
       queryFn: ({ signal }: { signal: AbortSignal }) =>
         issuesApi.listCompact(selectedCompanyId!, {
@@ -827,6 +830,7 @@ export function IssuesList({
           limit: ISSUE_BOARD_COLUMN_RESULT_LIMIT,
           hidden: hiddenOnly,
           ...(enableRoutineVisibilityFilter ? { includeRoutineExecutions: true } : {}),
+          includeBlockedInboxAttention: true,
         }, { signal }).then((rows) => rows as Issue[]),
       enabled: !!selectedCompanyId && viewState.viewMode === "board" && !searchWithinLoadedIssues,
       placeholderData: (previousData: Issue[] | undefined) => previousData,

@@ -1685,7 +1685,7 @@ export function IssueDetail() {
       issue?.id && resolvedCompanyId
         ? queryKeys.issues.listByDescendantRoot(resolvedCompanyId, issue.id)
         : ["issues", "parent", "pending"],
-    queryFn: () => issuesApi.list(resolvedCompanyId!, { descendantOf: issue!.id, includeBlockedBy: true }),
+    queryFn: () => issuesApi.list(resolvedCompanyId!, { descendantOf: issue!.id, includeBlockedBy: true, includeBlockedInboxAttention: true }),
     enabled: !!resolvedCompanyId && !!issue?.id,
     placeholderData: keepPreviousDataForSameQueryTail<Issue[]>(issue?.id ?? "pending"),
   });
@@ -1698,7 +1698,7 @@ export function IssueDetail() {
       issue?.parentId && resolvedCompanyId
         ? queryKeys.issues.listByParent(resolvedCompanyId, issue.parentId)
         : ["issues", "siblings", "pending"],
-    queryFn: () => issuesApi.list(resolvedCompanyId!, { parentId: issue!.parentId!, includeBlockedBy: true }),
+    queryFn: () => issuesApi.list(resolvedCompanyId!, { parentId: issue!.parentId!, includeBlockedBy: true, includeBlockedInboxAttention: true }),
     enabled: !!resolvedCompanyId && !!issue?.parentId,
   });
   const companyLiveRunsQueryKey = resolvedCompanyId ? queryKeys.liveRuns(resolvedCompanyId) : ["live-runs", "pending"] as const;
@@ -1734,7 +1734,7 @@ export function IssueDetail() {
   // The picker filters this list client-side by identifier/title.
   const { data: mentionIssues = [] } = useQuery({
     queryKey: resolvedCompanyId ? queryKeys.issues.mentionPool(resolvedCompanyId) : ["issues", "mention-pool", "pending"],
-    queryFn: () => issuesApi.list(resolvedCompanyId!, { limit: 100, sortField: "updated", sortDir: "desc" }),
+    queryFn: () => issuesApi.list(resolvedCompanyId!, { limit: 100, sortField: "updated", sortDir: "desc", includeBlockedInboxAttention: true }),
     enabled: !!resolvedCompanyId,
     staleTime: 60_000,
     placeholderData: keepPreviousDataForSameQueryTail<Issue[]>(resolvedCompanyId ?? "pending"),
