@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { ExternalObjectSummary, Issue, IssueRecoveryAction } from "@paperclipai/shared";
 import { Link } from "@/lib/router";
-import { Archive, Eye, Flag, RotateCcw } from "lucide-react";
+import { Archive, Eye, EyeOff, Flag, RotateCcw, Trash2 } from "lucide-react";
 import {
   createIssueDetailPath,
   rememberIssueDetailLocationState,
@@ -50,6 +50,10 @@ interface IssueRowProps {
   archiveDisabled?: boolean;
   onRestore?: () => void;
   restoreDisabled?: boolean;
+  onHide?: () => void;
+  hideDisabled?: boolean;
+  onDelete?: () => void;
+  deleteDisabled?: boolean;
   className?: string;
   /** Pointer entered the row (used by list keyboard nav to track hover). */
   onMouseEnter?: () => void;
@@ -89,6 +93,10 @@ export function IssueRow({
   archiveDisabled,
   onRestore,
   restoreDisabled,
+  onHide,
+  hideDisabled,
+  onDelete,
+  deleteDisabled,
   className,
   onMouseEnter,
   treeGuides = 0,
@@ -284,10 +292,48 @@ export function IssueRow({
           ) : null}
         </span>
       </span>
-      {mobileTrailing ? (
-        <span className="ml-auto shrink-0 sm:hidden">{mobileTrailing}</span>
+      {(mobileTrailing || onHide || onDelete) ? (
+        <span className="ml-auto flex shrink-0 items-center gap-1 sm:hidden">
+          {mobileTrailing}
+          {onHide ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              className="text-amber-700 hover:bg-amber-500/10 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onHide();
+              }}
+              disabled={hideDisabled}
+              aria-label={t("ui.issuesList.hideTask")}
+              title={t("ui.issuesList.hideTask")}
+            >
+              <EyeOff />
+            </Button>
+          ) : null}
+          {onDelete ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onDelete();
+              }}
+              disabled={deleteDisabled}
+              aria-label={t("ui.issuesList.deleteTask")}
+              title={t("ui.issuesList.deleteTask")}
+            >
+              <Trash2 />
+            </Button>
+          ) : null}
+        </span>
       ) : null}
-      {(onArchive || onRestore || desktopTrailing || trailingMeta || externalObjectSummary) ? (
+      {(onArchive || onRestore || onHide || onDelete || desktopTrailing || trailingMeta || externalObjectSummary) ? (
         <span className="ml-auto hidden shrink-0 items-center gap-2 sm:order-3 sm:flex sm:gap-3">
           {onArchive ? (
             <button
@@ -329,6 +375,42 @@ export function IssueRow({
             >
               <RotateCcw className="h-3.5 w-3.5" />
               {t("ui.issuesList.restoreTask")}
+            </Button>
+          ) : null}
+          {onHide ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onHide();
+              }}
+              disabled={hideDisabled}
+              className="text-amber-700 opacity-0 transition-opacity hover:bg-amber-500/10 hover:text-amber-800 group-hover:opacity-100 focus-visible:opacity-100 dark:text-amber-300 dark:hover:text-amber-200"
+              aria-label={t("ui.issuesList.hideTask")}
+              title={t("ui.issuesList.hideTask")}
+            >
+              <EyeOff />
+            </Button>
+          ) : null}
+          {onDelete ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onDelete();
+              }}
+              disabled={deleteDisabled}
+              className="text-destructive opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 focus-visible:opacity-100"
+              aria-label={t("ui.issuesList.deleteTask")}
+              title={t("ui.issuesList.deleteTask")}
+            >
+              <Trash2 />
             </Button>
           ) : null}
           {externalObjectSummary ? (

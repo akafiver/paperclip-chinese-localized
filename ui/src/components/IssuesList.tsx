@@ -63,6 +63,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CircleDot, Plus, ArrowUpDown, Layers, Check, ChevronRight, List, ListTree, User, Search, CircleSlash2, ChevronsDownUp, PanelTopClose, RotateCcw, ListCollapse,
   SquareKanban,
 } from "lucide-react";
@@ -439,6 +440,10 @@ interface IssuesListProps {
   hiddenOnly?: boolean;
   onRestoreIssue?: (id: string) => void;
   restorePendingIssueId?: string | null;
+  onHideIssue?: (id: string) => Promise<unknown> | void;
+  hidePendingIssueId?: string | null;
+  onDeleteIssue?: (id: string) => Promise<unknown> | void;
+  deletePendingIssueId?: string | null;
 }
 
 function IssueSearchInput({
@@ -654,6 +659,10 @@ export function IssuesList({
   hiddenOnly = false,
   onRestoreIssue,
   restorePendingIssueId = null,
+  onHideIssue,
+  hidePendingIssueId = null,
+  onDeleteIssue,
+  deletePendingIssueId = null,
 }: IssuesListProps) {
   const { t } = useTranslation();
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -663,6 +672,12 @@ export function IssuesList({
   // selection only after real pointer movement, so keyboard-driven scrolling
   // doesn't hand the selection to whatever row lands under the cursor.
   const [selectedNavKey, setSelectedNavKey] = useState<string | null>(null);
+  const [pendingTaskAction, setPendingTaskAction] = useState<{
+    kind: "hide" | "delete";
+    issue: Issue;
+  } | null>(null);
+  const [taskActionSubmitting, setTaskActionSubmitting] = useState(false);
+  const [taskActionError, setTaskActionError] = useState<string | null>(null);
   const pointerMovedSinceKeyNavRef = useRef(true);
   useEffect(() => {
     const handlePointerMove = () => {
@@ -1597,6 +1612,34 @@ export function IssuesList({
     setAssigneeSearch("");
   }, [onUpdateIssue]);
 
+  const requestHideIssue = useCallback((issue: Issue) => {
+    setTaskActionError(null);
+    setPendingTaskAction({ kind: "hide", issue });
+  }, []);
+
+  const requestDeleteIssue = useCallback((issue: Issue) => {
+    setTaskActionError(null);
+    setPendingTaskAction({ kind: "delete", issue });
+  }, []);
+
+  const confirmTaskAction = useCallback(async () => {
+    if (!pendingTaskAction) return;
+    setTaskActionSubmitting(true);
+    setTaskActionError(null);
+    try {
+      if (pendingTaskAction.kind === "hide") {
+        await onHideIssue?.(pendingTaskAction.issue.id);
+      } else {
+        await onDeleteIssue?.(pendingTaskAction.issue.id);
+      }
+      setPendingTaskAction(null);
+    } catch (error) {
+      setTaskActionError(error instanceof Error ? error.message : t("ui.issuesList.taskActionFailed"));
+    } finally {
+      setTaskActionSubmitting(false);
+    }
+  }, [onDeleteIssue, onHideIssue, pendingTaskAction, t]);
+
   let remainingRowsToRender = viewState.viewMode === "list" ? renderedIssueRowLimit : Number.POSITIVE_INFINITY;
 
   return (
@@ -2055,6 +2098,10 @@ export function IssuesList({
                         externalObjectSummary={externalObjectSummaryByIssueId.get(issue.id) ?? null}
                         onRestore={hiddenOnly && onRestoreIssue ? () => onRestoreIssue(issue.id) : undefined}
                         restoreDisabled={restorePendingIssueId === issue.id}
+                        onHide={!hiddenOnly && onHideIssue ? () => requestHideIssue(issue) : undefined}
+                        hideDisabled={hidePendingIssueId === issue.id}
+                        onDelete={!hiddenOnly && onDeleteIssue ? () => requestDeleteIssue(issue) : undefined}
+                        deleteDisabled={deletePendingIssueId === issue.id}
                         titleSuffix={(
                           <>
                             {hasChildren && !isExpanded ? (
@@ -2302,6 +2349,54 @@ export function IssuesList({
           )}
         </>
       )}
+      <Dialog open={pendingTaskAction?.kind === "hide"} onOpenChange={(open) => !open && setPendingTaskAction(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("ui.issueDetail.buttons.hideTaskConfirmTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("ui.issueDetail.buttons.hideTaskConfirmDescription")}
+              {taskActionError ? <span className="mt-2 block text-destructive">{taskActionError}</span> : null}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingTaskAction(null)} disabled={taskActionSubmitting}>
+              {t("ui.issueDetail.toast.close")}
+            </Button>
+            <Button
+              variant="outline"
+              className="border-amber-500/50 text-amber-700 hover:bg-amber-500/10 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200"
+              onClick={confirmTaskAction}
+              disabled={taskActionSubmitting}
+            >
+              {taskActionSubmitting ? t("ui.issueDetail.toast.applying") : t("ui.issueDetail.buttons.hideThisTask")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={pendingTaskAction?.kind === "delete"} onOpenChange={(open) => !open && setPendingTaskAction(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("ui.issueDetail.buttons.deleteTaskConfirmTitle")}</DialogTitle>
+            <DialogDescription>
+              {pendingTaskAction?.kind === "delete"
+                ? t("ui.issueDetail.buttons.deleteTaskConfirmDescription", {
+                  identifier: pendingTaskAction.issue.identifier,
+                  title: pendingTaskAction.issue.title,
+                })
+                : null}
+              {taskActionError ? <span className="mt-2 block text-destructive">{taskActionError}</span> : null}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingTaskAction(null)} disabled={taskActionSubmitting}>
+              {t("ui.issueDetail.toast.close")}
+            </Button>
+            <Button variant="destructive" onClick={confirmTaskAction} disabled={taskActionSubmitting}>
+              {taskActionSubmitting ? t("ui.issueDetail.toast.applying") : t("ui.issueDetail.buttons.deleteTask")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

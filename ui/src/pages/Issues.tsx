@@ -201,6 +201,18 @@ export function Issues() {
       queryClient.invalidateQueries({ queryKey: queryKeys.issues.list(selectedCompanyId!) });
     },
   });
+  const hideIssue = useMutation({
+    mutationFn: (id: string) => issuesApi.update(id, { hiddenAt: new Date().toISOString() }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.issues.list(selectedCompanyId!) });
+    },
+  });
+  const deleteIssue = useMutation({
+    mutationFn: (id: string) => issuesApi.remove(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.issues.list(selectedCompanyId!) });
+    },
+  });
 
   const setTaskView = useCallback((value: string) => {
     const nextUrl = new URL(window.location.href);
@@ -247,6 +259,10 @@ export function Issues() {
         hiddenOnly={hiddenOnly}
         onRestoreIssue={(id) => restoreIssue.mutate(id)}
         restorePendingIssueId={restoreIssue.isPending ? restoreIssue.variables : null}
+        onHideIssue={(id) => hideIssue.mutateAsync(id)}
+        hidePendingIssueId={hideIssue.isPending ? hideIssue.variables : null}
+        onDeleteIssue={(id) => deleteIssue.mutateAsync(id)}
+        deletePendingIssueId={deleteIssue.isPending ? deleteIssue.variables : null}
         searchFilters={participantAgentId || workspaceIdFilter ? { participantAgentId, workspaceId: workspaceIdFilter } : undefined}
       />
     </div>
