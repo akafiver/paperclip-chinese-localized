@@ -27,6 +27,7 @@ import {
 import { useProfilesData } from "./useProfilesData";
 import { WizardToolsStep } from "./WizardToolsStep";
 import { readWizardMeta, resumeStep, withWizardMeta, type WizardStep } from "./wizard-draft";
+import { useTranslation } from "@/i18n";
 
 function slugifyProfileKey(name: string): string {
   return name
@@ -37,10 +38,10 @@ function slugifyProfileKey(name: string): string {
     .slice(0, 160);
 }
 
-const STEP_LABELS: Array<{ step: WizardStep; label: string }> = [
-  { step: 1, label: "Name" },
-  { step: 2, label: "Choose tools" },
-  { step: 3, label: "Assign" },
+const STEP_LABELS: Array<{ step: WizardStep; labelKey: string }> = [
+  { step: 1, labelKey: "name" },
+  { step: 2, labelKey: "chooseTools" },
+  { step: 3, labelKey: "assign" },
 ];
 
 export function ProfileWizard({
@@ -399,11 +400,13 @@ async function reconcileBindings(
 }
 
 function Stepper({ current }: { current: WizardStep }) {
+  const { t } = useTranslation();
   return (
     <ol className="flex items-center gap-2 text-sm">
-      {STEP_LABELS.map(({ step, label }, idx) => {
+      {STEP_LABELS.map(({ step, labelKey }, idx) => {
         const done = current > step;
         const active = current === step;
+        const label = t(`ui.toolsProfiles.steps.${labelKey}`);
         return (
           <li key={step} className="flex items-center gap-2">
             <span
@@ -458,20 +461,20 @@ export function StepName({
       <div className="space-y-2">
         <h3 className="text-sm font-medium text-foreground">Start from</h3>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {TEMPLATES.map((t) => (
+          {TEMPLATES.map((templateOption) => (
             <button
-              key={t.key}
+              key={templateOption.key}
               type="button"
-              onClick={() => onTemplate(t.key)}
+              onClick={() => onTemplate(templateOption.key)}
               className={cn(
                 "flex flex-col items-start gap-1 rounded-md border px-4 py-3 text-left transition-colors",
-                template === t.key
+                template === templateOption.key
                   ? "border-primary bg-primary/5 ring-1 ring-primary"
                   : "border-border hover:border-primary/40 hover:bg-accent/40",
               )}
             >
-              <span className="text-sm font-medium text-foreground">{t.title}</span>
-              <span className="text-xs text-muted-foreground">{t.description}</span>
+              <span className="text-sm font-medium text-foreground">{t(templateOption.titleKey)}</span>
+              <span className="text-xs text-muted-foreground">{t(templateOption.descriptionKey)}</span>
             </button>
           ))}
         </div>

@@ -42,10 +42,13 @@ function getSteps(t: (key: string) => string): Array<{ key: CloudUpstreamStep; l
   ];
 }
 
-function getActivationCategories(t: (key: string) => string): Array<{
+type Translate = (key: string, options?: Record<string, unknown>) => string;
+
+function getActivationCategories(t: Translate): Array<{
   key: CloudUpstreamActivationEntityType;
   label: string;
   singular: string;
+  plural: string;
   detail: string;
 }> {
   return [
@@ -53,49 +56,22 @@ function getActivationCategories(t: (key: string) => string): Array<{
       key: "agents",
       label: t("ui.cloudUpstream.agentsCategory"),
       singular: t("ui.cloudUpstream.agentSingular"),
+      plural: t("ui.cloudUpstream.agentPlural"),
       detail: t("ui.cloudUpstream.agentDetail"),
     },
     {
       key: "routines",
       label: t("ui.cloudUpstream.routinesCategory"),
       singular: t("ui.cloudUpstream.routineSingular"),
+      plural: t("ui.cloudUpstream.routinePlural"),
       detail: t("ui.cloudUpstream.routineDetail"),
     },
     {
       key: "monitors",
       label: t("ui.cloudUpstream.monitorsCategory"),
       singular: t("ui.cloudUpstream.monitorSingular"),
+      plural: t("ui.cloudUpstream.monitorPlural"),
       detail: t("ui.cloudUpstream.monitorDetail"),
-    },
-    {
-      key: "secrets",
-      label: t("ui.cloudUpstream.secretsCategory"),
-      singular: t("ui.cloudUpstream.secretSingular"),
-      detail: t("ui.cloudUpstream.secretDetail"),
-    },
-    {
-      key: "files-vdb",
-      label: t("ui.cloudUpstream.filesCategory"),
-      singular: t("ui.cloudUpstream.fileSingular"),
-      detail: t("ui.cloudUpstream.fileDetail"),
-    },
-    {
-      key: "references",
-      label: t("ui.cloudUpstream.referencesCategory"),
-      singular: t("ui.cloudUpstream.referenceSingular"),
-      detail: t("ui.cloudUpstream.referenceDetail"),
-    },
-    {
-      key: "skills",
-      label: t("ui.cloudUpstream.skillsCategory"),
-      singular: t("ui.cloudUpstream.skillSingular"),
-      detail: t("ui.cloudUpstream.skillDetail"),
-    },
-    {
-      key: "projects",
-      label: t("ui.cloudUpstream.projectsCategory"),
-      singular: t("ui.cloudUpstream.projectSingular"),
-      detail: t("ui.cloudUpstream.projectDetail"),
     },
   ];
 }
@@ -589,7 +565,7 @@ function ActivationChecklist({
                 <div className="text-xs text-muted-foreground">{row.statusLabel}</div>
               </div>
               <div className="text-muted-foreground">
-                {row.count === 0 ? `0 imported ${row.pluralLabel} in this run.` : row.detail}
+                {row.count === 0 ? row.emptyDetail : row.detail}
               </div>
               <div className="flex flex-wrap gap-2 sm:justify-end">
                 <Button
@@ -613,25 +589,29 @@ function ActivationChecklist({
   );
 }
 
-export function buildActivationRows(run: CloudUpstreamRun, t: (key: string) => string) {
+export function buildActivationRows(run: CloudUpstreamRun, t: Translate) {
   const activationChecklist = activationChecklistFromReport(run.report);
   const categories = getActivationCategories(t);
   return categories.map((category) => {
     const decision = activationChecklist[category.key];
     const count = summaryCount(run.summary, category.key);
     const status = decision?.status === "activated" ? "activated" : "paused";
-    const pluralLabel = `${category.singular}${count === 1 ? "" : "s"}`;
+    const itemLabel = count === 1 ? category.singular : category.plural;
     return {
       ...category,
       count,
-      pluralLabel,
       status,
-      detail: `${count} imported ${pluralLabel} are paused by default. ${category.detail}`,
+      detail: t("ui.cloudUpstream.activationPausedDetail", {
+        count,
+        itemLabel,
+        categoryDetail: category.detail,
+      }),
+      emptyDetail: t("ui.cloudUpstream.activationEmptyDetail", { itemLabel }),
       statusLabel: status === "activated"
-        ? `${count} activated`
+        ? t("ui.cloudUpstream.activationStatusActivated", { count })
         : count === 0
-          ? "0 imported"
-          : `${count} paused`,
+          ? t("ui.cloudUpstream.activationStatusImported", { count })
+          : t("ui.cloudUpstream.activationStatusPaused", { count }),
     };
   });
 }

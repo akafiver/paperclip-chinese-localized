@@ -56,7 +56,7 @@ export function NotFoundPage({ scope = "global", requestedPrefix }: NotFoundPage
           <Button asChild>
             <Link to={dashboardHref}>
               <Compass className="mr-1.5 h-4 w-4" />
-              Open dashboard
+              {t("ui.notFound.openDashboard")}
             </Link>
           </Button>
           <Button variant="outline" asChild>

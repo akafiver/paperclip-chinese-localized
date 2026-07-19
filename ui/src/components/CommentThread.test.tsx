@@ -156,8 +156,8 @@ describe("CommentThread", () => {
     expect(runRow?.className).not.toContain("border");
     expect(container.textContent).toContain("CodexCoder");
     expect(container.textContent).toContain("succeeded");
-    expect(container.textContent).toContain("2h ago");
-    expect(container.textContent).not.toContain("4h ago");
+    expect(container.textContent).toContain("2 小时前");
+    expect(container.textContent).not.toContain("4 小时前");
     const runLink = container.querySelector('a[href="/agents/agent-1/runs/run-12345678abcd"]') as HTMLAnchorElement | null;
     expect(runLink?.textContent).toContain("run-1234");
     expect(runLink?.className).toContain("rounded-md");
@@ -256,7 +256,7 @@ describe("CommentThread", () => {
 
     const editor = container.querySelector('textarea[aria-label="Comment editor"]') as HTMLTextAreaElement | null;
     const submitButton = Array.from(container.querySelectorAll("button")).find(
-      (element) => element.textContent === "Comment",
+      (element) => element.textContent === "评论",
     ) as HTMLButtonElement | undefined;
     expect(editor).not.toBeNull();
     expect(submitButton).toBeDefined();

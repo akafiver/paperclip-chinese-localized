@@ -451,7 +451,7 @@ function ExecutionWorkspaceIssuesList({
     resourceKey: "live-runs",
     queryKey: liveRunsQueryKey,
     enabled: !!companyId,
-    // Event-sourced via LiveUpdatesProvider (#9627); no interval poll needed.
+    // Event-sourced via LiveUpdatesProvider (PAP-9627); no interval poll needed.
     refetchInterval: false,
     leaderOnly: true,
   });
@@ -517,6 +517,7 @@ function WorkspaceRoutineRow({
   runningRoutineId: string | null;
   onRunNow: (routine: RoutineListItem) => void;
 }) {
+  const { t } = useTranslation();
   const isArchived = routine.status === "archived";
   const isRunning = runningRoutineId === routine.id;
 
@@ -532,8 +533,8 @@ function WorkspaceRoutineRow({
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          <span>{routine.assigneeAgentId ? "Default agent set" : "Choose agent when running"}</span>
-          <span>Last run {formatOptionalDateTime(routine.lastRun?.triggeredAt ?? routine.lastTriggeredAt)}</span>
+          <span>{routine.assigneeAgentId ? t("ui.executionWorkspace.defaultAgentSet") : t("ui.executionWorkspace.chooseAgentWhenRunning")}</span>
+          <span>{t("ui.executionWorkspace.lastRun", { time: formatOptionalDateTime(routine.lastRun?.triggeredAt ?? routine.lastTriggeredAt) })}</span>
           <span className="flex flex-wrap gap-1">
             {variableNames.map((name) => (
               <span key={name} className="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-(length:--text-micro) text-muted-foreground">
@@ -551,7 +552,7 @@ function WorkspaceRoutineRow({
         onClick={() => onRunNow(routine)}
       >
         {isRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-        {isRunning ? "Running..." : "Run now"}
+        {isRunning ? t("ui.executionWorkspace.running") : t("ui.executionWorkspace.runNow")}
       </Button>
     </div>
   );
@@ -630,23 +631,23 @@ function ExecutionWorkspaceRoutinesList({
     <>
       <Card className="rounded-none">
         <CardHeader>
-          <CardTitle>Workspace routines</CardTitle>
+          <CardTitle>{t("ui.executionWorkspace.workspaceRoutines")}</CardTitle>
           <CardDescription>
-            Routines that use workspace-specific variables can be run against this execution workspace.
+            {t("ui.executionWorkspace.workspaceRoutinesDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading routines...</p>
+            <p className="text-sm text-muted-foreground">{t("ui.executionWorkspace.loadingRoutines")}</p>
           ) : error ? (
             <p className="text-sm text-destructive">
-              {error instanceof Error ? error.message : "Failed to load routines."}
+              {error instanceof Error ? error.message : t("ui.executionWorkspace.failedLoadRoutines")}
             </p>
           ) : workspaceRoutines.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-10 text-center">
               <Repeat className="h-5 w-5 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                No routines use workspace-specific variables yet.
+                {t("ui.executionWorkspace.noWorkspaceRoutines")}
               </p>
             </div>
           ) : (

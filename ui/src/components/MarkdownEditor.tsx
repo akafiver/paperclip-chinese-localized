@@ -51,6 +51,7 @@ import { normalizeMarkdown } from "../lib/normalize-markdown";
 import { pasteNormalizationPlugin } from "../lib/paste-normalization";
 import { cn } from "../lib/utils";
 import { useEditorAutocomplete, type SlashCommandOption } from "../context/EditorAutocompleteContext";
+import { useTranslation } from "@/i18n";
 
 /* ---- Mention types ---- */
 
@@ -633,6 +634,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
   onSubmit,
   readOnly = false,
 }: MarkdownEditorProps, forwardedRef) {
+  const { t } = useTranslation();
   const editorValue = useMemo(() => prepareMarkdownForEditor(value), [value]);
   const { slashCommands } = useEditorAutocomplete();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -652,10 +654,35 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
   const [isDragOver, setIsDragOver] = useState(false);
   const [richEditorError, setRichEditorError] = useState<string | null>(null);
   const dragDepthRef = useRef(0);
+  const editableMarkdownLabel = t("ui.common.editableMarkdown");
+  const codeLanguageLabel = t("ui.markdownEditor.codeLanguage");
+  const richEditorUnavailable = t("ui.markdownEditor.richEditorUnavailable");
+  const retryRichEditor = t("ui.markdownEditor.retryRichEditor");
 
   // Stable ref for imageUploadHandler so plugins don't recreate on every render
   const imageUploadHandlerRef = useRef(imageUploadHandler);
   imageUploadHandlerRef.current = imageUploadHandler;
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const syncEditorChromeLabels = () => {
+      const editable = container.querySelector<HTMLElement>("[contenteditable]");
+      editable?.setAttribute("aria-label", editableMarkdownLabel);
+      const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+      let node = walker.nextNode();
+      while (node) {
+        if (node.textContent === "Language") {
+          node.textContent = codeLanguageLabel;
+        }
+        node = walker.nextNode();
+      }
+    };
+    syncEditorChromeLabels();
+    const observer = new MutationObserver(syncEditorChromeLabels);
+    observer.observe(container, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [codeLanguageLabel, editableMarkdownLabel, richEditorError]);
 
   // Mention state (ref kept in sync so callbacks always see the latest value)
   const [mentionState, setMentionState] = useState<MentionState | null>(null);
@@ -1170,7 +1197,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         )}
       >
         <div className="flex items-start justify-between gap-3 px-3 pt-2 text-xs text-muted-foreground">
-          <p>Rich editor unavailable for this markdown. Showing raw source instead.</p>
+          <p>{richEditorUnavailable}</p>
           <button
             type="button"
             className="shrink-0 underline underline-offset-2 hover:text-foreground"
@@ -1178,7 +1205,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               setRichEditorError(null);
             }}
           >
-            Retry rich editor
+            {retryRichEditor}
           </button>
         </div>
         <textarea

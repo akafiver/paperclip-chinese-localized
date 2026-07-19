@@ -176,7 +176,7 @@ describe("FolderControls", () => {
 
     expect(container.textContent).toContain("All routines");
     expect(container.textContent).toContain("Reporting");
-    expect(container.textContent).toContain("Unfiled");
+    expect(container.textContent).toContain("未归类");
     expect(container.textContent).toContain("4");
     expect(container.textContent).toContain("3");
     expect(container.textContent).toContain("1");
@@ -212,7 +212,7 @@ describe("FolderControls", () => {
     });
 
     const current = container.querySelector('[aria-current="page"]');
-    expect(current?.textContent).toContain("Unfiled");
+    expect(current?.textContent).toContain("未归类");
   });
 
   it("renames a folder inline via double-click and Enter", () => {
@@ -281,7 +281,7 @@ describe("FolderControls", () => {
     });
 
     const subTrigger = Array.from(document.querySelectorAll("[data-radix-collection-item]")).find(
-      (element) => element.textContent?.includes("Move to"),
+      (element) => element.textContent?.includes("移动到"),
     );
     expect(subTrigger).toBeTruthy();
     act(() => {
@@ -289,9 +289,9 @@ describe("FolderControls", () => {
     });
 
     const menuItems = Array.from(document.querySelectorAll('[role="menuitem"]'));
-    const unfiledItem = menuItems.find((element) => element.textContent?.includes("Unfiled"));
+    const unfiledItem = menuItems.find((element) => element.textContent?.includes("未归类"));
     const folderItem = menuItems.find((element) => element.textContent?.includes("Reporting"));
-    const newFolderItem = menuItems.find((element) => element.textContent?.includes("New folder"));
+    const newFolderItem = menuItems.find((element) => element.textContent?.includes("新建文件夹"));
     expect(unfiledItem).toBeTruthy();
     expect(folderItem).toBeTruthy();
     expect(newFolderItem).toBeTruthy();
@@ -328,7 +328,7 @@ describe("FolderControls", () => {
     });
 
     const submit = Array.from(document.querySelectorAll("button")).find(
-      (button) => button.textContent === "Create folder",
+      (button) => button.textContent === "创建文件夹",
     ) as HTMLButtonElement | undefined;
     expect(submit).toBeTruthy();
     expect(submit?.disabled).toBe(true);
@@ -363,11 +363,11 @@ describe("FolderControls", () => {
       );
     });
 
-    expect(document.body.textContent).toContain("3 routines in this folder won't be deleted");
-    expect(document.body.textContent).toContain("They'll move to Unfiled");
+    expect(document.body.textContent).toContain("此文件夹中的 3 个routines不会被删除");
+    expect(document.body.textContent).toContain("它们会移动到未归类");
 
     const confirmButton = Array.from(document.querySelectorAll("button")).find(
-      (button) => button.textContent === "Delete folder",
+      (button) => button.textContent === "删除文件夹",
     );
     act(() => {
       confirmButton?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
@@ -395,7 +395,7 @@ describe("FolderControls", () => {
     });
 
     expect(document.body.textContent).toContain("All routines");
-    expect(document.body.textContent).toContain("Unfiled");
+    expect(document.body.textContent).toContain("未归类");
 
     const reportingRow = Array.from(document.querySelectorAll("button")).find(
       (button) => button.textContent?.includes("Reporting"),
@@ -426,11 +426,11 @@ describe("FolderControls", () => {
     });
 
     const body = document.body.textContent ?? "";
-    expect(body.indexOf("My Skills")).toBeLessThan(body.indexOf("Company"));
-    expect(body.indexOf("Company")).toBeLessThan(body.indexOf("Engineering"));
+    expect(body.indexOf("我的技能")).toBeLessThan(body.indexOf("公司内"));
+    expect(body.indexOf("公司内")).toBeLessThan(body.indexOf("Engineering"));
     expect(body.indexOf("Engineering")).toBeLessThan(body.indexOf("Code Review"));
-    expect(body.indexOf("Code Review")).toBeLessThan(body.indexOf("Projects"));
-    expect(body.indexOf("Projects")).toBeLessThan(body.indexOf("Bundled"));
+    expect(body.indexOf("Code Review")).toBeLessThan(body.indexOf("项目"));
+    expect(body.indexOf("项目")).toBeLessThan(body.indexOf("内置"));
     expect(document.querySelector('[data-folder-id="engineering"] > .pl-3 [data-folder-id="code-review"]')).not.toBeNull();
   });
 
@@ -449,10 +449,10 @@ describe("FolderControls", () => {
       );
     });
 
-    expect(container.textContent).toContain("Create your first folder");
+    expect(container.textContent).toContain("创建第一个文件夹");
 
     const dismissButton = container.querySelector<HTMLButtonElement>(
-      'button[aria-label="Dismiss folder suggestion"]',
+      'button[aria-label="关闭文件夹建议"]',
     );
     act(() => {
       dismissButton?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));

@@ -438,8 +438,8 @@ describe("IssueChatThread", () => {
       );
     });
 
-    expect(container.textContent).toContain("interrupted by board after 1 minute");
-    expect(container.textContent).toContain("cancelled after 1 minute");
+    expect(container.textContent).toContain("被看板在 1 分钟 后中断");
+    expect(container.textContent).toContain("1 分钟 后取消");
     expect(container.textContent).not.toContain("run interrupted");
 
     act(() => {
@@ -499,7 +499,7 @@ describe("IssueChatThread", () => {
         );
       });
 
-      const copyButton = container.querySelector('button[aria-label="Copy message"]') as HTMLButtonElement | null;
+      const copyButton = container.querySelector('button[aria-label="复制消息"]') as HTMLButtonElement | null;
       expect(copyButton).not.toBeNull();
 
       await act(async () => {
@@ -1865,16 +1865,16 @@ describe("IssueChatThread", () => {
       );
     });
 
-    const deleteButtons = Array.from(container.querySelectorAll("button[aria-label='Delete comment']"));
+    const deleteButtons = Array.from(container.querySelectorAll("button[aria-label='删除评论']"));
     expect(deleteButtons).toHaveLength(1);
 
     await act(async () => {
       deleteButtons[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(document.body.textContent).toContain("Delete comment?");
+    expect(document.body.textContent).toContain("删除评论？");
     const confirmButton = Array.from(document.body.querySelectorAll("button"))
-      .find((button) => button.textContent === "Delete comment");
+      .find((button) => button.textContent === "删除评论");
     expect(confirmButton).toBeTruthy();
 
     await act(async () => {
@@ -1926,8 +1926,8 @@ describe("IssueChatThread", () => {
 
     expect(container.textContent).toContain("You deleted this comment");
     expect(container.textContent).not.toContain("Sensitive deleted body");
-    expect(container.querySelector("button[aria-label='Delete comment']")).toBeNull();
-    expect(container.querySelector("button[aria-label='Copy message']")).toBeNull();
+    expect(container.querySelector("button[aria-label='删除评论']")).toBeNull();
+    expect(container.querySelector("button[aria-label='复制消息']")).toBeNull();
 
     flushAct(() => {
       root.unmount();
@@ -2314,7 +2314,7 @@ describe("IssueChatThread", () => {
     expect(container.querySelector('[data-testid="issue-blocked-notice-live"]')).not.toBeNull();
     const parkedRow = container.querySelector('[data-testid="issue-blocked-notice-parked-row"]');
     expect(parkedRow).not.toBeNull();
-    expect(parkedRow?.textContent).toContain("Blocked by parked work");
+    expect(parkedRow?.textContent).toContain("被搁置任务阻塞");
     // Parked label keeps its amber tone even inside the blue box.
     expect(parkedRow?.querySelector(".text-amber-800")).not.toBeNull();
 
@@ -2894,7 +2894,7 @@ describe("IssueChatThread", () => {
 
     const editor = container.querySelector('textarea[aria-label="Issue chat editor"]') as HTMLTextAreaElement | null;
     expect(editor).not.toBeNull();
-    expect(editor?.placeholder).toBe("Reply");
+    expect(editor?.placeholder).toBe("回复");
 
     act(() => {
       const valueSetter = Object.getOwnPropertyDescriptor(
@@ -3268,7 +3268,7 @@ describe("IssueChatThread", () => {
 
     const editor = container.querySelector('textarea[aria-label="Issue chat editor"]') as HTMLTextAreaElement | null;
     const submitButton = Array.from(container.querySelectorAll("button")).find(
-      (element) => element.textContent === "Send",
+      (element) => element.textContent === "发送",
     ) as HTMLButtonElement | undefined;
     expect(editor).not.toBeNull();
     expect(submitButton).toBeDefined();
@@ -3316,7 +3316,7 @@ describe("IssueChatThread", () => {
             onAdd={async () => {}}
             enableReassign
             reassignOptions={[
-              { id: "", label: "No responsible" },
+              { id: "", label: "无负责人" },
               { id: "agent:agent-1", label: "Agent 1" },
             ]}
             currentAssigneeValue=""
@@ -3329,7 +3329,7 @@ describe("IssueChatThread", () => {
 
     const editor = container.querySelector('textarea[aria-label="Issue chat editor"]') as HTMLTextAreaElement | null;
     const submitButton = Array.from(container.querySelectorAll("button")).find(
-      (element) => element.textContent === "Send",
+      (element) => element.textContent === "发送",
     ) as HTMLButtonElement | undefined;
     expect(editor).not.toBeNull();
     expect(submitButton).toBeDefined();
@@ -3350,8 +3350,8 @@ describe("IssueChatThread", () => {
     expect(appendMock).not.toHaveBeenCalled();
     const dialog = document.querySelector('[data-testid="issue-chat-no-assignee-dialog"]');
     expect(dialog).not.toBeNull();
-    expect(dialog?.textContent).toContain("No responsible selected");
-    expect(dialog?.textContent).toContain("no agent will be woken");
+    expect(dialog?.textContent).toContain("未选择负责人");
+    expect(dialog?.textContent).toContain("不会唤醒任何 agent");
 
     const sendAnyway = document.querySelector(
       '[data-testid="issue-chat-no-assignee-send-anyway"]',
@@ -3389,7 +3389,7 @@ describe("IssueChatThread", () => {
             onAdd={async () => {}}
             enableReassign
             reassignOptions={[
-              { id: "", label: "No responsible" },
+              { id: "", label: "无负责人" },
               { id: "agent:agent-1", label: "Agent 1" },
             ]}
             currentAssigneeValue=""
@@ -3402,7 +3402,7 @@ describe("IssueChatThread", () => {
 
     const editor = container.querySelector('textarea[aria-label="Issue chat editor"]') as HTMLTextAreaElement | null;
     const submitButton = Array.from(container.querySelectorAll("button")).find(
-      (element) => element.textContent === "Send",
+      (element) => element.textContent === "发送",
     ) as HTMLButtonElement | undefined;
 
     act(() => {
@@ -3454,7 +3454,7 @@ describe("IssueChatThread", () => {
             onAdd={async () => {}}
             enableReassign
             reassignOptions={[
-              { id: "", label: "No responsible" },
+              { id: "", label: "无负责人" },
               { id: "agent:agent-1", label: "Agent 1" },
             ]}
             currentAssigneeValue="agent:agent-1"
@@ -3467,7 +3467,7 @@ describe("IssueChatThread", () => {
 
     const editor = container.querySelector('textarea[aria-label="Issue chat editor"]') as HTMLTextAreaElement | null;
     const submitButton = Array.from(container.querySelectorAll("button")).find(
-      (element) => element.textContent === "Send",
+      (element) => element.textContent === "发送",
     ) as HTMLButtonElement | undefined;
 
     act(() => {
@@ -3484,7 +3484,7 @@ describe("IssueChatThread", () => {
     });
 
     expect(appendMock).toHaveBeenCalledTimes(1);
-    expect(document.body.textContent).not.toContain("No responsible selected");
+    expect(document.body.textContent).not.toContain("未选择负责人");
 
     act(() => {
       root.unmount();
@@ -3745,8 +3745,8 @@ describe("IssueChatThread", () => {
       );
     });
 
-    expect(container.textContent).toContain("Working");
-    expect(container.textContent).not.toContain("Worked");
+    expect(container.textContent).toContain("工作中");
+    expect(container.textContent).not.toContain("已工作");
 
     act(() => {
       root.unmount();
@@ -3788,7 +3788,7 @@ describe("IssueChatThread", () => {
       );
     });
 
-    expect(container.textContent).toContain("Working...");
+    expect(container.textContent).toContain("工作中...");
     expect(container.textContent).toContain("Using bash");
     expect(container.textContent).not.toContain("last activity");
     expect(container.textContent).toMatch(/\d+ seconds? ago/);

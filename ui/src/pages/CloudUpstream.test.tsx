@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { CloudUpstreamRun, CloudUpstreamsState } from "@paperclipai/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { t } from "@/i18n";
 import { CloudUpstream, buildActivationRows } from "./CloudUpstream";
 
 const mockCloudUpstreamsApi = vi.hoisted(() => ({
@@ -127,16 +128,18 @@ describe("CloudUpstream", () => {
     await flushReact();
     await flushReact();
 
-    expect(container.textContent).toContain("Re-run");
-    expect(container.textContent).not.toContain("Retry");
-    expect(container.textContent).toContain("Activation checklist");
-    expect(container.textContent).toContain("2 paused");
-    expect(container.textContent).toContain("1 paused");
-    expect(container.textContent).toContain("0 imported monitors in this run.");
-    expect(container.textContent).toContain("Keep paused");
+    expect(container.textContent).toContain(t("ui.cloudUpstream.reRun"));
+    expect(container.textContent).not.toContain(t("ui.cloudUpstream.retry"));
+    expect(container.textContent).toContain(t("ui.cloudUpstream.activationChecklist"));
+    expect(container.textContent).toContain(t("ui.cloudUpstream.activationStatusPaused", { count: 2 }));
+    expect(container.textContent).toContain(t("ui.cloudUpstream.activationStatusPaused", { count: 1 }));
+    expect(container.textContent).toContain(t("ui.cloudUpstream.activationEmptyDetail", {
+      itemLabel: t("ui.cloudUpstream.monitorPlural"),
+    }));
+    expect(container.textContent).toContain(t("ui.cloudUpstream.keepPaused"));
 
     const activateButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => button.textContent?.trim() === "Activate") as HTMLButtonElement | undefined;
+      .find((button) => button.textContent?.trim() === t("ui.cloudUpstream.activate")) as HTMLButtonElement | undefined;
     expect(activateButton).toBeTruthy();
 
     await act(async () => {
@@ -174,7 +177,8 @@ describe("CloudUpstream", () => {
     await flushReact();
     await flushReact();
 
-    const input = container.querySelector<HTMLInputElement>("input[aria-label='Paperclip Cloud stack URL']");
+    const input = Array.from(container.querySelectorAll<HTMLInputElement>("input"))
+      .find((element) => element.getAttribute("aria-label") === t("ui.cloudUpstream.cloudStackUrl"));
     expect(input).toBeTruthy();
     await act(async () => {
       const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
@@ -184,7 +188,7 @@ describe("CloudUpstream", () => {
     await flushReact();
 
     const connectButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => button.textContent?.trim() === "Connect") as HTMLButtonElement | undefined;
+      .find((button) => button.textContent?.trim() === t("ui.cloudUpstream.connectBtn")) as HTMLButtonElement | undefined;
     expect(connectButton).toBeTruthy();
 
     await act(async () => {
@@ -313,9 +317,9 @@ describe("CloudUpstream", () => {
     await flushReact();
     await flushReact();
 
-    expect(container.textContent).toContain("Retry");
-    expect(container.textContent).not.toContain("Re-run");
-    expect(container.textContent).not.toContain("Activation checklist");
+    expect(container.textContent).toContain(t("ui.cloudUpstream.retry"));
+    expect(container.textContent).not.toContain(t("ui.cloudUpstream.reRun"));
+    expect(container.textContent).not.toContain(t("ui.cloudUpstream.activationChecklist"));
 
     await act(async () => {
       root.unmount();
@@ -337,10 +341,20 @@ describe("buildActivationRows", () => {
           },
         },
       },
-    }));
+    }), t);
 
-    expect(rows[0]).toMatchObject({ key: "agents", count: 2, status: "activated", statusLabel: "2 activated" });
-    expect(rows[2]).toMatchObject({ key: "monitors", count: 0, status: "paused", statusLabel: "0 imported" });
+    expect(rows[0]).toMatchObject({
+      key: "agents",
+      count: 2,
+      status: "activated",
+      statusLabel: t("ui.cloudUpstream.activationStatusActivated", { count: 2 }),
+    });
+    expect(rows[2]).toMatchObject({
+      key: "monitors",
+      count: 0,
+      status: "paused",
+      statusLabel: t("ui.cloudUpstream.activationStatusImported", { count: 0 }),
+    });
   });
 });
 

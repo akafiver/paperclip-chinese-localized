@@ -489,7 +489,7 @@ describe("Agents", () => {
     await flushReact();
     await flushReact();
 
-    expect(container.textContent).toContain("1 agent");
+    expect(container.textContent).toContain("1 个 Agent");
     expect(container.textContent).toContain("Briefs Agent");
     expect(container.textContent).not.toContain("Regular Agent");
   });
@@ -524,7 +524,7 @@ describe("Agents", () => {
     await flushReact();
 
     expect(container.textContent).toContain("Daytona Sandbox");
-    expect(container.textContent).toContain("Daytona sandbox provider");
+    expect(container.textContent).toContain("Daytona 沙盒提供方");
   });
 
   it("uses configured names for local-driver environments", async () => {
@@ -557,7 +557,7 @@ describe("Agents", () => {
     await flushReact();
 
     expect(container.textContent).toContain("Dev Laptop");
-    expect(container.textContent).toContain("Paperclip host");
+    expect(container.textContent).toContain("Paperclip 主机");
   });
 
   it("reserves the environment column while environment metadata is loading", async () => {
@@ -584,7 +584,7 @@ describe("Agents", () => {
     await flushReact();
     await flushReact();
 
-    expect(container.textContent).toContain("Loading environment");
+    expect(container.textContent).toContain("正在加载运行环境");
 
     await act(async () => {
       resolveEnvironments([
@@ -600,7 +600,7 @@ describe("Agents", () => {
     await flushReact();
 
     expect(container.textContent).toContain("Daytona Sandbox");
-    expect(container.textContent).not.toContain("Loading environment");
+    expect(container.textContent).not.toContain("正在加载运行环境");
   });
 
   it("hides the environment column when there is only one configured environment", async () => {
@@ -624,7 +624,7 @@ describe("Agents", () => {
     await flushReact();
 
     expect(container.textContent).not.toContain("Daytona Sandbox");
-    expect(container.textContent).not.toContain("Daytona sandbox provider");
+    expect(container.textContent).not.toContain("Daytona 沙盒提供方");
   });
 
   it("hides the environment column when environments are experimentally disabled", async () => {
@@ -683,7 +683,7 @@ describe("Agents", () => {
     await flushReact();
 
     expect(container.textContent).not.toContain("Daytona Sandbox");
-    expect(container.textContent).not.toContain("Daytona sandbox provider");
+    expect(container.textContent).not.toContain("Daytona 沙盒提供方");
     expect(mockEnvironmentsApi.list).not.toHaveBeenCalled();
     expect(mockEnvironmentsApi.capabilities).not.toHaveBeenCalled();
   });
@@ -791,7 +791,7 @@ describe("Agents", () => {
     await flushReact();
 
     expect(container.textContent).toContain("Custom Sandbox");
-    expect(container.textContent).toContain("acme_sandbox sandbox provider");
+    expect(container.textContent).toContain("acme_sandbox 沙盒提供方");
   });
 
   it("does not show environment filter or grouping controls yet", async () => {
@@ -829,7 +829,7 @@ describe("Agents", () => {
     await flushReact();
 
     expect(mockBuiltInAgentsApi.list).not.toHaveBeenCalled();
-    expect(container.textContent).not.toContain("Built-in");
+    expect(container.textContent).not.toContain("内置");
     expect(mockRouterState.navigate).toHaveBeenCalledWith("/agents/all", { replace: true });
   });
 
@@ -882,7 +882,7 @@ describe("Agents", () => {
     await flushReact();
 
     expect(mockBuiltInAgentsApi.list).toHaveBeenCalledWith("company-1");
-    expect(container.textContent).toContain("Built-in");
+    expect(container.textContent).toContain("内置");
     expect(container.textContent).toContain("Briefs Agent");
     expect(container.textContent).not.toContain("Regular Agent");
     expect(mockRouterState.navigate).not.toHaveBeenCalledWith("/agents/all", { replace: true });
@@ -940,8 +940,8 @@ describe("Agents", () => {
     await flushReact();
 
     // Org view (default).
-    const orgAction = container.querySelector('[aria-label="Leave Alpha"]');
-    const orgStar = container.querySelector('[aria-label="Star Alpha"]');
+    const orgAction = container.querySelector('[aria-label="离开 Alpha"]');
+    const orgStar = container.querySelector('[aria-label="星标 Alpha"]');
     expect(orgAction).not.toBeNull();
     expect(orgStar).not.toBeNull();
     expect(orgAction?.closest(".hidden")).toBeNull();
@@ -956,8 +956,8 @@ describe("Agents", () => {
     });
     await flushReact();
 
-    const listAction = container.querySelector('[aria-label="Leave Alpha"]');
-    const listStar = container.querySelector('[aria-label="Star Alpha"]');
+    const listAction = container.querySelector('[aria-label="离开 Alpha"]');
+    const listStar = container.querySelector('[aria-label="星标 Alpha"]');
     expect(listAction).not.toBeNull();
     expect(listStar).not.toBeNull();
     expect(listAction?.closest(".hidden")).toBeNull();
@@ -1016,6 +1016,6 @@ describe("Agents", () => {
     await flushReact();
 
     expect(container.textContent).toContain("Alpha");
-    expect(container.querySelector('[aria-label="Invalid reporting chain"]')).not.toBeNull();
+    expect(container.querySelector('[aria-label="汇报链无效"]')).not.toBeNull();
   });
 });

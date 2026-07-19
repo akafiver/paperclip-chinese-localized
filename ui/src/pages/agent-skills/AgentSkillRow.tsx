@@ -3,6 +3,7 @@ import { Link } from "@/lib/router";
 import { cn } from "@/lib/utils";
 import { ToggleSwitch } from "@/components/ui/toggle-switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useTranslation } from "@/i18n";
 import { SkillCardIcon, type SkillIconCard } from "../../components/SkillCardIcon";
 import type { AgentSkillSearchFields } from "./agent-skill-filter";
 
@@ -54,6 +55,7 @@ export function AgentSkillRow({
   disabledReason,
   onCheckedChange,
 }: AgentSkillRowProps) {
+  const { t } = useTranslation();
   const readOnly = variant === "readonly";
   const SourceIcon = data.sourceMeta?.icon;
 
@@ -105,7 +107,7 @@ export function AgentSkillRow({
   );
 
   const trailing = readOnly ? (
-    <Lock className="h-4 w-4 shrink-0 text-muted-foreground/60" aria-label="Read-only" />
+    <Lock className="h-4 w-4 shrink-0 text-muted-foreground/60" aria-label={t("ui.agentSkills.readOnly")} />
   ) : (
     (() => {
       const toggle = (
@@ -113,7 +115,9 @@ export function AgentSkillRow({
           checked={checked}
           disabled={disabled}
           onCheckedChange={(next) => onCheckedChange?.(next)}
-          aria-label={`${checked ? "Disable" : "Enable"} ${data.name}`}
+          aria-label={t(checked ? "ui.agentSkills.disableSkill" : "ui.agentSkills.enableSkill", {
+            name: data.name,
+          })}
         />
       );
       if (disabled && disabledReason) {

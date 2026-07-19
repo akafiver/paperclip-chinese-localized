@@ -20,6 +20,7 @@ import { describeRunRetryState } from "../lib/runRetryState";
 import { readSourceResolvedWatchdogFold } from "../lib/source-resolved-watchdog-fold";
 import { SourceResolvedFoldBadge } from "./SourceResolvedFoldBadge";
 import { ResponsibleUserDenialNotice } from "./ResponsibleUserDenialNotice";
+import { useTranslation } from "@/i18n";
 
 type IssueRunLedgerProps = {
   issueId: string;
@@ -499,6 +500,7 @@ export function IssueRunLedgerContent({
   watchdogDecisionError,
   onWatchdogDecision,
 }: IssueRunLedgerContentProps) {
+  const { t } = useTranslation();
   const ledgerRuns = useMemo(() => mergeRuns(runs, liveRuns, activeRun), [activeRun, liveRuns, runs]);
   const latestRun = ledgerRuns[0] ?? null;
   const latestSilentRun = useMemo(
@@ -543,16 +545,16 @@ export function IssueRunLedgerContent({
   }, [activityEvents, canRenderActivityEvents, ledgerRuns]);
 
   return (
-    <section className="space-y-3" aria-label="Task run ledger">
+    <section className="space-y-3" aria-label={t("ui.issueRunLedger.ariaLabel")}>
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="text-sm font-medium text-muted-foreground">Run ledger</h3>
+          <h3 className="text-sm font-medium text-muted-foreground">{t("ui.issueRunLedger.title")}</h3>
           <p className="text-xs text-muted-foreground">
             {latestRun
               ? runSummary(latestRun, agentMap)
               : issueStatus === "in_progress"
-                ? "Waiting for the first run record."
-                : "No runs linked yet."}
+                ? t("ui.issueRunLedger.waitingForFirstRun")
+                : t("ui.issueRunLedger.noRunsLinked")}
           </p>
         </div>
         {latestRun ? (
@@ -560,7 +562,7 @@ export function IssueRunLedgerContent({
             to={`/agents/${latestRun.agentId}/runs/${latestRun.runId}`}
             className="shrink-0 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
           >
-            Latest run
+            {t("ui.issueRunLedger.latestRun")}
           </Link>
         ) : null}
       </div>

@@ -29,6 +29,7 @@ import {
 import { cn, formatDateTime, formatShortDate } from "../lib/utils";
 import { MarkdownBody, type MarkdownExternalReferenceMap } from "./MarkdownBody";
 import { Button } from "./ui/button";
+import { useTranslation } from "@/i18n";
 import { Checkbox } from "./ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
 import { PriorityIcon } from "./PriorityIcon";
@@ -2597,10 +2598,11 @@ function ItemVerdictSegmentedControl({
   disabled: boolean;
   onSelect: (verdict: RequestItemVerdictValue) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div
       role="group"
-      aria-label="Choose a verdict"
+      aria-label={t("ui.issueInteractions.chooseVerdict")}
       className="flex shrink-0 flex-wrap items-center gap-2"
     >
       {verdicts.map((verdict) => {

@@ -830,7 +830,7 @@ describe("IssueProperties", () => {
     const removeButton = container.querySelector('button[aria-label="Remove PAP-2 as blocker"]');
     expect(removeButton?.className).toContain("absolute");
     expect(container.textContent).toContain("Add blocker");
-    expect(container.querySelector('input[placeholder="Search tasks..."]')).toBeNull();
+    expect(container.querySelector('input[placeholder="搜索任务..."]')).toBeNull();
 
     const addButton = Array.from(container.querySelectorAll("button"))
       .find((button) => button.textContent?.includes("Add blocker"));
@@ -841,7 +841,7 @@ describe("IssueProperties", () => {
     });
     await flush();
 
-    expect(container.querySelector('input[placeholder="Search tasks..."]')).not.toBeNull();
+    expect(container.querySelector('input[placeholder="搜索任务..."]')).not.toBeNull();
 
     const candidateButton = Array.from(container.querySelectorAll("button"))
       .find((button) => button.textContent?.includes("PAP-3 New blocker"));
@@ -882,7 +882,7 @@ describe("IssueProperties", () => {
     });
     await flush();
 
-    const searchInput = container.querySelector('input[aria-label="Search tasks to add as blockers"]') as HTMLInputElement | null;
+    const searchInput = container.querySelector('input[aria-label="搜索要添加为阻塞项的任务"]') as HTMLInputElement | null;
     expect(searchInput).not.toBeNull();
 
     await act(async () => {
@@ -1821,7 +1821,7 @@ describe("IssueProperties", () => {
     await flush();
 
     const clearParentButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => button.textContent?.includes("No parent"));
+      .find((button) => button.textContent?.includes("无父任务"));
     expect(clearParentButton).not.toBeUndefined();
 
     await act(async () => {

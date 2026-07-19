@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { queryKeys } from "@/lib/queryKeys";
 import { toolsApi } from "@/api/tools";
 import { useToast } from "@/context/ToastContext";
+import { useTranslation } from "@/i18n";
 import { LoadingState, ErrorState, RelativeTime } from "./shared";
 
 const ENV_KEY_RE = /^[A-Z_][A-Z0-9_]*$/i;
@@ -40,6 +41,7 @@ type KeyRow = { id: number; value: string };
  * expects. One of the two M8 screens where "MCP" vocabulary is allowed.
  */
 export function RunYourOwnTab({ companyId }: { companyId: string }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { pushToast } = useToast();
 
@@ -76,7 +78,11 @@ export function RunYourOwnTab({ companyId }: { companyId: string }) {
         envKeys,
       }),
     onSuccess: () => {
-      pushToast({ title: "Tool added", body: `"${name.trim()}" is ready to connect.`, tone: "success" });
+      pushToast({
+        title: t("ui.toolsRunYourOwn.toolAdded"),
+        body: t("ui.toolsRunYourOwn.toolAddedBody", { name: name.trim() }),
+        tone: "success",
+      });
       setName("");
       setCommand("");
       setKeyRows([]);
@@ -94,13 +100,12 @@ export function RunYourOwnTab({ companyId }: { companyId: string }) {
   return (
     <div className="space-y-6">
       <p className="max-w-2xl text-sm text-muted-foreground">
-        For a tool that runs from a command. Paperclip runs it in your company's own isolated workspace.
-        Administrators only.
+        {t("ui.toolsRunYourOwn.description")}
       </p>
 
       <div className="space-y-5 rounded-lg border border-border bg-card p-5">
         <div className="space-y-1.5">
-          <Label htmlFor="ryo-name">Name</Label>
+          <Label htmlFor="ryo-name">{t("ui.toolsRunYourOwn.name")}</Label>
           <Input
             id="ryo-name"
             value={name}
@@ -108,11 +113,11 @@ export function RunYourOwnTab({ companyId }: { companyId: string }) {
             placeholder="Acme tools"
             maxLength={160}
           />
-          <p className="text-xs text-muted-foreground">What you'll call this tool in your apps list.</p>
+          <p className="text-xs text-muted-foreground">{t("ui.toolsRunYourOwn.nameHint")}</p>
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="ryo-command">Command</Label>
+          <Label htmlFor="ryo-command">{t("ui.toolsRunYourOwn.command")}</Label>
           <Input
             id="ryo-command"
             value={command}
@@ -121,13 +126,13 @@ export function RunYourOwnTab({ companyId }: { companyId: string }) {
             spellCheck={false}
             className="bg-slate-900 font-mono text-(length:--text-compact) text-slate-100 placeholder:text-slate-500 focus-visible:ring-slate-400"
           />
-          <p className="text-xs text-muted-foreground">The command that runs the tool. From the tool's README.</p>
+          <p className="text-xs text-muted-foreground">{t("ui.toolsRunYourOwn.commandHint")}</p>
         </div>
 
         <div className="space-y-2">
           <div className="flex items-baseline gap-2">
-            <Label>Keys it needs</Label>
-            <span className="text-xs text-muted-foreground">· optional, depends on the tool</span>
+            <Label>{t("ui.toolsRunYourOwn.keys")}</Label>
+            <span className="text-xs text-muted-foreground">· {t("ui.toolsRunYourOwn.keysOptional")}</span>
           </div>
           {keyRows.length > 0 ? (
             <div className="space-y-2">
@@ -152,7 +157,7 @@ export function RunYourOwnTab({ companyId }: { companyId: string }) {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        aria-label="Remove key"
+                        aria-label={t("ui.toolsRunYourOwn.removeKey")}
                         onClick={() => setKeyRows((rows) => rows.filter((r) => r.id !== row.id))}
                       >
                         <X className="h-4 w-4" />
@@ -160,7 +165,7 @@ export function RunYourOwnTab({ companyId }: { companyId: string }) {
                     </div>
                     {invalid ? (
                       <p className="text-xs text-destructive">
-                        Use letters, numbers and underscores, starting with a letter or underscore (e.g. API_KEY).
+                        {t("ui.toolsRunYourOwn.invalidKey")}
                       </p>
                     ) : null}
                   </div>
@@ -170,7 +175,7 @@ export function RunYourOwnTab({ companyId }: { companyId: string }) {
           ) : null}
           <Button type="button" variant="outline" size="sm" onClick={addKeyRow} className="gap-1.5">
             <Plus className="h-3.5 w-3.5" />
-            Add a key
+            {t("ui.toolsRunYourOwn.addKey")}
           </Button>
         </div>
 
@@ -178,11 +183,11 @@ export function RunYourOwnTab({ companyId }: { companyId: string }) {
           <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
           <div className="text-xs">
             <p className="font-medium text-foreground">
-              This runs in your company's own workspace, isolated from everything else.
+              {t("ui.toolsRunYourOwn.isolatedTitle")}
             </p>
             <p className="mt-0.5 flex items-center gap-1 text-muted-foreground">
               <Lock className="h-3 w-3" />
-              Only administrators see this option.
+              {t("ui.toolsRunYourOwn.adminOnly")}
             </p>
           </div>
         </div>
@@ -191,31 +196,31 @@ export function RunYourOwnTab({ companyId }: { companyId: string }) {
 
         <div className="flex flex-wrap items-center gap-3">
           <Button onClick={() => createMutation.mutate()} disabled={!canSubmit || createMutation.isPending}>
-            {createMutation.isPending ? "Adding…" : "Check & continue"}
+            {createMutation.isPending ? t("ui.toolsRunYourOwn.adding") : t("ui.toolsRunYourOwn.checkContinue")}
           </Button>
           <span className="text-xs text-muted-foreground">
-            Paperclip will register the command and the keys it needs.
+            {t("ui.toolsRunYourOwn.registerHint")}
           </span>
         </div>
       </div>
 
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-foreground">Your own tools</h3>
+        <h3 className="text-sm font-semibold text-foreground">{t("ui.toolsRunYourOwn.yourOwnTools")}</h3>
         {templates.isLoading ? (
           <LoadingState />
         ) : templates.isError ? (
           <ErrorState error={templates.error} onRetry={() => templates.refetch()} />
         ) : adminTemplates.length === 0 ? (
-          <p className="text-sm text-muted-foreground">You haven't added any of your own tools yet.</p>
+          <p className="text-sm text-muted-foreground">{t("ui.toolsRunYourOwn.empty")}</p>
         ) : (
           <div className="overflow-hidden rounded-lg border border-border">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/40 text-left text-(length:--text-micro) font-semibold uppercase tracking-wide text-muted-foreground">
-                  <th className="px-4 py-2.5">Name</th>
-                  <th className="px-4 py-2.5">Command</th>
-                  <th className="px-4 py-2.5">Keys</th>
-                  <th className="px-4 py-2.5">Added</th>
+                  <th className="px-4 py-2.5">{t("ui.toolsRunYourOwn.columns.name")}</th>
+                  <th className="px-4 py-2.5">{t("ui.toolsRunYourOwn.columns.command")}</th>
+                  <th className="px-4 py-2.5">{t("ui.toolsRunYourOwn.columns.keys")}</th>
+                  <th className="px-4 py-2.5">{t("ui.toolsRunYourOwn.columns.added")}</th>
                   <th className="px-4 py-2.5" />
                 </tr>
               </thead>
@@ -241,15 +246,16 @@ function RunYourOwnRow({
 }) {
   const qc = useQueryClient();
   const { pushToast } = useToast();
+  const { t } = useTranslation();
   const disableMutation = useMutation({
     mutationFn: () => toolsApi.disableStdioTemplate(companyId, template.templateId),
     onSuccess: () => {
-      pushToast({ title: "Tool turned off", tone: "success" });
+      pushToast({ title: t("ui.toolsRunYourOwn.toolOff"), tone: "success" });
       qc.invalidateQueries({ queryKey: queryKeys.tools.stdioTemplates(companyId) });
     },
     onError: (error) => {
       pushToast({
-        title: "Couldn't turn it off",
+        title: t("ui.toolsRunYourOwn.turnOffFailed"),
         body: error instanceof Error ? error.message : undefined,
         tone: "error",
       });
@@ -262,13 +268,13 @@ function RunYourOwnRow({
     <tr className="border-b border-border last:border-0">
       <td className="px-4 py-3">
         <div className="font-medium text-foreground">{template.name}</div>
-        {disabled ? <Badge variant="outline">off</Badge> : null}
+        {disabled ? <Badge variant="outline">{t("ui.toolsRunYourOwn.off")}</Badge> : null}
       </td>
       <td className="px-4 py-3">
         <code className="font-mono text-(length:--text-micro) text-muted-foreground">{fullCommand || "—"}</code>
       </td>
       <td className="px-4 py-3 text-muted-foreground">
-        {template.envKeys.length > 0 ? template.envKeys.join(", ") : "none"}
+        {template.envKeys.length > 0 ? template.envKeys.join(", ") : t("ui.toolsRunYourOwn.none")}
       </td>
       <td className="px-4 py-3">
         <RelativeTime value={template.createdAt} />
@@ -281,7 +287,7 @@ function RunYourOwnRow({
             onClick={() => disableMutation.mutate()}
             disabled={disableMutation.isPending}
           >
-            Turn off
+            {t("ui.toolsRunYourOwn.turnOff")}
           </Button>
         )}
       </td>

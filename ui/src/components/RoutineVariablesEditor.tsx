@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useTranslation } from "@/i18n";
 
 const variableTypes: RoutineVariable["type"][] = ["text", "textarea", "number", "boolean", "select", "date"];
 
@@ -61,6 +62,7 @@ export function RoutineVariablesEditor({
   value: RoutineVariable[];
   onChange: (value: RoutineVariable[]) => void;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(true);
   const syncedVariables = useMemo(
     () => syncRoutineVariablesWithTemplate([title, description], value),
@@ -139,7 +141,7 @@ export function RoutineVariablesEditor({
 
               <div className="space-y-1.5 md:col-span-2">
                 <div className="flex items-center justify-between gap-3">
-                  <Label className="text-xs">Default value</Label>
+                  <Label className="text-xs">{t("ui.routineVariables.defaultValue")}</Label>
                   <label className="flex items-center gap-2 text-xs text-muted-foreground">
                     <input
                       type="checkbox"
@@ -149,7 +151,7 @@ export function RoutineVariablesEditor({
                         required: event.target.checked,
                       })))}
                     />
-                    Required
+                    {t("ui.routineVariables.required")}
                   </label>
                 </div>
 
@@ -174,9 +176,9 @@ export function RoutineVariablesEditor({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__unset__">No default</SelectItem>
-                      <SelectItem value="true">True</SelectItem>
-                      <SelectItem value="false">False</SelectItem>
+                      <SelectItem value="__unset__">{t("ui.routineVariables.noDefault")}</SelectItem>
+                      <SelectItem value="true">{t("ui.routineVariables.true")}</SelectItem>
+                      <SelectItem value="false">{t("ui.routineVariables.false")}</SelectItem>
                     </SelectContent>
                   </Select>
                 ) : variable.type === "select" ? (

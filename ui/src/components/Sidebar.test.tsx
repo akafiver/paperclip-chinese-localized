@@ -56,7 +56,6 @@ const mockSidebar = vi.hoisted(() => ({
   isMobile: false,
   setSidebarOpen: vi.fn(),
   collapsed: false,
-  collapseLocked: false,
   peeking: false,
   toggleCollapsed: vi.fn(),
   setCollapsed: vi.fn(),
@@ -524,22 +523,6 @@ describe("Sidebar", () => {
     });
     expect(mockSidebar.toggleCollapsed).toHaveBeenCalledTimes(1);
 
-    flushSync(() => {
-      root.unmount();
-    });
-  });
-
-  it("hides the expand/collapse toggle while a secondary sidebar locks the rail", async () => {
-    // A secondary sidebar forces the rail; the user must not be able to expand
-    // the primary while it is shown (PAP-10694).
-    mockInstanceSettingsApi.getExperimental.mockResolvedValue({ enableIsolatedWorkspaces: false });
-    mockSidebar.collapseLocked = true;
-    const root = await renderSidebar();
-
-    expect(container.querySelector('button[aria-label="Collapse sidebar"]')).toBeNull();
-    expect(container.querySelector('button[aria-label="Expand sidebar"]')).toBeNull();
-
-    mockSidebar.collapseLocked = false;
     flushSync(() => {
       root.unmount();
     });

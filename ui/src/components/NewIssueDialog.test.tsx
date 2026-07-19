@@ -381,11 +381,11 @@ describe("NewIssueDialog", () => {
     const { root } = renderDialog(container);
     await flush();
 
-    expect(container.textContent).toContain("New sub-task");
-    expect(container.textContent).toContain("Sub-task of");
+    expect(container.textContent).toContain("新建子任务");
+    expect(container.textContent).toContain("子任务属于");
     expect(container.textContent).toContain("PAP-1");
     expect(container.textContent).toContain("Parent issue");
-    expect(container.textContent).toContain("Create Sub-Task");
+    expect(container.textContent).toContain("创建子任务");
 
     act(() => root.unmount());
 
@@ -393,9 +393,9 @@ describe("NewIssueDialog", () => {
     const rerendered = renderDialog(container);
     await flush();
 
-    expect(container.textContent).toContain("New task");
-    expect(container.textContent).toContain("Create Task");
-    expect(container.textContent).not.toContain("Sub-task of");
+    expect(container.textContent).toContain("新建任务");
+    expect(container.textContent).toContain("创建任务");
+    expect(container.textContent).not.toContain("子任务属于");
 
     act(() => rerendered.root.unmount());
   });
@@ -450,7 +450,7 @@ describe("NewIssueDialog", () => {
     expect(mockExecutionWorkspacesApi.list).not.toHaveBeenCalled();
 
     const submitButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => button.textContent?.includes("Create Sub-Task"));
+      .find((button) => button.textContent?.includes("创建子任务"));
     expect(submitButton).not.toBeUndefined();
     await waitForAssertion(() => {
       expect(submitButton?.hasAttribute("disabled")).toBe(false);
@@ -547,7 +547,7 @@ describe("NewIssueDialog", () => {
     expect(planningButton?.className).toContain("bg-accent");
 
     const submitButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => button.textContent?.includes("Create Task"));
+      .find((button) => button.textContent?.includes("创建任务"));
     expect(submitButton).not.toBeUndefined();
     await vi.waitFor(() => {
       expect(submitButton?.hasAttribute("disabled")).toBe(false);
@@ -582,7 +582,7 @@ describe("NewIssueDialog", () => {
     expect(askButton?.className).toContain("bg-accent");
 
     const submitButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => button.textContent?.includes("Create Task"));
+      .find((button) => button.textContent?.includes("创建任务"));
     expect(submitButton).not.toBeUndefined();
     await vi.waitFor(() => {
       expect(submitButton?.hasAttribute("disabled")).toBe(false);
@@ -653,14 +653,14 @@ describe("NewIssueDialog", () => {
     const { root } = renderDialog(container);
     await flush();
 
-    expect(container.textContent).toContain("New task");
-    expect(container.textContent).not.toContain("New sub-task");
+    expect(container.textContent).toContain("新建任务");
+    expect(container.textContent).not.toContain("新建子任务");
     await waitForAssertion(() => {
       expect(container.textContent).toContain("Reusing PAP-100");
     });
 
     const submitButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => button.textContent?.includes("Create Task"));
+      .find((button) => button.textContent?.includes("创建任务"));
     expect(submitButton).not.toBeUndefined();
 
     await act(async () => {
@@ -751,8 +751,8 @@ describe("NewIssueDialog", () => {
     const { root } = renderDialog(container);
     await flush();
 
-    const titleInput = container.querySelector('textarea[placeholder="Task title"]') as HTMLTextAreaElement | null;
-    const descriptionInput = container.querySelector('textarea[aria-label="Add description..."]') as HTMLTextAreaElement | null;
+    const titleInput = container.querySelector('textarea[placeholder="任务标题"]') as HTMLTextAreaElement | null;
+    const descriptionInput = container.querySelector('textarea[aria-label="添加描述..."]') as HTMLTextAreaElement | null;
     expect(titleInput).not.toBeNull();
     expect(descriptionInput).not.toBeNull();
 
@@ -774,7 +774,7 @@ describe("NewIssueDialog", () => {
     await flush();
 
     const submitButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => button.textContent?.includes("Create Task"));
+      .find((button) => button.textContent?.includes("创建任务"));
     expect(submitButton).not.toBeUndefined();
     await vi.waitFor(() => {
       expect(submitButton?.hasAttribute("disabled")).toBe(false);
@@ -808,8 +808,8 @@ describe("NewIssueDialog", () => {
     const { root } = renderDialog(container);
     await flush();
 
-    const titleInput = container.querySelector('textarea[placeholder="Task title"]') as HTMLTextAreaElement | null;
-    const descriptionInput = container.querySelector('textarea[aria-label="Add description..."]') as HTMLTextAreaElement | null;
+    const titleInput = container.querySelector('textarea[placeholder="任务标题"]') as HTMLTextAreaElement | null;
+    const descriptionInput = container.querySelector('textarea[aria-label="添加描述..."]') as HTMLTextAreaElement | null;
     expect(titleInput).not.toBeNull();
     expect(descriptionInput).not.toBeNull();
 
@@ -817,7 +817,7 @@ describe("NewIssueDialog", () => {
     await typeTextareaValue(descriptionInput!, description);
 
     const submitButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => button.textContent?.includes("Create Task"));
+      .find((button) => button.textContent?.includes("创建任务"));
     expect(submitButton).not.toBeUndefined();
     await vi.waitFor(() => {
       expect(submitButton?.hasAttribute("disabled")).toBe(false);
@@ -844,7 +844,7 @@ describe("NewIssueDialog", () => {
     const { root } = renderDialog(container);
     await flush();
 
-    const titleInput = container.querySelector('textarea[placeholder="Task title"]') as HTMLTextAreaElement | null;
+    const titleInput = container.querySelector('textarea[placeholder="任务标题"]') as HTMLTextAreaElement | null;
     expect(titleInput).not.toBeNull();
     await typeTextareaValue(titleInput!, "Plan this first");
 
@@ -856,7 +856,7 @@ describe("NewIssueDialog", () => {
     await flush();
 
     const submitButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => button.textContent?.includes("Create Task"));
+      .find((button) => button.textContent?.includes("创建任务"));
     expect(submitButton).not.toBeUndefined();
     await vi.waitFor(() => {
       expect(submitButton?.hasAttribute("disabled")).toBe(false);
@@ -882,7 +882,7 @@ describe("NewIssueDialog", () => {
     const { root } = renderDialog(container);
     await flush();
 
-    const titleInput = container.querySelector('textarea[placeholder="Task title"]') as HTMLTextAreaElement | null;
+    const titleInput = container.querySelector('textarea[placeholder="任务标题"]') as HTMLTextAreaElement | null;
     expect(titleInput).not.toBeNull();
     await typeTextareaValue(titleInput!, "Answer this first");
 
@@ -894,7 +894,7 @@ describe("NewIssueDialog", () => {
     await flush();
 
     const submitButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => button.textContent?.includes("Create Task"));
+      .find((button) => button.textContent?.includes("创建任务"));
     expect(submitButton).not.toBeUndefined();
     await vi.waitFor(() => {
       expect(submitButton?.hasAttribute("disabled")).toBe(false);
@@ -1041,7 +1041,7 @@ describe("NewIssueDialog", () => {
     await flush();
 
     const submitButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => button.textContent?.includes("Create Sub-Task"));
+      .find((button) => button.textContent?.includes("创建子任务"));
     expect(submitButton).not.toBeUndefined();
 
     await act(async () => {
@@ -1075,8 +1075,8 @@ describe("NewIssueDialog", () => {
     expect(dialogContent?.getAttribute("style")).toContain("env(safe-area-inset-top)");
     expect(dialogContent?.getAttribute("style")).toContain("env(safe-area-inset-bottom)");
 
-    const titleInput = container.querySelector('textarea[placeholder="Task title"]');
-    const descriptionInput = container.querySelector('textarea[aria-label="Add description..."]');
+    const titleInput = container.querySelector('textarea[placeholder="任务标题"]');
+    const descriptionInput = container.querySelector('textarea[aria-label="添加描述..."]');
     const bodyScrollRegion = Array.from(container.querySelectorAll("div")).find((element) =>
       typeof element.className === "string" && element.className.includes("overscroll-contain"),
     );
@@ -1214,7 +1214,7 @@ describe("NewIssueDialog", () => {
     expect(container.querySelector('textarea[placeholder^="What should the watchdog"]')).toBeNull();
 
     const watchdogMenuItem = Array.from(container.querySelectorAll("button"))
-      .find((button) => button.textContent?.trim() === "Watchdog");
+      .find((button) => button.textContent?.trim() === "看护 agent");
     expect(watchdogMenuItem).not.toBeUndefined();
 
     await act(async () => {
@@ -1222,8 +1222,8 @@ describe("NewIssueDialog", () => {
     });
     await flush();
 
-    expect(container.textContent).toContain("Set watchdog");
-    expect(container.querySelector('textarea[placeholder^="What should the watchdog"]')).not.toBeNull();
+    expect(container.textContent).toContain("设置看护 agent");
+    expect(container.querySelector('textarea[placeholder^="看护 agent"]')).not.toBeNull();
 
     act(() => root.unmount());
   });
@@ -1259,7 +1259,7 @@ describe("NewIssueDialog", () => {
     expect(container.textContent).toContain("Keep it moving");
 
     const submitButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => button.textContent?.includes("Create Task"));
+      .find((button) => button.textContent?.includes("创建任务"));
     expect(submitButton).not.toBeUndefined();
     await vi.waitFor(() => {
       expect(submitButton?.hasAttribute("disabled")).toBe(false);
@@ -1308,8 +1308,8 @@ describe("NewIssueDialog", () => {
       expect(workModeOption("ask")?.textContent).toContain("Ask mode");
       expect(workModeOption("planning")?.textContent).toContain("Plan mode");
 
-      expect(statusOptionIconClass("Todo", "Executable - assignee will be woken")).toContain("text-amber-600");
-      expect(statusOptionIconClass("In Progress")).toContain("text-blue-600");
+      expect(statusOptionIconClass("待办", "可执行 - 将唤醒负责人")).toContain("text-amber-600");
+      expect(statusOptionIconClass("进行中")).toContain("text-blue-600");
 
       act(() => root.unmount());
     });

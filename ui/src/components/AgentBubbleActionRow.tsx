@@ -4,7 +4,7 @@ import type {
   FeedbackVoteValue,
 } from "@paperclipai/shared";
 import { cn, formatShortDate } from "../lib/utils";
-import { timeAgo } from "../lib/timeAgo";
+import { timeAgo, type TimeAgoTranslator } from "../lib/timeAgo";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Check, Copy, MoreHorizontal, ThumbsDown, ThumbsUp } from "lucide-react";
+import { useTranslation } from "@/i18n";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -32,10 +33,10 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
  * an absolute short date. Mirrors the task thread's `commentDateLabel` so both
  * surfaces read identically.
  */
-export function agentBubbleDateLabel(date: Date | string | undefined): string {
+export function agentBubbleDateLabel(date: Date | string | undefined, translate?: TimeAgoTranslator): string {
   if (!date) return "";
   const then = new Date(date).getTime();
-  if (Date.now() - then < WEEK_MS) return timeAgo(date);
+  if (Date.now() - then < WEEK_MS) return timeAgo(date, translate);
   return formatShortDate(date);
 }
 
@@ -78,6 +79,7 @@ export function AgentBubbleActionRow({
   menuItems?: ReactNode;
   className?: string;
 }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   return (
@@ -85,8 +87,8 @@ export function AgentBubbleActionRow({
       <button
         type="button"
         className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        title="Copy message"
-        aria-label="Copy message"
+        title={t("ui.agentBubble.copyMessage")}
+        aria-label={t("ui.agentBubble.copyMessage")}
         onClick={() => {
           void navigator.clipboard.writeText(copyText).then(() => {
             setCopied(true);
@@ -125,8 +127,8 @@ export function AgentBubbleActionRow({
             variant="ghost"
             size="icon-xs"
             className="text-muted-foreground hover:text-foreground"
-            title="More actions"
-            aria-label="More actions"
+            title={t("ui.agentBubble.moreActions")}
+            aria-label={t("ui.agentBubble.moreActions")}
           >
             <MoreHorizontal className="h-3.5 w-3.5" />
           </Button>
@@ -138,7 +140,7 @@ export function AgentBubbleActionRow({
             }}
           >
             <Copy className="mr-2 h-3.5 w-3.5" />
-            Copy message
+            {t("ui.agentBubble.copyMessage")}
           </DropdownMenuItem>
           {menuItems}
         </DropdownMenuContent>
@@ -163,6 +165,7 @@ export function IssueChatFeedbackButtons({
   termsUrl: string | null;
   onVote: (vote: FeedbackVoteValue, options?: { allowSharing?: boolean; reason?: string }) => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const [isSaving, setIsSaving] = useState(false);
   const [optimisticVote, setOptimisticVote] = useState<FeedbackVoteValue | null>(null);
   const [reasonOpen, setReasonOpen] = useState(false);
@@ -242,8 +245,8 @@ export function IssueChatFeedbackButtons({
             ? "text-green-600 dark:text-green-400"
             : "text-muted-foreground hover:bg-accent hover:text-foreground",
         )}
-        title="Helpful"
-        aria-label="Helpful"
+        title={t("ui.agentBubble.helpful")}
+        aria-label={t("ui.agentBubble.helpful")}
         onClick={handleThumbsUp}
       >
         <ThumbsUp className="h-3.5 w-3.5" />
@@ -259,19 +262,19 @@ export function IssueChatFeedbackButtons({
                 ? "text-amber-600 dark:text-amber-400"
                 : "text-muted-foreground hover:bg-accent hover:text-foreground",
             )}
-            title="Needs work"
-            aria-label="Needs work"
+            title={t("ui.agentBubble.needsWork")}
+            aria-label={t("ui.agentBubble.needsWork")}
             onClick={handleThumbsDown}
           >
             <ThumbsDown className="h-3.5 w-3.5" />
           </button>
         </PopoverTrigger>
         <PopoverContent side="top" align="start" className="w-80 p-3">
-          <div className="mb-2 text-sm font-medium">What could have been better?</div>
+          <div className="mb-2 text-sm font-medium">{t("ui.agentBubble.feedbackPrompt")}</div>
           <Textarea
             value={downvoteReason}
             onChange={(event) => setDownvoteReason(event.target.value)}
-            placeholder="Add a short note"
+            placeholder={t("ui.agentBubble.addShortNote")}
             className="min-h-20 resize-y bg-background text-sm"
             disabled={isSaving}
           />
@@ -286,7 +289,7 @@ export function IssueChatFeedbackButtons({
                 setDownvoteReason("");
               }}
             >
-              Dismiss
+              {t("ui.agentBubble.dismiss")}
             </Button>
             <Button
               type="button"
@@ -294,7 +297,7 @@ export function IssueChatFeedbackButtons({
               disabled={isSaving || !downvoteReason.trim()}
               onClick={handleSubmitReason}
             >
-              {isSaving ? "Saving..." : "Save note"}
+              {isSaving ? t("ui.agentBubble.saving") : t("ui.agentBubble.saveNote")}
             </Button>
           </div>
         </PopoverContent>
@@ -311,21 +314,18 @@ export function IssueChatFeedbackButtons({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Save your feedback sharing preference</DialogTitle>
+            <DialogTitle>{t("ui.agentBubble.sharingPreferenceTitle")}</DialogTitle>
             <DialogDescription>
-              Choose whether voted AI outputs can be shared with Paperclip Labs. This
-              answer becomes the default for future thumbs up and thumbs down votes.
+              {t("ui.agentBubble.sharingPreferenceDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 text-sm text-muted-foreground">
-            <p>This vote is always saved locally.</p>
+            <p>{t("ui.agentBubble.voteSavedLocally")}</p>
             <p>
-              Choose <span className="font-medium text-foreground">Always allow</span> to share
-              this vote and future voted AI outputs. Choose{" "}
-              <span className="font-medium text-foreground">Don't allow</span> to keep this vote
-              and future votes local.
+              {t("ui.agentBubble.chooseAllowPrefix")} <span className="font-medium text-foreground">{t("ui.agentBubble.alwaysAllow")}</span> {t("ui.agentBubble.chooseAllowMiddle")}{" "}
+              <span className="font-medium text-foreground">{t("ui.agentBubble.dontAllow")}</span> {t("ui.agentBubble.chooseAllowSuffix")}
             </p>
-            <p>You can change this later in Instance Settings &gt; General.</p>
+            <p>{t("ui.agentBubble.changeLater")}</p>
             {termsUrl ? (
               <a
                 href={termsUrl}
@@ -333,7 +333,7 @@ export function IssueChatFeedbackButtons({
                 rel="noreferrer"
                 className="inline-flex text-sm text-foreground underline underline-offset-4"
               >
-                Read our terms of service
+                {t("ui.agentBubble.readTerms")}
               </a>
             ) : null}
           </div>
@@ -350,7 +350,7 @@ export function IssueChatFeedbackButtons({
                 ).then(() => setPendingSharingDialog(null));
               }}
             >
-              {isSaving ? "Saving..." : "Don't allow"}
+              {isSaving ? t("ui.agentBubble.saving") : t("ui.agentBubble.dontAllow")}
             </Button>
             <Button
               type="button"
@@ -363,7 +363,7 @@ export function IssueChatFeedbackButtons({
                 }).then(() => setPendingSharingDialog(null));
               }}
             >
-              {isSaving ? "Saving..." : "Always allow"}
+              {isSaving ? t("ui.agentBubble.saving") : t("ui.agentBubble.alwaysAllow")}
             </Button>
           </DialogFooter>
         </DialogContent>

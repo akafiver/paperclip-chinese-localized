@@ -4,6 +4,7 @@ import { Link } from "../lib/router";
 import { cn } from "../lib/utils";
 import { createIssueDetailPath } from "../lib/issueDetailBreadcrumb";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { useTranslation } from "@/i18n";
 
 const TRIGGER_LABELS: Record<string, string> = {
   no_comment_streak: "No-comment streak",
@@ -35,10 +36,15 @@ export function ProductivityReviewBadge({
   className?: string;
   hideLabel?: boolean;
 }) {
-  const label = productivityReviewTriggerLabel(review.trigger);
+  const { t } = useTranslation();
+  const label = t(`ui.productivityReview.triggers.${review.trigger ?? "default"}`);
   const reviewIdentifier = review.reviewIdentifier ?? review.reviewIssueId.slice(0, 8);
   const reviewPath = createIssueDetailPath(review.reviewIdentifier ?? review.reviewIssueId);
-  const statusLabel = REVIEW_STATUS_LABELS[review.status] ?? review.status.replace(/_/g, " ");
+  const translatedStatusKey = `ui.productivityReview.statuses.${review.status}`;
+  const translatedStatus = t(translatedStatusKey);
+  const statusLabel = translatedStatus === translatedStatusKey
+    ? REVIEW_STATUS_LABELS[review.status] ?? review.status.replace(/_/g, " ")
+    : translatedStatus;
 
   return (
     <Tooltip>
@@ -49,26 +55,26 @@ export function ProductivityReviewBadge({
             "inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-(length:--text-nano) font-medium text-amber-700 dark:text-amber-300 shrink-0 hover:bg-amber-500/20 transition-colors",
             className,
           )}
-          aria-label={`Under review · productivity review ${reviewIdentifier} (${label})`}
+          aria-label={t("ui.productivityReview.underReviewAria", { id: reviewIdentifier, trigger: label })}
         >
           <Eye className="h-3 w-3" aria-hidden />
-          {hideLabel ? null : <span>Under review</span>}
+          {hideLabel ? null : <span>{t("ui.productivityReview.underReview")}</span>}
         </Link>
       </TooltipTrigger>
       <TooltipContent>
         <div className="space-y-1 text-xs">
-          <div className="font-semibold">Productivity review open</div>
+          <div className="font-semibold">{t("ui.productivityReview.open")}</div>
           <div>
-            <span className="text-muted-foreground">Trigger:</span> {label}
+            <span className="text-muted-foreground">{t("ui.productivityReview.triggerLabel")}</span> {label}
           </div>
           {typeof review.noCommentStreak === "number" && review.noCommentStreak > 0 ? (
             <div>
-              <span className="text-muted-foreground">No-comment streak:</span>{" "}
-              {review.noCommentStreak} runs
+              <span className="text-muted-foreground">{t("ui.productivityReview.noCommentStreakLabel")}</span>{" "}
+              {t("ui.productivityReview.runsCount", { count: review.noCommentStreak })}
             </div>
           ) : null}
           <div>
-            <span className="text-muted-foreground">Review:</span> {reviewIdentifier} ({statusLabel})
+            <span className="text-muted-foreground">{t("ui.productivityReview.reviewLabel")}</span> {reviewIdentifier} ({statusLabel})
           </div>
         </div>
       </TooltipContent>

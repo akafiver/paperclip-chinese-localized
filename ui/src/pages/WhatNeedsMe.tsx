@@ -54,7 +54,7 @@ const SEVERITY_LABELS: Record<string, string> = {
 };
 
 function severityLabel(severity: string, t: (key: string) => string): string {
-  return t(`ui.whatNeedsMe.severity.${severity}`) ?? SEVERITY_LABELS[severity] ?? severity;
+  return t(`ui.whatNeedsMe.severityLevel.${severity}`) ?? SEVERITY_LABELS[severity] ?? severity;
 }
 
 /** Curtain rows never expand; module-level so memoized rows see one identity. */
@@ -670,7 +670,7 @@ function FilterMenu({
       )}
 
       {options.severities.length > 1 && (
-        <FilterSection title={t("ui.whatNeedsMe.severity")}>
+        <FilterSection title={t("ui.whatNeedsMe.severityLabel")}>
           {options.severities.map((severity) => (
             <FilterRow
               key={severity}

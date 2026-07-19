@@ -79,6 +79,6 @@ describe("IssueFiltersPopover", () => {
       element.className.includes("md:grid-cols-3"),
     );
     expect(layoutGrid?.className).toContain("grid-cols-1");
-    expect(popoverContent?.textContent).toContain("Live runs only");
+    expect(popoverContent?.textContent).toContain("仅显示运行中");
   });
 });

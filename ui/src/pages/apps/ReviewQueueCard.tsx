@@ -10,6 +10,7 @@ import { timeAgo } from "@/lib/timeAgo";
 import { toolsApi } from "@/api/tools";
 import { Button } from "@/components/ui/button";
 import { MarkdownBody } from "@/components/MarkdownBody";
+import { useTranslation } from "@/i18n";
 
 /**
  * "Ask first" review queue (M1b float / M9 card, PAP-10859).
@@ -31,6 +32,7 @@ export function ReviewQueueCard({
   emptyState?: "hidden" | "reassure";
   heading?: string;
 }) {
+  const { t } = useTranslation();
   const { selectedCompanyId } = useCompany();
 
   const query = useQuery({
@@ -145,10 +147,10 @@ function ReviewRow({ companyId, item }: { companyId: string; item: ToolActionReq
         <span className="font-bold text-foreground">{actionLabel(item)}</span>
         {item.applicationName && (
           <span className="text-muted-foreground">
-            in {humanizeConnectionDisplayName(item.applicationName)}
+            {t("ui.appsReviewQueue.inApp", { app: humanizeConnectionDisplayName(item.applicationName) })}
           </span>
         )}
-        <span className="text-xs text-muted-foreground">· asked {timeAgo(item.request.createdAt)}</span>
+        <span className="text-xs text-muted-foreground">· {t("ui.appsReviewQueue.asked", { time: timeAgo(item.request.createdAt) })}</span>
       </div>
 
       {preview ? (
@@ -157,22 +159,22 @@ function ReviewRow({ companyId, item }: { companyId: string; item: ToolActionReq
         </div>
       ) : (
         <p className="mt-1 text-sm text-muted-foreground">
-          An agent wants to run this action. It can change something, so we’re checking with you first.
+          {t("ui.appsReviewQueue.defaultPreview")}
         </p>
       )}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Button size="sm" onClick={() => allowOnce.mutate()} disabled={busy}>
           {resolving === "allow" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
-          Allow once
+          {t("ui.appsReviewQueue.allowOnce")}
         </Button>
         <Button size="sm" variant="outline" onClick={() => alwaysAllow.mutate()} disabled={busy}>
           {resolving === "always" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
-          Always allow
+          {t("ui.appsReviewQueue.alwaysAllow")}
         </Button>
         <Button size="sm" variant="ghost" onClick={() => decline.mutate()} disabled={busy}>
           {resolving === "decline" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <X className="mr-1.5 h-3.5 w-3.5" />}
-          Decline
+          {t("ui.appsReviewQueue.decline")}
         </Button>
       </div>
     </div>

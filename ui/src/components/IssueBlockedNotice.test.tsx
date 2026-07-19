@@ -561,7 +561,7 @@ describe("IssueBlockedNotice", () => {
     expect(indicator).not.toBeNull();
     expect(indicator?.getAttribute("data-recovery-state")).toBe("needed");
     expect(indicator?.getAttribute("data-recovery-kind")).toBe("missing_disposition");
-    expect(indicator?.textContent).toContain("Recovery needed");
+    expect(indicator?.textContent).toContain("需要恢复");
   });
 
   it("labels a workspace_validation blocker recovery distinctly", () => {
@@ -619,6 +619,6 @@ describe("IssueBlockedNotice", () => {
     expect(indicator).not.toBeNull();
     expect(indicator?.getAttribute("data-recovery-state")).toBe("needed");
     expect(indicator?.getAttribute("data-recovery-kind")).toBe("workspace_validation");
-    expect(indicator?.textContent).toContain("Workspace recovery needed");
+    expect(indicator?.textContent).toContain("需要工作区恢复");
   });
 });

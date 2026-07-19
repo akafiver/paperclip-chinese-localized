@@ -1298,7 +1298,7 @@ export function Cases() {
                       </div>
                     </FilterField>
                     <Button type="button" variant="ghost" size="sm" onClick={clearFilters} disabled={!hasActiveFilters}>
-                      Clear filters
+                      {t("ui.cases.clearFilters")}
                     </Button>
                   </div>
                 </PopoverContent>
@@ -1339,7 +1339,12 @@ export function Cases() {
           <FilterBar filters={activeFilters} onRemove={removeFilter} onClear={clearFilters} />
 
           {filtered.length === 0 ? (
-            <EmptyState icon={SearchX} message="No cases match these filters." action="Clear filters" onAction={clearFilters} />
+            <EmptyState
+              icon={SearchX}
+              message={t("ui.cases.noCasesMatchFilters")}
+              action={t("ui.cases.clearFilters")}
+              onAction={clearFilters}
+            />
           ) : (
             <div ref={caseListRef}>
               <CaseColumnHeader visibleColumnSet={visibleColumnSet} trailingColumns={trailingColumns} />

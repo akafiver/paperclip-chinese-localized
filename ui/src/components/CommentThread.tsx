@@ -25,6 +25,7 @@ import { timeAgo } from "../lib/timeAgo";
 import { cn, formatDateTime } from "../lib/utils";
 import { restoreSubmittedCommentDraft } from "../lib/comment-submit-draft";
 import { PluginSlotOutlet } from "@/plugins/slots";
+import { useTranslation } from "@/i18n";
 
 interface CommentWithRunMeta extends IssueComment {
   runId?: string | null;
@@ -764,6 +765,7 @@ export function CommentThread({
   composerDisabledReason = null,
   externalReferences,
 }: CommentThreadProps) {
+  const { t } = useTranslation();
   const [body, setBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [attaching, setAttaching] = useState(false);
@@ -1052,7 +1054,7 @@ export function CommentThread({
                   size="icon-sm"
                   onClick={() => attachInputRef.current?.click()}
                   disabled={attaching}
-                  title="Attach image"
+                  title={t("ui.commentThread.attachImage")}
                 >
                   <Paperclip className="h-4 w-4" />
                 </Button>
@@ -1062,14 +1064,14 @@ export function CommentThread({
               <InlineEntitySelector
                 value={reassignTarget}
                 options={reassignOptions}
-                placeholder="Responsible"
-                noneLabel="No responsible"
-                searchPlaceholder="Search responsible..."
-                emptyMessage="No responsible found."
+                placeholder={t("ui.commentThread.responsible")}
+                noneLabel={t("ui.commentThread.noResponsible")}
+                searchPlaceholder={t("ui.commentThread.searchResponsible")}
+                emptyMessage={t("ui.commentThread.noResponsibleFound")}
                 onChange={setReassignTarget}
                 className="text-xs h-8"
                 renderTriggerValue={(option) => {
-                  if (!option) return <span className="text-muted-foreground">Responsible</span>;
+                  if (!option) return <span className="text-muted-foreground">{t("ui.commentThread.responsible")}</span>;
                   const agentId = option.id.startsWith("agent:") ? option.id.slice("agent:".length) : null;
                   const agent = agentId ? agentMap?.get(agentId) : null;
                   return (
@@ -1097,7 +1099,7 @@ export function CommentThread({
               />
             )}
             <Button size="sm" disabled={!canSubmit} onClick={handleSubmit}>
-              {submitting ? "Posting..." : "Comment"}
+              {submitting ? t("ui.commentThread.posting") : t("ui.commentThread.comment")}
             </Button>
           </div>
         </div>

@@ -84,30 +84,10 @@ describe("SidebarContext", () => {
     localStorage.clear();
   });
 
-  describe("precedence: user pin > route request > default", () => {
-    it("defaults to expanded (collapsed=false) with no pin and no route request", () => {
+  describe("user pin and default", () => {
+    it("defaults to expanded (collapsed=false) with no pin", () => {
       active = renderProvider();
       expect(capturedValue?.collapsed).toBe(false);
-    });
-
-    it("uses the route request when there is no user pin", () => {
-      active = renderProvider();
-      act(() => capturedValue?.setRouteRequestsCollapsed(true));
-      expect(capturedValue?.collapsed).toBe(true);
-    });
-
-    it("lets an explicit user pin override the route request", () => {
-      active = renderProvider();
-      act(() => capturedValue?.setRouteRequestsCollapsed(true));
-      expect(capturedValue?.collapsed).toBe(true);
-
-      // User pins expanded — this must win over the route's collapse request.
-      act(() => capturedValue?.setCollapsed(false));
-      expect(capturedValue?.collapsed).toBe(false);
-
-      // And pinning collapsed wins too.
-      act(() => capturedValue?.setCollapsed(true));
-      expect(capturedValue?.collapsed).toBe(true);
     });
 
     it("toggleCollapsed flips the effective mode and records a pin", () => {
@@ -123,63 +103,6 @@ describe("SidebarContext", () => {
       expect(localStorage.getItem(COLLAPSED_STORAGE_KEY)).toBe("0");
     });
 
-    it("toggleCollapsed pins expanded when only a route request is active", () => {
-      active = renderProvider();
-      act(() => capturedValue?.setRouteRequestsCollapsed(true));
-      expect(capturedValue?.collapsed).toBe(true);
-
-      // Effective is collapsed (via route); toggling should flip to expanded.
-      act(() => capturedValue?.toggleCollapsed());
-      expect(capturedValue?.collapsed).toBe(false);
-      expect(localStorage.getItem(COLLAPSED_STORAGE_KEY)).toBe("0");
-    });
-  });
-
-  describe("forced collapse (secondary sidebar): overrides the pin, preserves preference", () => {
-    it("forces collapsed even when the user pinned expanded, without mutating the pin", () => {
-      active = renderProvider();
-      // User prefers expanded site-wide.
-      act(() => capturedValue?.setCollapsed(false));
-      expect(capturedValue?.collapsed).toBe(false);
-      expect(localStorage.getItem(COLLAPSED_STORAGE_KEY)).toBe("0");
-
-      // Entering a secondary-sidebar route forces the rail and locks it.
-      act(() => capturedValue?.setForceCollapsed(true));
-      expect(capturedValue?.collapsed).toBe(true);
-      expect(capturedValue?.collapseLocked).toBe(true);
-      // The persisted preference is untouched.
-      expect(localStorage.getItem(COLLAPSED_STORAGE_KEY)).toBe("0");
-    });
-
-    it("restores the user's preference when the force is cleared (leaving the route)", () => {
-      active = renderProvider();
-      act(() => capturedValue?.setCollapsed(false));
-      act(() => capturedValue?.setForceCollapsed(true));
-      expect(capturedValue?.collapsed).toBe(true);
-
-      // Navigating away clears the force; the expanded preference returns.
-      act(() => capturedValue?.setForceCollapsed(false));
-      expect(capturedValue?.collapsed).toBe(false);
-      expect(capturedValue?.collapseLocked).toBe(false);
-    });
-
-    it("locks the toggle while forced: toggleCollapsed is a no-op and never writes the pin", () => {
-      active = renderProvider();
-      act(() => capturedValue?.setCollapsed(false));
-      act(() => capturedValue?.setForceCollapsed(true));
-
-      act(() => capturedValue?.toggleCollapsed());
-      expect(capturedValue?.collapsed).toBe(true); // still forced
-      expect(localStorage.getItem(COLLAPSED_STORAGE_KEY)).toBe("0"); // pin unchanged
-    });
-
-    it("never forces or locks on mobile", () => {
-      setViewport({ mobile: true });
-      active = renderProvider();
-      act(() => capturedValue?.setForceCollapsed(true));
-      expect(capturedValue?.collapsed).toBe(false);
-      expect(capturedValue?.collapseLocked).toBe(false);
-    });
   });
 
   describe("persistence round-trip", () => {
@@ -202,9 +125,6 @@ describe("SidebarContext", () => {
       localStorage.setItem(COLLAPSED_STORAGE_KEY, "yes");
       active = renderProvider();
       expect(capturedValue?.collapsed).toBe(false);
-      // Unpinned, so a route request still applies.
-      act(() => capturedValue?.setRouteRequestsCollapsed(true));
-      expect(capturedValue?.collapsed).toBe(true);
     });
   });
 

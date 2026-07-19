@@ -192,22 +192,22 @@ describe("EnvironmentVariablesEditor", () => {
 
   it("shows the empty state with no bindings", () => {
     render(<EnvironmentVariablesEditor value={{}} secrets={secrets} onChange={() => {}} onCreateSecret={async () => secrets[0]} />);
-    expect(container.textContent).toContain("No environment variables");
+    expect(container.textContent).toContain("没有环境变量");
     expect(nameInputs()).toHaveLength(0);
   });
 
-  it("appends a row when + Add variable is clicked", async () => {
+  it("appends a row when + 添加变量 is clicked", async () => {
     render(<EnvironmentVariablesEditor value={{}} secrets={secrets} onChange={() => {}} onCreateSecret={async () => secrets[0]} />);
-    const addButton = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes("Add variable"))!;
+    const addButton = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes("添加变量"))!;
     addButton.click();
     await flush();
     expect(nameInputs()).toHaveLength(1);
   });
 
-  it("does not emit when + Add variable only creates an empty draft row", async () => {
+  it("does not emit when + 添加变量 only creates an empty draft row", async () => {
     const onChange = vi.fn();
     render(<EnvironmentVariablesEditor value={{}} secrets={secrets} onChange={onChange} onCreateSecret={async () => secrets[0]} />);
-    const addButton = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes("Add variable"))!;
+    const addButton = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes("添加变量"))!;
     addButton.click();
     await flush();
     expect(nameInputs()).toHaveLength(1);
@@ -355,7 +355,7 @@ describe("EnvironmentVariablesEditor", () => {
     expect(container.textContent).toContain("Removed: BAR");
 
     // Add a brand-new variable.
-    const addButton = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes("Add variable"))!;
+    const addButton = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes("添加变量"))!;
     addButton.click();
     await flush();
     const newNameInput = nameInputs().at(-1)!;
@@ -421,7 +421,7 @@ describe("EnvironmentVariablesEditor", () => {
 
   it("marks a newly typed variable name as unsaved before saving", async () => {
     render(<EnvironmentVariablesEditor value={{}} secrets={secrets} onChange={() => {}} onCreateSecret={async () => secrets[0]} />);
-    const addButton = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes("Add variable"))!;
+    const addButton = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes("添加变量"))!;
     addButton.click();
     await flush();
 
@@ -449,7 +449,7 @@ describe("EnvironmentVariablesEditor", () => {
         onCreateSecret={async () => secrets[0]}
       />,
     );
-    const addButton = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes("Add variable"))!;
+    const addButton = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes("添加变量"))!;
     addButton.click();
     await flush();
 
@@ -503,7 +503,7 @@ describe("EnvironmentVariablesEditor", () => {
         onCreateSecret={async () => secrets[0]}
       />,
     );
-    const addButton = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes("Add variable"))!;
+    const addButton = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes("添加变量"))!;
     addButton.click();
     await flush();
 
@@ -591,7 +591,7 @@ describe("EnvironmentVariablesEditor", () => {
     const onChange = vi.fn();
     render(<EnvironmentVariablesEditor value={{}} secrets={secrets} onChange={onChange} onCreateSecret={async () => secrets[0]} />);
     // Add an empty row to paste into.
-    const addButton = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes("Add variable"))!;
+    const addButton = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes("添加变量"))!;
     addButton.click();
     await flush();
     const nameInput = nameInputs()[0]!;
@@ -620,7 +620,7 @@ describe("EnvironmentVariablesEditor", () => {
       />,
     );
     const addButton = [...container.querySelectorAll("button")].find((button) =>
-      button.textContent?.includes("Add variable"),
+      button.textContent?.includes("添加变量"),
     )!;
     addButton.click();
     await flush();

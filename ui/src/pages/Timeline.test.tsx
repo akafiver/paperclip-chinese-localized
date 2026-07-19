@@ -28,9 +28,6 @@ vi.mock("@/lib/router", () => ({
   useLocation: () => ({ pathname: "/PAP/timeline" }),
 }));
 
-vi.mock("@/components/RequestCollapsedSidebar", () => ({
-  RequestCollapsedSidebar: () => <div data-testid="request-collapsed-sidebar" />,
-}));
 
 const emptyTimeline: WorkTimelineResult = {
   actors: [],
@@ -139,21 +136,6 @@ describe("Timeline", () => {
     container.remove();
     document.body.innerHTML = "";
     vi.clearAllMocks();
-  });
-
-  it("requests the collapsed app sidebar by default", async () => {
-    root = createRoot(container);
-
-    flushSync(() => {
-      root?.render(
-        <QueryClientProvider client={queryClient}>
-          <Timeline />
-        </QueryClientProvider>,
-      );
-    });
-    await flushReact();
-
-    expect(container.querySelector('[data-testid="request-collapsed-sidebar"]')).not.toBeNull();
   });
 
   it("renders range controls plus icon zoom controls without the user lens selector or visible-duration readout", async () => {

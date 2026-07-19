@@ -18,7 +18,6 @@ const mockInstanceSettingsApi = vi.hoisted(() => ({
 const mockNavigate = vi.hoisted(() => vi.fn());
 const mockSetSelectedCompanyId = vi.hoisted(() => vi.fn());
 const mockSetSidebarOpen = vi.hoisted(() => vi.fn());
-const mockSetForceCollapsed = vi.hoisted(() => vi.fn());
 const mockCompanyState = vi.hoisted(() => ({
   companies: [{ id: "company-1", issuePrefix: "PAP", name: "Paperclip" }],
   selectedCompany: { id: "company-1", issuePrefix: "PAP", name: "Paperclip" },
@@ -188,14 +187,9 @@ vi.mock("../context/SidebarContext", () => ({
     toggleSidebar: vi.fn(),
     toggleCollapsed: vi.fn(),
     collapsed: mockSidebarState.collapsed,
-    collapseLocked: false,
     peeking: mockSidebarState.peeking,
     setPeeking: mockSetPeeking,
     isMobile: mockSidebarState.isMobile,
-    forceCollapsed: false,
-    setForceCollapsed: mockSetForceCollapsed,
-    routeRequestsCollapsed: false,
-    setRouteRequestsCollapsed: vi.fn(),
   }),
 }));
 
@@ -429,7 +423,6 @@ describe("Layout", () => {
     expect(container.textContent).not.toContain("Instance sidebar");
     expect(container.textContent).not.toContain("Plugin route sidebar");
     // The route asks the host to collapse the app sidebar to its rail.
-    expect(mockSetForceCollapsed).toHaveBeenCalledWith(true);
 
     await act(async () => {
       root.unmount();
@@ -494,7 +487,6 @@ describe("Layout", () => {
     expect(container.textContent).toContain("Main company nav");
     expect(container.textContent).not.toContain("Company rail");
     expect(container.textContent).not.toContain("Plugin route sidebar");
-    expect(mockSetForceCollapsed).toHaveBeenCalledWith(true);
 
     await act(async () => {
       root.unmount();
@@ -521,7 +513,6 @@ describe("Layout", () => {
     expect(container.textContent).toContain("Apps sidebar");
     expect(container.textContent).toContain("Main company nav");
     expect(container.textContent).not.toContain("Company settings sidebar");
-    expect(mockSetForceCollapsed).toHaveBeenCalledWith(true);
 
     await act(async () => {
       root.unmount();
@@ -548,7 +539,6 @@ describe("Layout", () => {
 
     expect(container.textContent).not.toContain("Apps sidebar");
     expect(container.textContent).toContain("Main company nav");
-    expect(mockSetForceCollapsed).toHaveBeenCalledWith(false);
 
     await act(async () => {
       root.unmount();
@@ -713,7 +703,7 @@ describe("Layout", () => {
     });
   });
 
-  it("forces the app sidebar rail only for the Skills Store route", async () => {
+  it("keeps the main sidebar width stable across Skills Store routes", async () => {
     async function renderAt(pathname: string) {
       currentPathname = pathname;
       const root = createRoot(container);
@@ -734,17 +724,13 @@ describe("Layout", () => {
     }
 
     let root = await renderAt("/PAP/skills/studio");
-    expect(mockSetForceCollapsed).toHaveBeenCalledWith(true);
     await act(async () => {
       root.unmount();
     });
 
-    mockSetForceCollapsed.mockClear();
     container.innerHTML = "";
 
     root = await renderAt("/PAP/agents/briefing-analyst/skills");
-    expect(mockSetForceCollapsed).not.toHaveBeenCalledWith(true);
-    expect(mockSetForceCollapsed).toHaveBeenCalledWith(false);
 
     await act(async () => {
       root.unmount();
@@ -799,7 +785,6 @@ describe("Layout", () => {
     expect(container.textContent).toContain("Main company nav");
     expect(container.textContent).not.toContain("Company settings sidebar");
     expect(container.textContent).not.toContain("Instance sidebar");
-    expect(mockSetForceCollapsed).toHaveBeenCalledWith(true);
 
     await act(async () => {
       root.unmount();
@@ -982,9 +967,6 @@ describe("Layout", () => {
 
     expect(container.textContent).toContain("Main company nav");
     expect(container.textContent).not.toContain("Plugin route sidebar");
-    // No secondary pane, so the route must not force the sidebar collapsed.
-    expect(mockSetForceCollapsed).not.toHaveBeenCalledWith(true);
-    expect(mockSetForceCollapsed).toHaveBeenCalledWith(false);
 
     await act(async () => {
       root.unmount();

@@ -7,6 +7,7 @@ import {
 } from "@paperclipai/shared";
 import { Link } from "@/lib/router";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useTranslation } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { timeAgo } from "@/lib/timeAgo";
 import { appTabHref } from "../app-tabs";
@@ -38,6 +39,7 @@ function RecentActivity({
   appName,
   userLabelById,
 }: ActivityPanelProps) {
+  const { t } = useTranslation();
   const nameById = useMemo(() => new Map(agents.map((a) => [a.id, a.name])), [agents]);
 
   const rows = useMemo<TimelineRow[]>(() => {
@@ -76,7 +78,7 @@ function RecentActivity({
   return (
     <section className="space-y-2">
       <div>
-        <h2 className="text-sm font-bold text-foreground">Recent activity</h2>
+        <h2 className="text-sm font-bold text-foreground">{t("ui.appDetail.recentActivity")}</h2>
       </div>
       {loading ? (
         <div className="space-y-2 py-4">
@@ -84,7 +86,7 @@ function RecentActivity({
           <Skeleton className="h-4 w-2/3" />
         </div>
       ) : rows.length === 0 ? (
-        <p className="py-5 text-sm text-muted-foreground">No activity yet.</p>
+        <p className="py-5 text-sm text-muted-foreground">{t("ui.appDetail.noActivityYet")}</p>
       ) : (
         <ul className="divide-y divide-border">
           {rows.map((row) => (

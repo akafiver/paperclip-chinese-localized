@@ -59,8 +59,8 @@ describe("AgentStatusBadge", () => {
     }
   });
 
-  it('renders "active" as the idle label', () => {
-    expect(renderToStaticMarkup(<AgentStatusBadge status="active" />)).toContain("idle");
+  it('renders "active" as the localized idle label', () => {
+    expect(renderToStaticMarkup(<AgentStatusBadge status="active" />)).toContain("空闲");
   });
 });
 

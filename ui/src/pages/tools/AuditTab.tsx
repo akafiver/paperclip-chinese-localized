@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
+import { useTranslation } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { queryKeys } from "@/lib/queryKeys";
 import {
@@ -292,6 +293,7 @@ function ActivityRow({
 }
 
 export function AuditTab({ companyId }: { companyId: string }) {
+  const { t } = useTranslation();
   const [app, setApp] = useState<string>(ALL);
   const [agent, setAgent] = useState<string>(ALL);
   const [outcome, setOutcome] = useState<string>(ALL);
@@ -427,7 +429,7 @@ export function AuditTab({ companyId }: { companyId: string }) {
         />
         {hasActiveFilters ? (
           <Button variant="ghost" size="sm" onClick={clearFilters}>
-            Clear filters
+            {t("ui.toolsAudit.clearFilters")}
           </Button>
         ) : null}
       </div>
@@ -442,13 +444,13 @@ export function AuditTab({ companyId }: { companyId: string }) {
             <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
               <ScrollText className="h-10 w-10 text-muted-foreground/40" />
               <div>
-                <p className="text-sm font-medium text-foreground">No activity matches these filters</p>
+                <p className="text-sm font-medium text-foreground">{t("ui.toolsAudit.noActivityMatches")}</p>
                 <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                  Try a wider time window or different filters.
+                  {t("ui.toolsAudit.tryWiderWindow")}
                 </p>
               </div>
               <Button variant="outline" size="sm" onClick={clearFilters}>
-                Clear filters
+                {t("ui.toolsAudit.clearFilters")}
               </Button>
             </CardContent>
           </Card>
@@ -457,7 +459,7 @@ export function AuditTab({ companyId }: { companyId: string }) {
             <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
               <ScrollText className="h-10 w-10 text-muted-foreground/40" />
               <div>
-                <p className="text-sm font-medium text-foreground">Nothing here yet</p>
+                <p className="text-sm font-medium text-foreground">{t("ui.toolsAudit.nothingHereYet")}</p>
                 <p className="mt-1 max-w-md text-sm text-muted-foreground">
                   As soon as your agents start using connected apps, what they do shows up here.
                 </p>

@@ -3,17 +3,18 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { nextCronFires, parseCronExpression } from "../lib/cron-fires";
+import { useTranslation } from "@/i18n";
 
 export type SchedulePreset = "every_minute" | "every_hour" | "every_day" | "weekdays" | "weekly" | "monthly" | "custom";
 
-const PRESETS: { value: SchedulePreset; label: string }[] = [
-  { value: "every_minute", label: "Every minute" },
-  { value: "every_hour", label: "Every hour" },
-  { value: "every_day", label: "Every day" },
-  { value: "weekdays", label: "Weekdays" },
-  { value: "weekly", label: "Weekly" },
-  { value: "monthly", label: "Monthly" },
-  { value: "custom", label: "Custom (cron)" },
+const PRESETS: { value: SchedulePreset; labelKey: string }[] = [
+  { value: "every_minute", labelKey: "everyMinute" },
+  { value: "every_hour", labelKey: "everyHour" },
+  { value: "every_day", labelKey: "everyDay" },
+  { value: "weekdays", labelKey: "weekdays" },
+  { value: "weekly", labelKey: "weekly" },
+  { value: "monthly", labelKey: "monthly" },
+  { value: "custom", labelKey: "customCron" },
 ];
 
 const HOURS = Array.from({ length: 24 }, (_, i) => ({
@@ -200,6 +201,7 @@ export function ScheduleEditor({
   onChange: (cron: string) => void;
   onValidityChange?: (valid: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const parsed = useMemo(() => parseCronToPreset(value), [value]);
   const [preset, setPreset] = useState<SchedulePreset>(parsed.preset);
   const [hour, setHour] = useState(parsed.hour);
@@ -247,13 +249,13 @@ export function ScheduleEditor({
   return (
     <div className="space-y-3">
       <Select value={preset} onValueChange={(v) => handlePresetChange(v as SchedulePreset)}>
-        <SelectTrigger className="w-full" aria-label="Schedule frequency">
-          <SelectValue placeholder="Choose frequency..." />
+        <SelectTrigger className="w-full" aria-label={t("ui.schedule.frequency")}>
+          <SelectValue placeholder={t("ui.schedule.chooseFrequency")} />
         </SelectTrigger>
         <SelectContent>
           {PRESETS.map((p) => (
             <SelectItem key={p.value} value={p.value}>
-              {p.label}
+              {t(`ui.schedule.presets.${p.labelKey}`)}
             </SelectItem>
           ))}
         </SelectContent>

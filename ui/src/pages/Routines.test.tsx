@@ -505,14 +505,14 @@ describe("Routines page", () => {
       await flush();
     });
 
-    let sortButton = container.querySelector<HTMLButtonElement>('button[title="Sort"]');
-    let groupButton = container.querySelector<HTMLButtonElement>('button[title="Group"]');
+    let sortButton = container.querySelector<HTMLButtonElement>('button[title="排序"]');
+    let groupButton = container.querySelector<HTMLButtonElement>('button[title="分组"]');
     for (let attempts = 0; attempts < 5 && (!sortButton || !groupButton); attempts += 1) {
       await act(async () => {
         await flush();
       });
-      sortButton = container.querySelector<HTMLButtonElement>('button[title="Sort"]');
-      groupButton = container.querySelector<HTMLButtonElement>('button[title="Group"]');
+      sortButton = container.querySelector<HTMLButtonElement>('button[title="排序"]');
+      groupButton = container.querySelector<HTMLButtonElement>('button[title="分组"]');
     }
 
     expect(sortButton).not.toBeNull();
@@ -556,7 +556,7 @@ describe("Routines page", () => {
 
     const text = container.textContent ?? "";
     expect(text.indexOf("Morning sync")).toBeLessThan(text.indexOf("Weekly digest"));
-    expect(text).toContain("New folder");
+    expect(text).toContain("新建文件夹");
 
     await act(async () => {
       root.unmount();
@@ -595,15 +595,15 @@ describe("Routines page", () => {
       await flush();
     });
 
-    for (let attempts = 0; attempts < 5 && !container.textContent?.includes("Built-in routines"); attempts += 1) {
+    for (let attempts = 0; attempts < 5 && !container.textContent?.includes("内置例行任务"); attempts += 1) {
       await act(async () => {
         await flush();
       });
     }
 
     const text = container.textContent ?? "";
-    expect(text.indexOf("Morning sync")).toBeLessThan(text.indexOf("Built-in routines"));
-    expect(text.indexOf("Built-in routines")).toBeLessThan(text.indexOf("Reflection review"));
+    expect(text.indexOf("Morning sync")).toBeLessThan(text.indexOf("内置例行任务"));
+    expect(text.indexOf("内置例行任务")).toBeLessThan(text.indexOf("Reflection review"));
 
     await act(async () => {
       root.unmount();
@@ -699,14 +699,14 @@ describe("Routines page", () => {
       );
       await flush();
     });
-    for (let attempts = 0; attempts < 5 && !container.textContent?.includes("This folder is empty"); attempts += 1) {
+    for (let attempts = 0; attempts < 5 && !container.textContent?.includes("此文件夹为空"); attempts += 1) {
       await act(async () => {
         await flush();
       });
     }
 
-    expect(container.textContent).toContain("This folder is empty");
-    expect(container.textContent).toContain("New routine in this folder");
+    expect(container.textContent).toContain("此文件夹为空");
+    expect(container.textContent).toContain("在此文件夹中新建例行任务");
 
     await act(async () => {
       secondRoot.unmount();
@@ -743,7 +743,7 @@ describe("Routines page", () => {
     }
 
     const text = container.textContent ?? "";
-    expect(text).toContain("1 routine");
+    expect(text).toContain("1 例行任务");
     expect(text).toContain("Morning sync");
     expect(text).not.toContain("Archived cleanup");
 
@@ -773,14 +773,14 @@ describe("Routines page", () => {
     });
 
     let runNowButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("Run now"),
+      button.textContent?.includes("立即运行"),
     );
     for (let attempts = 0; attempts < 5 && !runNowButton; attempts += 1) {
       await act(async () => {
         await flush();
       });
       runNowButton = Array.from(container.querySelectorAll("button")).find((button) =>
-        button.textContent?.includes("Run now"),
+        button.textContent?.includes("立即运行"),
       );
     }
 
@@ -813,14 +813,14 @@ describe("Routines page", () => {
     });
 
     let createButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("Create routine"),
+      button.textContent?.includes("创建例行任务"),
     );
     for (let attempts = 0; attempts < 5 && !createButton; attempts += 1) {
       await act(async () => {
         await flush();
       });
       createButton = Array.from(container.querySelectorAll("button")).find((button) =>
-        button.textContent?.includes("Create routine"),
+        button.textContent?.includes("创建例行任务"),
       );
     }
 

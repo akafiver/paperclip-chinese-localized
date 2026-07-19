@@ -42,22 +42,22 @@ async function flushReact() {
 }
 
 const CONFERENCE_TOGGLE_SELECTOR =
-  'button[aria-label="Toggle conference room chat experimental setting"]';
+  'button[aria-label="切换会议室聊天实验设置"]';
 const STREAMLINED_TOGGLE_SELECTOR =
   'button[aria-label="Toggle streamlined left navigation experimental setting"]';
 const TASK_WATCHDOGS_TOGGLE_SELECTOR =
-  'button[aria-label="Toggle task watchdogs experimental setting"]';
+  'button[aria-label="切换任务 Watchdog 实验设置"]';
 const GOALS_SIDEBAR_LINK_TOGGLE_SELECTOR =
-  'button[aria-label="Toggle goals sidebar link experimental setting"]';
+  'button[aria-label="切换目标侧栏入口实验设置"]';
 const DECISIONS_TOGGLE_SELECTOR =
-  'button[aria-label="Toggle decisions experimental setting"]';
+  'button[aria-label="切换 Decisions 实验设置"]';
 const SERVER_INFO_TOGGLE_SELECTOR =
-  'button[aria-label="Toggle server info debug view experimental setting"]';
+  'button[aria-label="切换服务器信息调试视图实验设置"]';
 const BUILT_IN_AGENTS_TOGGLE_SELECTOR =
-  'button[aria-label="Toggle built-in agents experimental setting"]';
-const APPS_TOGGLE_SELECTOR = 'button[aria-label="Toggle apps experimental setting"]';
+  'button[aria-label="切换内置 Agent 实验设置"]';
+const APPS_TOGGLE_SELECTOR = 'button[aria-label="切换 Apps 实验设置"]';
 const AUTO_RECOVERY_TOGGLE_SELECTOR =
-  'button[aria-label="Toggle task graph liveness auto-recovery"]';
+  'button[aria-label="切换任务图活跃性自动恢复"]';
 
 function defaultExperimentalSettings(): InstanceExperimentalSettingsPayload {
   return {
@@ -102,7 +102,7 @@ function emptyRecoveryPreview(): IssueGraphLivenessAutoRecoveryPreview {
 }
 
 const WORKTREE_RUN_EXECUTION_TOGGLE_SELECTOR =
-  'button[aria-label="Toggle worktree run execution setting"]';
+  'button[aria-label="切换 worktree 运行执行设置"]';
 
 function setWorktreeRuntimeMeta(enabled: boolean) {
   const name = "paperclip-worktree-enabled";
@@ -182,10 +182,10 @@ describe("InstanceExperimentalSettings — Conference Room Chat card (PAP-11233)
     await renderPage();
 
     const warning = [...container.querySelectorAll('[role="alert"]')].find((alert) =>
-      alert.textContent?.includes("Experimental features may break at any time."),
+      alert.textContent?.includes("实验功能可能随时发生破坏性变化。"),
     );
-    expect(warning?.textContent).toContain("Experimental features may break at any time.");
-    expect(warning?.textContent).toContain("no compatibility guarantees");
+    expect(warning?.textContent).toContain("实验功能可能随时发生破坏性变化。");
+    expect(warning?.textContent).toContain("不提供兼容性保证");
   });
 
   it("enables the Apps UI from experimental settings", async () => {
@@ -205,7 +205,7 @@ describe("InstanceExperimentalSettings — Conference Room Chat card (PAP-11233)
     await renderPage();
 
     const headings = [...container.querySelectorAll("section h2")].map((h) => h.textContent);
-    expect(headings).not.toContain("Conference Room Chat");
+    expect(headings).not.toContain("会议室聊天");
     expect(container.querySelector(CONFERENCE_TOGGLE_SELECTOR)).toBeNull();
   });
 
@@ -241,9 +241,9 @@ describe("InstanceExperimentalSettings — Conference Room Chat card (PAP-11233)
   it("renders and patches the Task Watchdogs experimental toggle on and off", async () => {
     await renderPage();
 
-    expect(container.textContent).toContain("Task Watchdogs");
+    expect(container.textContent).toContain("任务 Watchdog");
     expect(container.textContent).toContain(
-      "Show task detail controls for configuring watchdog agents that verify stopped task subtrees and restore live paths when work should continue.",
+      "在任务详情中显示 Watchdog Agent 配置控件",
     );
 
     const toggle = container.querySelector<HTMLButtonElement>(TASK_WATCHDOGS_TOGGLE_SELECTOR);
@@ -284,7 +284,7 @@ describe("InstanceExperimentalSettings — Conference Room Chat card (PAP-11233)
 
     expect(container.textContent).toContain("Decisions");
     expect(container.textContent).toContain(
-      "Show the Decisions item in the main sidebar",
+      "在主侧栏显示 Decisions",
     );
 
     const toggle = container.querySelector<HTMLButtonElement>(DECISIONS_TOGGLE_SELECTOR);
@@ -304,9 +304,9 @@ describe("InstanceExperimentalSettings — Conference Room Chat card (PAP-11233)
   it("renders and patches the Goals Sidebar Link experimental toggle", async () => {
     await renderPage();
 
-    expect(container.textContent).toContain("Goals Sidebar Link");
+    expect(container.textContent).toContain("目标侧栏入口");
     expect(container.textContent).toContain(
-      "Restore the Goals item in the main sidebar while the goals surface is being evaluated.",
+      "恢复主侧栏中的 Goals 项",
     );
 
     const toggle = container.querySelector<HTMLButtonElement>(GOALS_SIDEBAR_LINK_TOGGLE_SELECTOR);
@@ -328,7 +328,7 @@ describe("InstanceExperimentalSettings — Conference Room Chat card (PAP-11233)
     await renderPage();
 
     const headings = [...container.querySelectorAll("section h2")].map((h) => h.textContent);
-    expect(headings).not.toContain("Run tasks in this worktree");
+    expect(headings).not.toContain("在此 worktree 中运行任务");
     expect(container.querySelector(WORKTREE_RUN_EXECUTION_TOGGLE_SELECTOR)).toBeNull();
   });
 
@@ -336,9 +336,9 @@ describe("InstanceExperimentalSettings — Conference Room Chat card (PAP-11233)
     setWorktreeRuntimeMeta(true);
     await renderPage();
 
-    expect(container.textContent).toContain("Run tasks in this worktree");
+    expect(container.textContent).toContain("在此 worktree 中运行任务");
     expect(container.textContent).toContain(
-      "isolated git-worktree preview instance",
+      "隔离的 git-worktree 预览实例",
     );
 
     const toggle = container.querySelector<HTMLButtonElement>(WORKTREE_RUN_EXECUTION_TOGGLE_SELECTOR);
@@ -360,12 +360,12 @@ describe("InstanceExperimentalSettings — Conference Room Chat card (PAP-11233)
     await renderPage();
 
     expect(container.textContent).toContain(
-      "Only tasks created after enabling will run automatically",
+      "只有启用后创建的任务会自动运行",
     );
-    expect(container.textContent).toContain("Toggling off and on resets the cutoff.");
+    expect(container.textContent).toContain("关闭后再打开会重置截止点。");
     // Off => no armed banner and no fail-closed hint.
-    expect(container.textContent).not.toContain("Running tasks created after");
-    expect(container.textContent).not.toContain("Execution is suppressed");
+    expect(container.textContent).not.toContain("正在运行创建时间晚于以下时间的任务");
+    expect(container.textContent).not.toContain("执行已被抑制");
   });
 
   it("shows the armed timestamp when the flag matches the current instance", async () => {
@@ -379,8 +379,8 @@ describe("InstanceExperimentalSettings — Conference Room Chat card (PAP-11233)
     };
     await renderPage();
 
-    expect(container.textContent).toContain("Running tasks created after");
-    expect(container.textContent).not.toContain("Execution is suppressed");
+    expect(container.textContent).toContain("正在运行创建时间晚于以下时间的任务");
+    expect(container.textContent).not.toContain("执行已被抑制");
     const toggle = container.querySelector<HTMLButtonElement>(WORKTREE_RUN_EXECUTION_TOGGLE_SELECTOR);
     expect(toggle?.getAttribute("aria-checked")).toBe("true");
   });
@@ -396,10 +396,10 @@ describe("InstanceExperimentalSettings — Conference Room Chat card (PAP-11233)
     };
     await renderPage();
 
-    expect(container.textContent).toContain("Execution is suppressed");
-    expect(container.textContent).toContain("armed in a different instance");
-    expect(container.textContent).toContain("Toggle it off and back on");
-    expect(container.textContent).not.toContain("Running tasks created after");
+    expect(container.textContent).toContain("执行已被抑制");
+    expect(container.textContent).toContain("另一个实例中启用");
+    expect(container.textContent).toContain("先关闭再重新打开");
+    expect(container.textContent).not.toContain("正在运行创建时间晚于以下时间的任务");
   });
 
   it("fails closed with a re-enable hint when the activation cutoff is missing", async () => {
@@ -413,16 +413,16 @@ describe("InstanceExperimentalSettings — Conference Room Chat card (PAP-11233)
     };
     await renderPage();
 
-    expect(container.textContent).toContain("Execution is suppressed");
-    expect(container.textContent).toContain("missing its activation cutoff");
-    expect(container.textContent).not.toContain("Running tasks created after");
+    expect(container.textContent).toContain("执行已被抑制");
+    expect(container.textContent).toContain("缺少启用截止点");
+    expect(container.textContent).not.toContain("正在运行创建时间晚于以下时间的任务");
   });
 
   it("renders and patches the Built-in Agents experimental toggle", async () => {
     await renderPage();
 
-    expect(container.textContent).toContain("Built-in Agents");
-    expect(container.textContent).toContain("Show Paperclip-managed built-in agent surfaces");
+    expect(container.textContent).toContain("内置 Agent");
+    expect(container.textContent).toContain("显示 Paperclip 托管的内置 Agent 界面");
 
     const toggle = container.querySelector<HTMLButtonElement>(BUILT_IN_AGENTS_TOGGLE_SELECTOR);
     expect(toggle?.getAttribute("aria-checked")).toBe("false");
@@ -441,9 +441,9 @@ describe("InstanceExperimentalSettings — Conference Room Chat card (PAP-11233)
   it("renders and patches the Server Info Debug View experimental toggle", async () => {
     await renderPage();
 
-    expect(container.textContent).toContain("Server Info Debug View");
+    expect(container.textContent).toContain("服务器信息调试视图");
     expect(container.textContent).toContain(
-      'Show a "Server" section in the account drawer with the current server restart time and running commit.',
+      "在账户抽屉中显示 Server 区块",
     );
 
     const toggle = container.querySelector<HTMLButtonElement>(SERVER_INFO_TOGGLE_SELECTOR);
@@ -475,11 +475,11 @@ describe("InstanceExperimentalSettings — Conference Room Chat card (PAP-11233)
     expect(mockInstanceSettingsApi.previewIssueGraphLivenessAutoRecovery).toHaveBeenCalledWith({
       lookbackHours: 24,
     });
-    expect(document.body.textContent).toContain("Confirm auto-recovery");
+    expect(document.body.textContent).toContain("确认自动恢复");
     expect(document.body.querySelector('[data-slot="dialog-overlay"]')).not.toBeNull();
 
     const enableOnlyButton = [...document.body.querySelectorAll<HTMLButtonElement>("button")].find(
-      (button) => button.textContent === "Enable only",
+      (button) => button.textContent === "仅启用",
     );
 
     await act(async () => {
@@ -491,7 +491,7 @@ describe("InstanceExperimentalSettings — Conference Room Chat card (PAP-11233)
       enableIssueGraphLivenessAutoRecovery: true,
       issueGraphLivenessAutoRecoveryLookbackHours: 24,
     });
-    expect(document.body.textContent).not.toContain("Confirm auto-recovery");
+    expect(document.body.textContent).not.toContain("确认自动恢复");
     expect(document.body.querySelector('[data-slot="dialog-overlay"]')).toBeNull();
     const enabledToggle = container.querySelector<HTMLButtonElement>(AUTO_RECOVERY_TOGGLE_SELECTOR);
     expect(enabledToggle?.getAttribute("aria-checked")).toBe("true");
@@ -519,11 +519,11 @@ describe("InstanceExperimentalSettings — Conference Room Chat card (PAP-11233)
     });
     await flushReact();
 
-    expect(document.body.textContent).toContain("Confirm auto-recovery");
+    expect(document.body.textContent).toContain("确认自动恢复");
     expect(document.body.querySelector('[data-slot="dialog-overlay"]')).not.toBeNull();
 
     const enableAndRunButton = [...document.body.querySelectorAll<HTMLButtonElement>("button")].find(
-      (button) => button.textContent === "Enable",
+      (button) => button.textContent === "启用",
     );
 
     await act(async () => {
@@ -538,7 +538,7 @@ describe("InstanceExperimentalSettings — Conference Room Chat card (PAP-11233)
     expect(mockInstanceSettingsApi.runIssueGraphLivenessAutoRecovery).toHaveBeenCalledWith({
       lookbackHours: 24,
     });
-    expect(document.body.textContent).not.toContain("Confirm auto-recovery");
+    expect(document.body.textContent).not.toContain("确认自动恢复");
     expect(document.body.querySelector('[data-slot="dialog-overlay"]')).toBeNull();
     const enabledToggle = container.querySelector<HTMLButtonElement>(AUTO_RECOVERY_TOGGLE_SELECTOR);
     expect(enabledToggle?.getAttribute("aria-checked")).toBe("true");

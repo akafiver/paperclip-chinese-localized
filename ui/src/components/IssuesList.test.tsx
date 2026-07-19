@@ -556,14 +556,14 @@ describe("IssuesList", () => {
 
     await waitForAssertion(() => {
       const button = Array.from(container.querySelectorAll("button")).find(
-        (candidate) => candidate.textContent?.includes("New Sub-issue"),
+        (candidate) => candidate.textContent?.includes("新建Sub-issue"),
       );
       expect(button).not.toBeUndefined();
     });
 
     await act(async () => {
       const button = Array.from(container.querySelectorAll("button")).find(
-        (candidate) => candidate.textContent?.includes("New Sub-issue"),
+        (candidate) => candidate.textContent?.includes("新建Sub-issue"),
       );
       button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       await Promise.resolve();
@@ -699,11 +699,11 @@ describe("IssuesList", () => {
       expect(progress).not.toBeNull();
       expect(progress?.getAttribute("aria-valuenow")).toBe("1");
       expect(progress?.getAttribute("aria-valuemax")).toBe("3");
-      expect(container.textContent).toContain("1/3 done");
-      expect(container.textContent).toContain("0 in progress");
-      expect(container.textContent).toContain("1 blocked");
+      expect(container.textContent).toContain("1/3 已完成");
+      expect(container.textContent).toContain("0 个进行中");
+      expect(container.textContent).toContain("1 个已阻塞");
       expect(container.textContent).not.toContain("Done 1");
-      expect(container.textContent).toContain("Next up");
+      expect(container.textContent).toContain("下一步");
       const link = container.querySelector('a[href="/issues/PAP-2"]');
       expect(link?.textContent).toContain("Implement next slice");
       expect(container.querySelector('[title="Cancelled: 1"]')).toBeNull();
@@ -1025,7 +1025,7 @@ describe("IssuesList", () => {
     );
 
     await waitForAssertion(() => {
-      expect(container.textContent).toContain("Waiting on blockers");
+      expect(container.textContent).toContain("等待阻塞项");
       const link = container.querySelector('a[href="/issues/PAP-2"]');
       expect(link?.textContent).toContain("Blocked follow-up");
     });
@@ -1053,7 +1053,7 @@ describe("IssuesList", () => {
       container,
     );
 
-    const input = container.querySelector('input[aria-label="Search tasks"]') as HTMLInputElement | null;
+    const input = container.querySelector('input[aria-label="搜索任务"]') as HTMLInputElement | null;
     expect(input).not.toBeNull();
     const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
     expect(valueSetter).toBeTypeOf("function");
@@ -1115,7 +1115,7 @@ describe("IssuesList", () => {
     );
 
     await waitForAssertion(() => {
-      expect(container.textContent).toContain("Showing up to 200 matches. Refine the search to narrow further.");
+      expect(container.textContent).toContain("最多显示 200 条匹配结果。请细化搜索以进一步缩小范围。");
     });
 
     act(() => {
@@ -1326,7 +1326,7 @@ describe("IssuesList", () => {
     );
 
     await waitForAssertion(() => {
-      expect(container.textContent).toContain("Some board columns are showing up to 200 tasks. Refine filters or search to reveal the rest.");
+      expect(container.textContent).toContain("部分看板列最多显示 200 个任务。请细化筛选或搜索以显示其余任务。");
     });
 
     act(() => {
@@ -1356,7 +1356,7 @@ describe("IssuesList", () => {
 
     await waitForAssertion(() => {
       expect(container.querySelectorAll('[data-testid="issue-row"]')).toHaveLength(100);
-      expect(container.textContent).toContain("Rendering 100 of 220 tasks");
+      expect(container.textContent).toContain("正在渲染 100 / 220 个任务");
     });
 
     act(() => {
@@ -1398,7 +1398,7 @@ describe("IssuesList", () => {
 
     await waitForAssertion(() => {
       expect(container.querySelectorAll('[data-testid="issue-row"]')).toHaveLength(250);
-      expect(container.textContent).toContain("Rendering 250 of 420 tasks");
+      expect(container.textContent).toContain("正在渲染 250 / 420 个任务");
     });
 
     act(() => {
@@ -1570,12 +1570,12 @@ describe("IssuesList", () => {
 
     await waitForAssertion(() => {
       const columnsButton = Array.from(document.body.querySelectorAll("button")).find(
-        (button) => button.getAttribute("title") === "Columns",
+        (button) => button.getAttribute("title") === "列",
       );
       expect(columnsButton).not.toBeUndefined();
       expect(container.textContent).toContain("PAP-9");
       expect(container.textContent).toContain("Agent One");
-      expect(container.textContent).not.toContain("Updated");
+      expect(container.textContent).not.toContain("更新时间");
     });
 
     act(() => {
@@ -1800,7 +1800,7 @@ describe("IssuesList", () => {
 
     await act(async () => {
       const filterButton = Array.from(document.body.querySelectorAll("button")).find(
-        (button) => button.getAttribute("title") === "Filter",
+        (button) => button.getAttribute("title") === "筛选",
       );
       filterButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       await Promise.resolve();
@@ -1808,14 +1808,14 @@ describe("IssuesList", () => {
 
     await waitForAssertion(() => {
       const toggle = Array.from(document.body.querySelectorAll("label")).find(
-        (label) => label.textContent?.includes("Hide routine runs"),
+        (label) => label.textContent?.includes("隐藏例行运行"),
       );
       expect(toggle).not.toBeUndefined();
     });
 
     await act(async () => {
       const toggle = Array.from(document.body.querySelectorAll("label")).find(
-        (label) => label.textContent?.includes("Hide routine runs"),
+        (label) => label.textContent?.includes("隐藏例行运行"),
       );
       toggle?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       await Promise.resolve();
@@ -1844,13 +1844,13 @@ describe("IssuesList", () => {
     );
 
     await waitForAssertion(() => {
-      const input = container.querySelector('input[aria-label="Search tasks"]') as HTMLInputElement | null;
+      const input = container.querySelector('input[aria-label="搜索任务"]') as HTMLInputElement | null;
       expect(input).not.toBeNull();
       input?.focus();
       expect(document.activeElement).toBe(input);
     });
 
-    const input = container.querySelector('input[aria-label="Search tasks"]') as HTMLInputElement;
+    const input = container.querySelector('input[aria-label="搜索任务"]') as HTMLInputElement;
     act(() => {
       input.dispatchEvent(new KeyboardEvent("keydown", {
         key: "Enter",
@@ -1880,13 +1880,13 @@ describe("IssuesList", () => {
     );
 
     await waitForAssertion(() => {
-      const input = container.querySelector('input[aria-label="Search tasks"]') as HTMLInputElement | null;
+      const input = container.querySelector('input[aria-label="搜索任务"]') as HTMLInputElement | null;
       expect(input).not.toBeNull();
       input?.focus();
       expect(document.activeElement).toBe(input);
     });
 
-    const input = container.querySelector('input[aria-label="Search tasks"]') as HTMLInputElement;
+    const input = container.querySelector('input[aria-label="搜索任务"]') as HTMLInputElement;
     act(() => {
       input.dispatchEvent(new KeyboardEvent("keydown", {
         key: "Escape",

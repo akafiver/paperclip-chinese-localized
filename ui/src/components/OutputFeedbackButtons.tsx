@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { ThumbsDown, ThumbsUp } from "lucide-react";
 import { cn } from "../lib/utils";
+import { useTranslation } from "@/i18n";
 
 export function OutputFeedbackButtons({
   activeVote,
@@ -30,6 +31,7 @@ export function OutputFeedbackButtons({
   rightSlot?: React.ReactNode;
   inline?: boolean;
 }) {
+  const { t } = useTranslation();
   const [pendingVote, setPendingVote] = useState<{
     vote: FeedbackVoteValue;
     reason?: string;
@@ -191,24 +193,23 @@ export function OutputFeedbackButtons({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Save your feedback sharing preference</DialogTitle>
+            <DialogTitle>{t("ui.agentBubble.sharingPreferenceTitle")}</DialogTitle>
             <DialogDescription>
-              Choose whether voted AI outputs can be shared with Paperclip Labs. This
-              answer becomes the default for future thumbs up and thumbs down votes.
+              {t("ui.agentBubble.sharingPreferenceDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 text-sm text-muted-foreground">
             <p>
-              This vote is always saved locally.
+              {t("ui.agentBubble.voteSavedLocally")}
             </p>
             <p>
-              Choose <span className="font-medium text-foreground">Always allow</span> to share
-              this vote and future voted AI outputs. Choose{" "}
-              <span className="font-medium text-foreground">Don't allow</span> to keep this vote
-              and future votes local.
+              {t("ui.agentBubble.chooseAllowPrefix")} <span className="font-medium text-foreground">{t("ui.agentBubble.alwaysAllow")}</span>{" "}
+              {t("ui.agentBubble.chooseAllowMiddle")}{" "}
+              <span className="font-medium text-foreground">{t("ui.agentBubble.dontAllow")}</span>{" "}
+              {t("ui.agentBubble.chooseAllowSuffix")}
             </p>
             <p>
-              You can change this later in Instance Settings &gt; General.
+              {t("ui.agentBubble.changeLater")}
             </p>
             {termsUrl ? (
               <a
@@ -217,7 +218,7 @@ export function OutputFeedbackButtons({
                 rel="noreferrer"
                 className="inline-flex text-sm text-foreground underline underline-offset-4"
               >
-                Read our terms of service
+                {t("ui.agentBubble.readTerms")}
               </a>
             ) : null}
           </div>
@@ -238,7 +239,7 @@ export function OutputFeedbackButtons({
                 );
               }}
             >
-              {isSaving ? "Saving..." : "Don't allow"}
+              {isSaving ? t("ui.agentBubble.saving") : t("ui.agentBubble.dontAllow")}
             </Button>
             <Button
               type="button"
@@ -258,7 +259,7 @@ export function OutputFeedbackButtons({
                 );
               }}
             >
-              {isSaving ? "Saving..." : "Always allow"}
+              {isSaving ? t("ui.agentBubble.saving") : t("ui.agentBubble.alwaysAllow")}
             </Button>
           </DialogFooter>
         </DialogContent>

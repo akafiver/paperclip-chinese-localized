@@ -36,6 +36,7 @@ import { RoutineTriggerCard } from "../RoutineTriggerCard";
 import { EnvironmentVariablesEditor } from "../environment-variables-editor";
 import { createDefaultNewTrigger, useRoutineDetail } from "./context";
 import type { EnvBinding, RoutineDetail as RoutineDetailType } from "@paperclipai/shared";
+import { useTranslation } from "@/i18n";
 
 const concurrencyPolicyOptions = [
   {
@@ -83,6 +84,7 @@ export function OverviewSection({
 }: {
   defaultDescriptionAnnotationsOpen?: boolean;
 } = {}) {
+  const { t } = useTranslation();
   const ctx = useRoutineDetail();
   const {
     routine,
@@ -126,16 +128,16 @@ export function OverviewSection({
       {/* Assignment row */}
       <div className="overflow-x-auto overscroll-x-contain">
         <div className="inline-flex min-w-full flex-wrap items-center gap-2 text-sm text-muted-foreground sm:min-w-max sm:flex-nowrap">
-          <span>For</span>
+          <span>{t("ui.routineSections.for")}</span>
           <InlineEntitySelector
             ref={assigneeSelectorRef}
             value={editDraft.assigneeAgentId}
             options={assigneeOptions}
             recentOptionIds={recentAssigneeIds}
-            placeholder="Responsible"
-            noneLabel="No responsible"
-            searchPlaceholder="Search responsible..."
-            emptyMessage="No responsible found."
+            placeholder={t("ui.commentThread.responsible")}
+            noneLabel={t("ui.commentThread.noResponsible")}
+            searchPlaceholder={t("ui.commentThread.searchResponsible")}
+            emptyMessage={t("ui.commentThread.noResponsibleFound")}
             onChange={(assigneeAgentId) =>
               setEditDraft((current) => ({ ...current, assigneeAgentId }))
             }
@@ -173,16 +175,16 @@ export function OverviewSection({
               );
             }}
           />
-          <span>in</span>
+          <span>{t("ui.routineSections.in")}</span>
           <InlineEntitySelector
             ref={projectSelectorRef}
             value={editDraft.projectId}
             options={projectOptions}
             recentOptionIds={recentProjectIds}
-            placeholder="Project"
-            noneLabel="No project"
-            searchPlaceholder="Search projects..."
-            emptyMessage="No projects found."
+            placeholder={t("ui.routineSections.project")}
+            noneLabel={t("ui.routineSections.noProject")}
+            searchPlaceholder={t("ui.routineSections.searchProjects")}
+            emptyMessage={t("ui.routineSections.noProjectsFound")}
             onChange={(projectId) => setEditDraft((current) => ({ ...current, projectId }))}
             onConfirm={() => descriptionEditorRef.current?.focus()}
             renderTriggerValue={(option) =>
@@ -195,7 +197,7 @@ export function OverviewSection({
                   <span className="truncate">{option.label}</span>
                 </>
               ) : (
-                <span className="text-muted-foreground">Project</span>
+                <span className="text-muted-foreground">{t("ui.routineSections.project")}</span>
               )
             }
             renderOption={(option) => {
@@ -217,8 +219,7 @@ export function OverviewSection({
 
       {!routine.assigneeAgentId ? (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-900 dark:text-amber-200">
-          Default agent required. This routine can stay as a draft and still run manually, but
-          automation stays paused until you assign a default agent.
+          {t("ui.routineSections.defaultAgentRequiredDescription")}
         </div>
       ) : null}
 
@@ -252,7 +253,7 @@ export function OverviewSection({
               ref={descriptionEditorRef}
               value={editDraft.description}
               onChange={(description) => setEditDraft((current) => ({ ...current, description }))}
-              placeholder="Add instructions..."
+              placeholder={t("ui.routineSections.addInstructions")}
               bordered={false}
               contentClassName="min-h-(--sz-120px) text-sm leading-7"
               mentions={mentionOptions}
@@ -268,7 +269,7 @@ export function OverviewSection({
             ref={descriptionEditorRef}
             value={editDraft.description}
             onChange={(description) => setEditDraft((current) => ({ ...current, description }))}
-            placeholder="Add instructions..."
+            placeholder={t("ui.routineSections.addInstructions")}
             bordered={false}
             contentClassName="min-h-(--sz-120px) text-sm leading-7"
             mentions={mentionOptions}
@@ -296,37 +297,37 @@ export function OverviewSection({
       <div className="grid gap-3 sm:grid-cols-3">
         <SummaryCard
           icon={Clock3}
-          label="Triggers"
-          value={activeTriggers === 0 ? "None" : `${activeTriggers} active`}
-          hint={nextFire ? `Next fire ${nextFire}` : "No schedule"}
+          label={t("ui.routineSections.triggers")}
+          value={activeTriggers === 0 ? t("ui.routineSections.none") : t("ui.routineSections.activeCount", { count: activeTriggers })}
+          hint={nextFire ? t("ui.routineSections.nextFire", { time: nextFire }) : t("ui.routineSections.noSchedule")}
           to={() => navigateToSection("triggers")}
-          ariaLabel={`${activeTriggers} triggers. Open triggers.`}
+          ariaLabel={t("ui.routineSections.openTriggers", { count: activeTriggers })}
         />
         <SummaryCard
           icon={KeyRound}
-          label="Secrets"
-          value={boundSecrets === 0 ? "None" : `${boundSecrets} bound`}
-          hint="Manage bound secrets"
+          label={t("ui.routineSections.secrets")}
+          value={boundSecrets === 0 ? t("ui.routineSections.none") : t("ui.routineSections.boundCount", { count: boundSecrets })}
+          hint={t("ui.routineSections.manageBoundSecrets")}
           to={() => navigateToSection("secrets")}
-          ariaLabel={`${boundSecrets} secrets bound. Open secrets.`}
+          ariaLabel={t("ui.routineSections.openSecrets", { count: boundSecrets })}
         />
         <SummaryCard
           icon={Play}
-          label="Last run"
-          value={lastRun ? lastRun.status.replaceAll("_", " ") : "No runs"}
-          hint={lastRun ? timeAgo(lastRun.triggeredAt) : "Trigger a run"}
+          label={t("ui.routineSections.lastRun")}
+          value={lastRun ? lastRun.status.replaceAll("_", " ") : t("ui.routineSections.noRuns")}
+          hint={lastRun ? timeAgo(lastRun.triggeredAt) : t("ui.routineSections.triggerRun")}
           to={() => navigateToSection("runs")}
-          ariaLabel={lastRun ? `Last run ${lastRun.status}. Open runs.` : "No runs. Open runs."}
+          ariaLabel={lastRun ? t("ui.routineSections.openLastRun", { status: lastRun.status }) : t("ui.routineSections.openRunsEmpty")}
         />
       </div>
 
       {/* Recent activity */}
       <div className="space-y-2">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Recent activity
+          {t("ui.routineSections.recentActivity")}
         </p>
         {recentActivity.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No activity yet.</p>
+          <p className="text-xs text-muted-foreground">{t("ui.routineSections.noActivity")}</p>
         ) : (
           <div className="divide-y divide-border/60">
             {recentActivity.map((event) => (
@@ -347,7 +348,7 @@ export function OverviewSection({
               onClick={() => navigateToSection("activity")}
               className="flex items-center gap-1 pt-2 text-xs text-muted-foreground hover:text-foreground"
             >
-              View all activity <ArrowRight className="h-3 w-3" />
+              {t("ui.routineSections.viewAllActivity")} <ArrowRight className="h-3 w-3" />
             </button>
           </div>
         )}

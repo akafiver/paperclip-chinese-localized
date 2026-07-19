@@ -15,7 +15,6 @@ import { useCompany } from "@/context/CompanyContext";
 import { useBreadcrumbs } from "@/context/BreadcrumbContext";
 import { EmptyState } from "@/components/EmptyState";
 import { PageSkeleton } from "@/components/PageSkeleton";
-import { RequestCollapsedSidebar } from "@/components/RequestCollapsedSidebar";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -291,7 +290,6 @@ export function Timeline() {
   if (!selectedCompanyId) {
     return (
       <>
-        <RequestCollapsedSidebar />
         <EmptyState icon={GanttChartSquare} message={t("ui.selectCompany.timeline")} />
       </>
     );
@@ -403,7 +401,6 @@ export function Timeline() {
 
   return (
     <div className="space-y-6">
-      <RequestCollapsedSidebar />
       {header}
       {toolbar}
 

@@ -23,13 +23,20 @@ import {
   recoveryChipLabel,
 } from "../lib/recovery-display";
 import { StatusGlyph } from "./StatusGlyph";
+import { useTranslation } from "@/i18n";
 
 function BlockerRecoveryIndicator({ action }: { action: IssueRecoveryAction }) {
+  const { t } = useTranslation();
   const state = deriveActiveRecoveryDisplayState(action);
   if (!state) return null;
   const tone = RECOVERY_CHIP_DEFAULT_TONE[state];
   const Icon = tone.icon;
-  const label = recoveryChipLabel(state, action.kind);
+  const defaultLabel = recoveryChipLabel(state, action.kind);
+  const labelKey = action.kind === "workspace_validation" && state === "needed"
+    ? "ui.recoveryChip.workspaceRecoveryNeeded"
+    : `ui.recoveryChip.${state}`;
+  const translatedLabel = t(labelKey);
+  const label = translatedLabel === labelKey ? defaultLabel : translatedLabel;
   return (
     <Badge variant="outline"
       data-testid="issue-blocked-notice-recovery-indicator"
@@ -37,7 +44,7 @@ function BlockerRecoveryIndicator({ action }: { action: IssueRecoveryAction }) {
       data-recovery-kind={action.kind}
       role="status"
       aria-label={label}
-      title={`${label} — open the source task to act.`}
+      title={t("ui.recoveryChip.title", { label })}
       className={`[&>svg]:size-2.5 gap-0.5 px-1.5 text-(length:--text-nano) ${tone.className}`}
     >
       <Icon className="h-2.5 w-2.5" aria-hidden />
@@ -204,6 +211,7 @@ function WaitingOnLiveWorkNotice({
   parkedBlockers: IssueRelationIssueSummary[];
   renderParkedChip: (blocker: IssueRelationIssueSummary) => ReactNode;
 }) {
+  const { t } = useTranslation();
   const steps = chainBlockers
     .map((blocker) => ({ blocker, status: classifyWaitingStep(blocker, liveIds) }))
     .sort((a, b) => {
@@ -339,7 +347,7 @@ function WaitingOnLiveWorkNotice({
             >
               <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-800 dark:text-amber-200">
                 <Flag className="h-3 w-3" aria-hidden />
-                Blocked by parked work
+                {t("ui.issueRow.blockedByParkedWork")}
               </span>
               {parkedBlockers.map((blocker) => renderParkedChip(blocker))}
             </div>
@@ -378,6 +386,7 @@ export function IssueBlockedNotice({
   scheduledRetry?: IssueScheduledRetry | null;
   agentName?: string | null;
 }) {
+  const { t } = useTranslation();
   if (issueStatus === "done" || issueStatus === "cancelled") return null;
   const showSuccessfulRunHandoff = successfulRunHandoff?.required === true;
   if (!showSuccessfulRunHandoff && blockers.length === 0 && issueStatus !== "blocked") return null;
@@ -631,7 +640,7 @@ export function IssueBlockedNotice({
                 >
                   <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-800 dark:text-amber-200">
                     <Flag className="h-3 w-3" aria-hidden />
-                    Blocked by parked work
+                    {t("ui.issueRow.blockedByParkedWork")}
                   </span>
                   {parkedBlockers.map(renderBlockerChip)}
                 </div>

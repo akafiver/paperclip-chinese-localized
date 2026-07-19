@@ -14,10 +14,10 @@ import {
   recoveryChipLabel,
 } from "../lib/recovery-display";
 import { StatusIcon } from "./StatusIcon";
-import { productivityReviewTriggerLabel } from "./ProductivityReviewBadge";
 import { hasAssignedBacklogBlocker } from "../lib/issue-blockers";
 import { ExternalObjectStatusSummary } from "./ExternalObjectStatusSummary";
 import { Badge } from "@/components/ui/badge";
+import { useTranslation } from "@/i18n";
 
 type UnreadState = "hidden" | "visible" | "fading";
 
@@ -88,6 +88,7 @@ export function IssueRow({
   chevronInGuide = false,
   hideDivider = false,
 }: IssueRowProps) {
+  const { t } = useTranslation();
   const issuePathId = issue.identifier ?? issue.id;
   const identifier = issue.identifier ?? issue.id.slice(0, 8);
   // A row participates in the unread system whenever `unreadState` is supplied
@@ -116,7 +117,7 @@ export function IssueRow({
         "inline-flex h-4 w-4 items-center justify-center rounded-full transition-colors",
         selected ? "hover:bg-muted/80" : "hover:bg-blue-500/20",
       )}
-      aria-label="Mark as read"
+      aria-label={t("ui.issueRow.markAsRead")}
     >
       <span
         className={cn(
@@ -136,8 +137,10 @@ export function IssueRow({
         "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-300",
         selected ? "border-muted-foreground text-muted-foreground" : null,
       )}
-      title={`Productivity review: ${productivityReviewTriggerLabel(productivityReview.trigger)}`}
-      aria-label="Productivity review open"
+      title={t("ui.issueRow.productivityReviewTitle", {
+        trigger: t(`ui.productivityReview.triggers.${productivityReview.trigger ?? "default"}`),
+      })}
+      aria-label={t("ui.issueRow.productivityReviewOpen")}
     >
       <Eye className="h-2.5 w-2.5" aria-hidden />
     </span>
@@ -149,15 +152,15 @@ export function IssueRow({
     </span>
   ) : null;
   const recoveryAction = issue.activeRecoveryAction ?? null;
-  const recoveryIndicator = recoveryAction ? renderRecoveryChip(recoveryAction, selected) : null;
+  const recoveryIndicator = recoveryAction ? renderRecoveryChip(recoveryAction, selected, t) : null;
   const parkedBlockerIndicator = hasAssignedBacklogBlocker(issue.blockedBy) ? (
     <Badge variant="outline"
       data-testid="issue-row-parked-blocker"
       className="[&>svg]:size-2.5 ml-1.5 gap-0.5 border-amber-500/60 bg-amber-500/15 text-(length:--text-nano) text-amber-700 dark:text-amber-300"
-      title="Blocked by parked work — at least one assigned blocker is in backlog and will not wake its assignee."
+      title={t("ui.issueRow.blockedByParkedWorkTitle")}
     >
       <Flag className="h-2.5 w-2.5" aria-hidden />
-      Blocked by parked work
+      {t("ui.issueRow.blockedByParkedWork")}
     </Badge>
   ) : null;
 
@@ -293,10 +296,10 @@ export function IssueRow({
               }}
               disabled={archiveDisabled}
               className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100 disabled:pointer-events-none disabled:opacity-30"
-              aria-label="Archive"
+              aria-label={t("ui.common.archive")}
             >
               <Archive className="h-3.5 w-3.5" />
-              Archive
+              {t("ui.common.archive")}
             </button>
           ) : null}
           {externalObjectSummary ? (
@@ -320,28 +323,33 @@ export function IssueRow({
   );
 }
 
-function renderRecoveryChip(action: IssueRecoveryAction, selected: boolean): ReactNode {
+function renderRecoveryChip(action: IssueRecoveryAction, selected: boolean, t: (key: string, params?: Record<string, unknown>) => string): ReactNode {
   const state = deriveActiveRecoveryDisplayState(action);
   if (!state) return null;
   const tone = RECOVERY_CHIP_DEFAULT_TONE[state];
   const Icon = tone.icon;
-  const label = recoveryChipLabel(state, action.kind);
+  const defaultLabel = recoveryChipLabel(state, action.kind);
+  const labelKey = action.kind === "workspace_validation" && state === "needed"
+    ? "ui.recoveryChip.workspaceRecoveryNeeded"
+    : `ui.recoveryChip.${state}`;
+  const label = t(labelKey);
+  const displayLabel = label === labelKey ? defaultLabel : label;
   return (
     <Badge variant="outline"
       data-testid="issue-row-recovery-indicator"
       data-recovery-state={state}
       data-recovery-kind={action.kind}
       role="status"
-      aria-label={label}
+      aria-label={displayLabel}
       className={cn(
         "ml-1.5 gap-0.5 text-(length:--text-nano)",
         tone.className,
         selected ? "!border-muted-foreground !text-muted-foreground" : null,
       )}
-      title={`${label} — open the source task to act.`}
+      title={t("ui.recoveryChip.title", { label: displayLabel })}
     >
       <Icon className="h-2.5 w-2.5" aria-hidden />
-      {label}
+      {displayLabel}
     </Badge>
   );
 }

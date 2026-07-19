@@ -10,6 +10,7 @@ import {
   taskStatusVarDefault,
 } from "../lib/status-colors";
 import { StatusGlyph } from "./StatusGlyph";
+import { t } from "@/i18n";
 
 /** Inline `--sc` local var pointing a status helper at a base-hue CSS var. */
 function scStyle(cssVar: string): CSSProperties {
@@ -47,13 +48,13 @@ export function StatusBadge({ status, label }: { status: string; label?: string 
  */
 export function AgentStatusBadge({ status }: { status: string }) {
   const cssVar = agentStatusVar[status] ?? agentStatusVarDefault;
-  const label = status === "active" ? "idle" : status;
+  const label = t(`ui.agents.status.${status === "active" ? "idle" : status}`);
   return (
     <span
       className="status-chip inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium leading-none whitespace-nowrap shrink-0"
       style={scStyle(cssVar)}
     >
-      {label.replace(/_/g, " ")}
+      {label}
     </span>
   );
 }

@@ -41,6 +41,7 @@ import {
 } from "@/components/JsonSchemaForm";
 import { cn, relativeTime } from "@/lib/utils";
 import { appTabHref } from "../app-tabs";
+import { useTranslation } from "@/i18n";
 
 // ---------------------------------------------------------------------------
 // Small format helpers
@@ -397,6 +398,7 @@ function AgentPicker({
   appName: string;
   inline?: boolean;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -413,7 +415,7 @@ function AgentPicker({
             "items-center gap-1.5 text-foreground outline-none hover:text-primary focus-visible:text-primary",
             inline ? "inline-flex font-semibold underline-offset-2 hover:underline" : "mt-0.5 flex text-lg font-bold",
           )}
-          aria-label="Choose which agent to test as"
+          aria-label={t("ui.appDetail.chooseTestAgent")}
         >
           {selectedAgent.name}
           <ChevronsUpDown className={cn("text-muted-foreground", inline ? "h-3.5 w-3.5" : "h-4 w-4")} />
@@ -990,6 +992,7 @@ function AllowedResult({
   appName: string;
   connectionId: string;
 }) {
+  const { t } = useTranslation();
   const value = outcome.result.result;
   return (
     <div className="rounded-md border border-emerald-500/40 bg-emerald-500/5 p-4">
@@ -999,12 +1002,12 @@ function AllowedResult({
       </div>
       <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
         <Clock className="h-3 w-3" />
-        Ran as {outcome.agentName} · {seconds(outcome.durationMs)} · {relTime(outcome.ranAt)}
+        {t("ui.appDetail.ranAs", { agent: outcome.agentName })} · {seconds(outcome.durationMs)} · {relTime(outcome.ranAt)}
       </p>
 
       {!isEmptyResult(value) && (
         <div className="mt-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Preview</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("ui.appDetail.preview")}</p>
           <div className="mt-1.5">
             <PrettyPreview value={value} />
           </div>
@@ -1014,13 +1017,13 @@ function AllowedResult({
       <RawResponseDisclosure value={value} />
 
       <p className="mt-3 text-xs text-muted-foreground">
-        This call is in the{" "}
+        {t("ui.appDetail.callIsIn")}{" "}
         <Link className="text-primary hover:underline" to={appTabHref(connectionId, "activity")}>
-          Activity tab
+          {t("ui.appDetail.activityTab")}
         </Link>
         .
       </p>
-      <p className="mt-1 text-xs text-muted-foreground">Last run finished in {seconds(outcome.durationMs)}.</p>
+      <p className="mt-1 text-xs text-muted-foreground">{t("ui.appDetail.lastRunFinished", { duration: seconds(outcome.durationMs) })}</p>
     </div>
   );
 }

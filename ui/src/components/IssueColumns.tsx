@@ -20,35 +20,22 @@ import { timeAgo } from "../lib/timeAgo";
 import { Identity } from "./Identity";
 import { StatusIcon } from "./StatusIcon";
 import { Badge } from "@/components/ui/badge";
+import { t as defaultTranslate, useTranslation } from "@/i18n";
 
 export const issueTrailingColumns: InboxIssueColumn[] = ["assignee", "kickedOffBy", "project", "workspace", "parent", "labels", "updated"];
 
-const issueColumnLabels: Record<InboxIssueColumn, string> = {
-  status: "Status",
-  id: "ID",
-  assignee: "Responsible",
-  kickedOffBy: "Kicked off by",
-  project: "Project",
-  workspace: "Workspace",
-  parent: "Parent task",
-  labels: "Tags",
-  updated: "Last updated",
-};
+function issueColumnLabel(column: InboxIssueColumn, t: (key: string) => string): string {
+  return t(`ui.issueColumns.labels.${column}`);
+}
 
-const issueColumnDescriptions: Record<InboxIssueColumn, string> = {
-  status: "Task state chip on the left edge.",
-  id: "Ticket identifier like PAP-1009.",
-  assignee: "Responsible agent or board user.",
-  kickedOffBy: "Board user or agent who created the task.",
-  project: "Linked project pill with its color.",
-  workspace: "Execution or project workspace used for the task.",
-  parent: "Parent task identifier and title.",
-  labels: "Task labels and tags.",
-  updated: "Latest visible activity time.",
-};
+function issueColumnDescription(column: InboxIssueColumn, t: (key: string) => string): string {
+  return t(`ui.issueColumns.descriptions.${column}`);
+}
 
 export function issueActivityText(issue: Issue): string {
-  return `Updated ${timeAgo(issue.lastActivityAt ?? issue.lastExternalCommentAt ?? issue.updatedAt)}`;
+  return defaultTranslate("ui.issueColumns.updatedRelative", {
+    time: timeAgo(issue.lastActivityAt ?? issue.lastExternalCommentAt ?? issue.updatedAt),
+  });
 }
 
 function issueTrailingGridTemplate(columns: InboxIssueColumn[]): string {
@@ -80,6 +67,7 @@ export function IssueColumnPicker({
   title: string;
   iconOnly?: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -88,17 +76,17 @@ export function IssueColumnPicker({
           variant={iconOnly ? "outline" : "ghost"}
           size={iconOnly ? "icon" : "sm"}
           className={iconOnly ? "h-8 w-8 shrink-0" : "hidden h-8 shrink-0 px-2 text-xs sm:inline-flex"}
-          title="Columns"
+          title={t("ui.issueColumns.columns")}
         >
           <Columns3 className={iconOnly ? "h-3.5 w-3.5" : "mr-1 h-3.5 w-3.5"} />
-          {!iconOnly && "Columns"}
+          {!iconOnly && t("ui.issueColumns.columns")}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-(--sz-300px) rounded-xl border-border/70 p-1.5 shadow-xl shadow-black/10">
         <DropdownMenuLabel className="px-2 pb-1 pt-1.5">
           <div className="space-y-1">
             <div className="text-(length:--text-nano) font-semibold uppercase tracking-(--tracking-caps) text-muted-foreground">
-              Desktop task rows
+              {t("ui.issueColumns.desktopTaskRows")}
             </div>
             <div className="text-sm font-medium text-foreground">
               {title}
@@ -116,10 +104,10 @@ export function IssueColumnPicker({
           >
             <span className="flex flex-col gap-0.5">
               <span className="text-sm font-medium text-foreground">
-                {issueColumnLabels[column]}
+                {issueColumnLabel(column, t)}
               </span>
               <span className="text-xs leading-relaxed text-muted-foreground">
-                {issueColumnDescriptions[column]}
+                {issueColumnDescription(column, t)}
               </span>
             </span>
           </DropdownMenuCheckboxItem>
@@ -129,8 +117,8 @@ export function IssueColumnPicker({
           onSelect={onResetColumns}
           className="rounded-lg px-3 py-2 text-sm"
         >
-          Reset defaults
-          <span className="ml-auto text-xs text-muted-foreground">status, id, updated</span>
+          {t("ui.issueColumns.resetDefaults")}
+          <span className="ml-auto text-xs text-muted-foreground">{t("ui.issueColumns.defaultColumns")}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -263,10 +251,10 @@ export function InboxIssueTrailingColumns({
   onFilterWorkspace?: (workspaceId: string) => void;
 }) {
   const activityText = timeAgo(issue.lastActivityAt ?? issue.lastExternalCommentAt ?? issue.updatedAt);
-  const userLabel = assigneeUserName ?? formatAssigneeUserLabel(issue.assigneeUserId, currentUserId) ?? "User";
+  const userLabel = assigneeUserName ?? formatAssigneeUserLabel(issue.assigneeUserId, currentUserId) ?? defaultTranslate("ui.issueColumns.userFallback");
   const originatingActor = deriveOriginatingActor(issue);
   const originatingUserId = originatingActor?.kind === "user" ? originatingActor.id : null;
-  const creatorUserLabel = creatorUserName ?? formatAssigneeUserLabel(originatingUserId, currentUserId) ?? "User";
+  const creatorUserLabel = creatorUserName ?? formatAssigneeUserLabel(originatingUserId, currentUserId) ?? defaultTranslate("ui.issueColumns.userFallback");
 
   return (
     <span

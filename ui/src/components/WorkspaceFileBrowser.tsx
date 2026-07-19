@@ -11,6 +11,7 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { AlertTriangle, ChevronDown, ChevronRight, Cloud, Download, FileCode2, FolderOpen, Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/i18n";
 import { fileResourcesApi } from "@/api/file-resources";
 import { projectsApi } from "@/api/projects";
 import { ApiError } from "@/api/client";
@@ -493,6 +494,7 @@ export function WorkspaceFileBrowser({
   selectedWorkspaceId: activeWorkspaceId,
   className,
 }: WorkspaceFileBrowserProps) {
+  const { t } = useTranslation();
   const source: BrowserSource =
     initialProjectId && initialWorkspaceId ? "other" : "current";
   const workspace: WorkspaceFileSelector = "auto";
@@ -956,8 +958,8 @@ export function WorkspaceFileBrowser({
     body = (
       <StateMessage
         icon={<FolderOpen aria-hidden="true" className="h-5 w-5 text-muted-foreground" />}
-        title="No company selected"
-        body="Choose a company before browsing another project workspace."
+        title={t("ui.workspaceFileBrowser.noCompanySelected")}
+        body={t("ui.workspaceFileBrowser.chooseCompanyBeforeBrowsing")}
       />
     );
   } else if (source === "other" && projectsQuery.isFetching && projectsWithWorkspaces.length === 0) {

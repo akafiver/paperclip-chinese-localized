@@ -51,7 +51,7 @@ import type {
 export function RunButton({
   onClick,
   disabled,
-  label = "Run now",
+  label,
   size = "sm",
 }: {
   onClick: () => void;
@@ -63,7 +63,7 @@ export function RunButton({
   return (
     <Button variant="outline" size={size} onClick={onClick} disabled={disabled}>
       <Play className="h-3.5 w-3.5 sm:mr-1" />
-      <span className="hidden sm:inline">{label === "Run now" ? t("ui.agentActions.runNow") : label}</span>
+      <span className="hidden sm:inline">{label ?? t("ui.agentActions.runNow")}</span>
     </Button>
   );
 }
@@ -162,7 +162,7 @@ export function AgentActionButtons({
   companyId,
   size = "sm",
   assignLabel = "Assign Task",
-  runLabel = "Run now",
+  runLabel,
   showStatus = true,
   actionsDisabled = false,
   workActionsDisabled = false,
@@ -334,7 +334,7 @@ export function AgentActionButtons({
       <RunButton
         onClick={() => agentAction.mutate("invoke")}
         disabled={assignAndRunDisabled}
-        label={runLabel === "Run now" ? t("ui.agentActions.runNow") : runLabel}
+        label={runLabel}
         size={size}
       />
       {isError ? (

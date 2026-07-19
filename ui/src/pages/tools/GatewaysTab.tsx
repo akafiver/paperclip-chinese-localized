@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/context/ToastContext";
 import { queryKeys } from "@/lib/queryKeys";
 import { ErrorState, LoadingState, RelativeTime, ToolsPageHeader } from "./shared";
+import { useTranslation } from "@/i18n";
 
 type CreateGatewayDraft = {
   name: string;
@@ -112,6 +113,7 @@ function buildTokenExpiresAt(value: string) {
 }
 
 export function GatewaysTab({ companyId }: { companyId: string }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { pushToast } = useToast();
   const [creating, setCreating] = useState(false);
@@ -254,7 +256,7 @@ export function GatewaysTab({ companyId }: { companyId: string }) {
     createTokenMutation.mutate(gatewayId);
   }
 
-  if (gatewaysQuery.isLoading) return <LoadingState label="Loading gateways..." />;
+  if (gatewaysQuery.isLoading) return <LoadingState label={t("ui.toolsGateways.loadingGateways")} />;
   if (gatewaysQuery.isError) return <ErrorState error={gatewaysQuery.error} />;
 
   const gateways = gatewaysQuery.data?.gateways ?? [];
@@ -265,8 +267,8 @@ export function GatewaysTab({ companyId }: { companyId: string }) {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <ToolsPageHeader
-          title="Named MCP gateways"
-          description="Stable endpoints for external clients that use the same profiles, rules, and audit trail as agent tool access."
+          title={t("ui.toolsGateways.namedGateways")}
+          description={t("ui.toolsGateways.namedGatewaysDescription")}
         />
         <Button
           type="button"
@@ -278,7 +280,7 @@ export function GatewaysTab({ companyId }: { companyId: string }) {
           disabled={profileLoading}
         >
           <Plus className="mr-1.5 h-3.5 w-3.5" />
-          Create gateway
+          {t("ui.toolsGateways.createGateway")}
         </Button>
       </div>
 
@@ -286,7 +288,7 @@ export function GatewaysTab({ companyId }: { companyId: string }) {
         <form className="space-y-3 rounded-md border border-border p-4" onSubmit={submitCreateGateway}>
           <div className="grid gap-3 md:grid-cols-(--gtc-60)">
             <label className="space-y-1.5 text-sm">
-              <span className="text-xs font-medium text-muted-foreground">Gateway name</span>
+              <span className="text-xs font-medium text-muted-foreground">{t("ui.toolsGateways.gatewayName")}</span>
               <input
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={createDraft.name}
@@ -296,7 +298,7 @@ export function GatewaysTab({ companyId }: { companyId: string }) {
               />
             </label>
             <label className="space-y-1.5 text-sm">
-              <span className="text-xs font-medium text-muted-foreground">Access profile</span>
+              <span className="text-xs font-medium text-muted-foreground">{t("ui.toolsProfiles.accessProfiles")}</span>
               <select
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={createDraft.profileId}
@@ -305,7 +307,7 @@ export function GatewaysTab({ companyId }: { companyId: string }) {
                 disabled={activeProfiles.length === 0}
               >
                 <option value="" disabled>
-                  {profileLoading ? "Loading profiles..." : "Choose a profile"}
+                  {profileLoading ? t("ui.toolsGateways.loadingProfiles") : t("ui.toolsGateways.chooseProfile")}
                 </option>
                 {activeProfiles.map((profile) => (
                   <option key={profile.id} value={profile.id}>
@@ -316,7 +318,7 @@ export function GatewaysTab({ companyId }: { companyId: string }) {
             </label>
           </div>
           <label className="space-y-1.5 text-sm">
-            <span className="text-xs font-medium text-muted-foreground">Description</span>
+            <span className="text-xs font-medium text-muted-foreground">{t("ui.common.description")}</span>
             <textarea
               className="min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               value={createDraft.description}
@@ -325,14 +327,14 @@ export function GatewaysTab({ companyId }: { companyId: string }) {
             />
           </label>
           {activeProfiles.length === 0 && !profileLoading ? (
-            <p className="text-xs text-muted-foreground">Create an access profile before adding a gateway.</p>
+            <p className="text-xs text-muted-foreground">{t("ui.toolsGateways.createProfileFirst")}</p>
           ) : null}
           <div className="flex flex-wrap justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={() => setCreating(false)}>
-              Cancel
+              {t("ui.common.cancel")}
             </Button>
             <Button type="submit" size="sm" disabled={createDisabled || !createDraft.name.trim() || !createDraft.profileId}>
-              {createGatewayMutation.isPending ? "Creating..." : "Create gateway"}
+              {createGatewayMutation.isPending ? t("ui.common.creating") : t("ui.toolsGateways.createGateway")}
             </Button>
           </div>
         </form>
@@ -340,7 +342,7 @@ export function GatewaysTab({ companyId }: { companyId: string }) {
 
       {gateways.length === 0 ? (
         <div className="rounded-md border border-dashed border-border p-5 text-sm text-muted-foreground">
-          No named gateways yet. Create one here, then issue a token for the client that will connect to it.
+          {t("ui.toolsGateways.noNamedGateways")}
         </div>
       ) : (
         <div className="divide-y divide-border rounded-md border border-border">

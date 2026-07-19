@@ -363,16 +363,16 @@ export type TemplateKey = "read_only" | "everyday" | "full_access" | "scratch" |
 
 export interface TemplateDef {
   key: TemplateKey;
-  title: string;
-  description: string;
+  titleKey: string;
+  descriptionKey: string;
 }
 
 export const TEMPLATES: TemplateDef[] = [
-  { key: "read_only", title: "Read-only", description: "See and fetch, but never change anything." },
-  { key: "everyday", title: "Everyday work", description: "Read and make routine changes — no destructive tools." },
-  { key: "full_access", title: "Full access", description: "Everything every connected app offers." },
-  { key: "scratch", title: "Start from scratch", description: "An empty profile you build up tool by tool." },
-  { key: "copy", title: "Copy an existing profile", description: "Start from a profile you already have." },
+  { key: "read_only", titleKey: "ui.toolsProfiles.templates.readOnly.title", descriptionKey: "ui.toolsProfiles.templates.readOnly.description" },
+  { key: "everyday", titleKey: "ui.toolsProfiles.templates.everyday.title", descriptionKey: "ui.toolsProfiles.templates.everyday.description" },
+  { key: "full_access", titleKey: "ui.toolsProfiles.templates.fullAccess.title", descriptionKey: "ui.toolsProfiles.templates.fullAccess.description" },
+  { key: "scratch", titleKey: "ui.toolsProfiles.templates.scratch.title", descriptionKey: "ui.toolsProfiles.templates.scratch.description" },
+  { key: "copy", titleKey: "ui.toolsProfiles.templates.copy.title", descriptionKey: "ui.toolsProfiles.templates.copy.description" },
 ];
 
 function capabilityPredicate(key: TemplateKey): (tool: ToolCatalogEntry) => boolean {

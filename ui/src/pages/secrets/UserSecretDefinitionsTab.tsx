@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { useTranslation } from "@/i18n";
 import { EmptyState } from "../../components/EmptyState";
 import { secretsApi } from "../../api/secrets";
 import { ApiError } from "../../api/client";
@@ -64,6 +65,7 @@ const emptyForm: DefinitionForm = {
  * only — never values — per the UX terminology decisions.
  */
 export function UserSecretDefinitionsTab({ companyId }: { companyId: string }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { pushToast } = useToastActions();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -234,17 +236,17 @@ export function UserSecretDefinitionsTab({ companyId }: { companyId: string }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {editing ? "Edit user secret" : "New user secret"}
+              {editing ? t("ui.userSecrets.editUserSecret") : t("ui.userSecrets.newUserSecret")}
               <UserSecretChip />
             </DialogTitle>
             <DialogDescription>
-              Members supply their own value for this credential. No value is entered here.
+              {t("ui.userSecrets.userSecretDescription")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-foreground">Name</label>
+              <label className="text-xs font-medium text-foreground">{t("ui.userSecrets.name")}</label>
               <Input
                 value={form.name}
                 onChange={(event) => {

@@ -151,35 +151,35 @@ function formatArgList(value: unknown): string {
 }
 
 const codexThinkingEffortOptions = [
-  { id: "", label: "Auto" },
-  { id: "minimal", label: "Minimal" },
-  { id: "low", label: "Low" },
-  { id: "medium", label: "Medium" },
-  { id: "high", label: "High" },
-  { id: "xhigh", label: "X-High" },
+  { id: "", labelKey: "auto" },
+  { id: "minimal", labelKey: "minimal" },
+  { id: "low", labelKey: "low" },
+  { id: "medium", labelKey: "medium" },
+  { id: "high", labelKey: "high" },
+  { id: "xhigh", labelKey: "xhigh" },
 ] as const;
 
 const openCodeThinkingEffortOptions = [
-  { id: "", label: "Auto" },
-  { id: "minimal", label: "Minimal" },
-  { id: "low", label: "Low" },
-  { id: "medium", label: "Medium" },
-  { id: "high", label: "High" },
-  { id: "xhigh", label: "X-High" },
-  { id: "max", label: "Max" },
+  { id: "", labelKey: "auto" },
+  { id: "minimal", labelKey: "minimal" },
+  { id: "low", labelKey: "low" },
+  { id: "medium", labelKey: "medium" },
+  { id: "high", labelKey: "high" },
+  { id: "xhigh", labelKey: "xhigh" },
+  { id: "max", labelKey: "max" },
 ] as const;
 
 const cursorModeOptions = [
-  { id: "", label: "Auto" },
-  { id: "plan", label: "Plan" },
-  { id: "ask", label: "Ask" },
+  { id: "", labelKey: "auto" },
+  { id: "plan", labelKey: "plan" },
+  { id: "ask", labelKey: "ask" },
 ] as const;
 
 const claudeThinkingEffortOptions = [
-  { id: "", label: "Auto" },
-  { id: "low", label: "Low" },
-  { id: "medium", label: "Medium" },
-  { id: "high", label: "High" },
+  { id: "", labelKey: "auto" },
+  { id: "low", labelKey: "low" },
+  { id: "medium", labelKey: "medium" },
+  { id: "high", labelKey: "high" },
 ] as const;
 
 const MAX_TURN_CONTINUATION_DEFAULT_MAX_ATTEMPTS = 2;
@@ -630,19 +630,21 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
   const testEnvironment = useMutation({
     mutationFn: async () => {
       if (!selectedCompanyId) {
-        throw new Error("Select a company to test adapter environment");
+        throw new Error(t("ui.agentConfig.selectCompanyToTest"));
       }
       const flushedEnv = flushEnvironmentDraft();
       const adapterConfigPatch = flushedEnv ? { env: flushedEnv } : undefined;
       const primaryModel = currentModelId.trim() || null;
       const cheapTestCase = getCheapModelTestCase(adapterConfigPatch);
       const environmentId = currentDefaultEnvironmentId || null;
+      const primaryModelLabel = t("ui.agentConfig.primaryModel");
+      const cheapModelLabel = t("ui.agentConfig.cheapModel");
       const testResults: Array<{ label: string; model: string | null; result: AdapterEnvironmentTestResult }> = [
         {
-          label: "Primary model",
+          label: primaryModelLabel,
           model: primaryModel,
           result: await runEnvironmentTestCase(
-            "Primary model",
+            primaryModelLabel,
             primaryModel,
             buildAdapterConfigForTest(adapterConfigPatch),
             environmentId,
@@ -652,10 +654,10 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
 
       if (cheapTestCase) {
         testResults.push({
-          label: "Cheap model",
+          label: cheapModelLabel,
           model: cheapTestCase.model,
           result: await runEnvironmentTestCase(
-            "Cheap model",
+            cheapModelLabel,
             cheapTestCase.model,
             cheapTestCase.adapterConfig,
             environmentId,
@@ -670,12 +672,12 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
   });
   const [testActionPending, setTestActionPending] = useState(false);
   const [testActionError, setTestActionError] = useState<string | null>(null);
-  const testActionLabel = "Test";
+  const testActionLabel = t("ui.agentConfig.test");
   const isSavePending = !isCreate && Boolean(props.isSaving);
   const testEnvironmentDisabled = testActionPending || isSavePending || !selectedCompanyId;
   const runEnvironmentTest = useCallback(async () => {
     if (!selectedCompanyId) {
-      throw new Error("Select a company to test adapter environment");
+      throw new Error(t("ui.agentConfig.selectCompanyToTest"));
     }
     setTestActionPending(true);
     setTestActionError(null);
@@ -683,12 +685,12 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
     try {
       return await testEnvironment.mutateAsync();
     } catch (error) {
-      setTestActionError(error instanceof Error ? error.message : "Environment test failed");
+      setTestActionError(error instanceof Error ? error.message : t("ui.agentConfig.environmentTestFailed"));
       throw error;
     } finally {
       setTestActionPending(false);
     }
-  }, [selectedCompanyId, testEnvironment]);
+  }, [selectedCompanyId, t, testEnvironment]);
   // `runEnvironmentTest` (and `testEnvironmentDisabled`) change identity on every
   // render because `useMutation` returns a fresh result object each time. Hold the
   // latest behavior in a ref so the trigger handed to the parent stays referentially
@@ -736,14 +738,14 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
         ?? (testEnvironment.error instanceof Error
           ? testEnvironment.error.message
           : testEnvironment.error
-            ? "Environment test failed"
+            ? t("ui.agentConfig.environmentTestFailed")
             : null),
       result: testEnvironment.data ?? null,
     });
     return () => {
       props.onTestFeedbackChange?.({ errorMessage: null, result: null });
     };
-  }, [props.onTestFeedbackChange, testActionError, testEnvironment.data, testEnvironment.error]);
+  }, [props.onTestFeedbackChange, t, testActionError, testEnvironment.data, testEnvironment.error]);
 
   // Current model for display
   const currentModelValue = isCreate
@@ -759,7 +761,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
       const refreshed = await agentsApi.adapterModels(selectedCompanyId, adapterType, { refresh: true });
       queryClient.setQueryData(modelQueryKey, refreshed);
     } catch (error) {
-      setRefreshModelsError(error instanceof Error ? error.message : "Failed to refresh adapter models.");
+      setRefreshModelsError(error instanceof Error ? error.message : t("ui.agentConfig.failedRefreshModels"));
     } finally {
       setRefreshingModels(false);
     }
@@ -773,14 +775,16 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
         : adapterType === "opencode_local"
           ? "variant"
           : "effort";
-  const thinkingEffortOptions =
-    adapterType === "codex_local"
+  const thinkingEffortOptions = (adapterType === "codex_local"
       ? codexThinkingEffortOptions
       : adapterType === "cursor"
         ? cursorModeOptions
         : adapterType === "opencode_local"
           ? openCodeThinkingEffortOptions
-          : claudeThinkingEffortOptions;
+          : claudeThinkingEffortOptions).map((option) => ({
+            id: option.id,
+            label: t(`ui.agentConfig.thinkingOptions.${option.labelKey}`),
+          }));
   const currentThinkingEffort = isCreate
     ? val!.thinkingEffort
     : adapterType === "codex_local"
@@ -944,7 +948,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                 onCommit={(v) => mark("identity", "title", v || null)}
                 immediate
                 className={inputClass}
-                placeholder="e.g. VP of Engineering"
+                placeholder={t("ui.agentConfig.titlePlaceholder")}
               />
             </Field>
             <Field label={t("ui.agentConfig.reportsTo")} hint={help.reportsTo}>
@@ -991,7 +995,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                   />
                 </Field>
                 <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-100">
-                  Prompt template is replayed on every heartbeat. Keep it compact and dynamic to avoid recurring token cost and cache churn.
+                  {t("ui.agentConfig.promptReplayWarning")}
                 </div>
               </>
             )}
@@ -1012,17 +1016,15 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
           <div className={cn(cards ? "border border-border rounded-lg p-4 space-y-3" : "px-4 pb-3 space-y-3")}>
             <Field
               label={t("ui.agentConfig.defaultEnvironment")}
-              hint="This instance runs all agents in the Kubernetes sandbox. Local execution is disabled."
+              hint={t("ui.agentConfig.forcedKubernetesHint")}
             >
               {kubernetesEnvironment ? (
                 <div className={cn(inputClass, "flex items-center text-muted-foreground")}>
-                  {kubernetesEnvironment.name} · Kubernetes sandbox
+                  {kubernetesEnvironment.name} · {t("ui.agentConfig.kubernetesSandbox")}
                 </div>
               ) : (
                 <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
-                  This instance requires the Kubernetes sandbox, but no managed Kubernetes
-                  environment is available for this company yet. Configure one before creating
-                  agents; execution will not fall back to local.
+                  {t("ui.agentConfig.forcedKubernetesMissing")}
                 </div>
               )}
             </Field>
@@ -1049,7 +1051,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                     mark("identity", "defaultEnvironmentId", nextValue || null);
                   }}
                 >
-                  <option value="">Default: {inheritedEnvironmentLabel}</option>
+                  <option value="">{t("ui.agentConfig.defaultEnvironmentOption", { label: inheritedEnvironmentLabel })}</option>
                   {environmentOptions.map((environment) => (
                     <option key={environment.id} value={environment.id}>
                       {environment.name} · {environment.driver}
@@ -1154,8 +1156,8 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
           {/* Working directory */}
           {showWorkingDirectoryField && (
             <Field
-              label="Working directory (advanced)"
-              hint="Prefer the project's primary Workspace. This path is only for local-agent overrides."
+              label={t("ui.agentConfig.workingDirectoryAdvanced")}
+              hint={t("ui.agentConfig.workingDirectoryHint")}
             >
               <div className="flex items-center gap-2 rounded-md border border-border px-2.5 py-1.5">
                 <FolderOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -1190,11 +1192,11 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
       {isLocal && (
         <div className={cn(!cards && "border-b border-border")}>
           {cards
-            ? <h3 className="text-sm font-medium mb-3">Permissions &amp; Configuration</h3>
-            : <div className="px-4 py-2 text-xs font-medium text-muted-foreground">Permissions &amp; Configuration</div>
+            ? <h3 className="text-sm font-medium mb-3">{t("ui.agentConfig.permissionsConfiguration")}</h3>
+            : <div className="px-4 py-2 text-xs font-medium text-muted-foreground">{t("ui.agentConfig.permissionsConfiguration")}</div>
           }
           <div className={cn(cards ? "border border-border rounded-lg p-4 space-y-3" : "px-4 pb-3 space-y-3")}>
-              <Field label="Command" hint={help.localCommand}>
+              <Field label={t("ui.agentConfig.command")} hint={help.localCommand}>
                 <DraftInput
                   value={
                     isCreate
@@ -1228,7 +1230,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
               </Field>
 
               {supportsModelProfiles && (
-                <div className="text-(length:--text-micro) uppercase tracking-wide text-muted-foreground">Primary model</div>
+                <div className="text-(length:--text-micro) uppercase tracking-wide text-muted-foreground">{t("ui.agentConfig.primaryModel")}</div>
               )}
               <ModelDropdown
                 models={models}
@@ -1258,22 +1260,22 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                     : undefined
                 }
                 refreshingModels={refreshingModels}
-                detectModelLabel="Detect model"
-                emptyDetectHint="No model detected. Select or enter one manually."
+                detectModelLabel={t("ui.agentConfig.detectModel")}
+                emptyDetectHint={t("ui.agentConfig.noModelDetected")}
               />
               {(refreshModelsError || fetchedModelsError) && (
                 <p className="text-xs text-destructive">
                   {refreshModelsError
                     ?? (fetchedModelsError instanceof Error
                       ? fetchedModelsError.message
-                      : "Failed to load adapter models.")}
+                      : t("ui.agentConfig.failedLoadAdapterModels"))}
                 </p>
               )}
               {adapterType === "opencode_local"
                 && currentDefaultEnvironment
                 && currentDefaultEnvironment.driver !== "local" && (
                 <p className="text-xs text-muted-foreground">
-                  Live OpenCode model discovery only runs for Local environments. Using the curated list and manual entry for {currentDefaultEnvironment.name}.
+                  {t("ui.agentConfig.openCodeDiscoveryLocalOnly", { environment: currentDefaultEnvironment.name })}
                 </p>
               )}
 
@@ -1308,14 +1310,14 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                     codexSearchEnabled &&
                     currentThinkingEffort === "minimal" && (
                       <p className="text-xs text-amber-400">
-                        Codex may reject `minimal` thinking when search is enabled.
+                        {t("ui.agentConfig.minimalThinkingSearchWarning")}
                       </p>
                     )}
                 </>
               )}
               {!isCreate && typeof config.bootstrapPromptTemplate === "string" && config.bootstrapPromptTemplate && (
                 <>
-                  <Field label="Bootstrap prompt (legacy)" hint={help.bootstrapPrompt}>
+                  <Field label={t("ui.agentConfig.bootstrapPromptLegacy")} hint={help.bootstrapPrompt}>
                     <MarkdownEditor
                       value={eff(
                         "adapterConfig",
@@ -1325,7 +1327,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                       onChange={(v) =>
                         mark("adapterConfig", "bootstrapPromptTemplate", v || undefined)
                       }
-                      placeholder="Optional initial setup prompt for the first run"
+                      placeholder={t("ui.agentConfig.bootstrapPromptPlaceholder")}
                       contentClassName="min-h-(--sz-44px) text-sm font-mono"
                       imageUploadHandler={async (file) => {
                         const namespace = `agents/${props.agent.id}/bootstrap-prompt`;
@@ -1335,7 +1337,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                     />
                   </Field>
                   <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
-                    Bootstrap prompt is legacy and will be removed in a future release. Consider moving this content into the agent&apos;s prompt template or instructions file instead.
+                    {t("ui.agentConfig.bootstrapPromptLegacyWarning")}
                   </div>
                 </>
               )}
@@ -1344,7 +1346,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
               )}
               <uiAdapter.ConfigFields {...adapterFieldProps} />
 
-              <Field label="Extra args (comma-separated)" hint={help.extraArgs}>
+              <Field label={t("ui.agentConfig.extraArgs")} hint={help.extraArgs}>
                 <DraftInput
                   value={
                     isCreate
@@ -1357,11 +1359,11 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                       : mark("adapterConfig", "extraArgs", v?.trim() ? parseCommaArgs(v) : null)
                   }
                   className={inputClass}
-                  placeholder="e.g. --verbose, --foo=bar"
+                  placeholder={t("ui.agentConfig.extraArgsPlaceholder")}
                 />
               </Field>
 
-              <Field label="Environment variables" hint={help.envVars}>
+              <Field label={t("ui.agentConfig.environmentVariables")} hint={help.envVars}>
                 <EnvironmentVariablesEditor
                   ref={environmentVariablesEditorRef}
                   value={
@@ -1387,7 +1389,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
               {/* Edit-only: timeout + grace period */}
               {!isCreate && (
                 <>
-                  <Field label="Timeout (sec)" hint={help.timeoutSec}>
+                  <Field label={t("ui.agentConfig.timeoutSec")} hint={help.timeoutSec}>
                     <DraftNumberInput
                       value={eff(
                         "adapterConfig",
@@ -1399,7 +1401,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                       className={inputClass}
                     />
                   </Field>
-                  <Field label="Interrupt grace period (sec)" hint={help.graceSec}>
+                  <Field label={t("ui.agentConfig.graceSec")} hint={help.graceSec}>
                     <DraftNumberInput
                       value={eff(
                         "adapterConfig",
@@ -1477,7 +1479,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                 )}
                 onChange={(v) => mark("heartbeat", "wakeOnDemand", v)}
               />
-              <Field label="Cooldown (sec)" hint={help.cooldownSec}>
+              <Field label={t("ui.agentConfig.cooldown")} hint={help.cooldownSec}>
                 <DraftNumberInput
                   value={eff(
                     "heartbeat",
@@ -1489,7 +1491,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                   className={inputClass}
                 />
               </Field>
-              <Field label="Max concurrent runs" hint={help.maxConcurrentRuns}>
+              <Field label={t("ui.agentConfig.maxConcurrent")} hint={help.maxConcurrentRuns}>
                 <DraftNumberInput
                   value={eff(
                     "heartbeat",
@@ -1503,14 +1505,14 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
               </Field>
               <div className="rounded-md border border-border/70 px-3 py-2">
                 <ToggleField
-                  label="Continue after max-turn stop"
+                  label={t("ui.agentConfig.continueAfterMaxTurnStop")}
                   hint={help.maxTurnContinuationEnabled}
                   checked={maxTurnContinuationEnabled}
                   onChange={(v) => updateMaxTurnContinuation({ enabled: v })}
                 />
                 {maxTurnContinuationEnabled ? (
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    <Field label="Continuation attempts" hint={help.maxTurnContinuationMaxAttempts}>
+                    <Field label={t("ui.agentConfig.continuationAttempts")} hint={help.maxTurnContinuationMaxAttempts}>
                       <DraftNumberInput
                         value={maxTurnContinuationMaxAttempts}
                         onCommit={(v) =>
@@ -1521,7 +1523,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                         className={inputClass}
                       />
                     </Field>
-                    <Field label="Continuation delay (sec)" hint={help.maxTurnContinuationDelaySec}>
+                    <Field label={t("ui.agentConfig.continuationDelaySec")} hint={help.maxTurnContinuationDelaySec}>
                       <DraftNumberInput
                         value={maxTurnContinuationDelaySec}
                         onCommit={(v) =>
@@ -1996,15 +1998,15 @@ function CheapModelSection({
   onOpenChange: (open: boolean) => void;
 }) {
   const placeholderHint = adapterDefaultModel
-    ? `Adapter default · ${adapterDefaultModel}`
-    : "No adapter default — choose a cheaper model";
+    ? translate("ui.agentConfig.adapterDefaultModel", { model: adapterDefaultModel })
+    : translate("ui.agentConfig.cheapModelFallback");
   return (
     <div className="rounded-md border border-border/70 bg-muted/20 p-3 space-y-3">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="text-(length:--text-micro) uppercase tracking-wide text-muted-foreground">{translate("ui.agentConfig.cheapModel")}</div>
           <p className="text-xs text-muted-foreground">
-            Used when a run requests the cheap profile (e.g. routine summaries). The primary model stays unchanged.
+            {translate("ui.agentConfig.cheapModelDescription")}
           </p>
         </div>
         <ToggleSwitch checked={enabled} onCheckedChange={onEnabledChange} />
@@ -2028,12 +2030,12 @@ function CheapModelSection({
       ) : null}
       {enabled && !model && adapterDefaultModel ? (
         <p className="text-(length:--text-micro) text-muted-foreground">
-          No explicit cheap model selected — runtime falls back to <code>{adapterDefaultModel}</code>.
+          {translate("ui.agentConfig.cheapModelFallsBackPrefix")} <code>{adapterDefaultModel}</code>.
         </p>
       ) : null}
       {enabled && !model && !adapterDefaultModel ? (
         <p className="text-(length:--text-micro) text-amber-500">
-          No cheap model selected and the adapter has no default. Cheap-lane runs will continue on the primary model with a fallback note.
+          {translate("ui.agentConfig.noCheapModelFallback")}
         </p>
       ) : null}
     </div>

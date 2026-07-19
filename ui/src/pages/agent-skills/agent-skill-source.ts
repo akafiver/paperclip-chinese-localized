@@ -1,5 +1,6 @@
 import { Boxes, Folder, Github, Link2, Paperclip, type LucideIcon } from "lucide-react";
 import type { CompanySkillListItem } from "@paperclipai/shared";
+import { t } from "@/i18n";
 
 export interface AgentSkillSourceMeta {
   icon: LucideIcon;
@@ -77,13 +78,13 @@ function isFilesystemLikeLabel(value: string) {
 
 function displayLocalSourceLabel(label: string | null | undefined) {
   const trimmed = label?.trim();
-  if (!trimmed || isFilesystemLikeLabel(trimmed)) return "Local folder";
+  if (!trimmed || isFilesystemLikeLabel(trimmed)) return t("ui.agentSkills.source.localFolder");
   return trimmed;
 }
 
 function displayCatalogSourceLabel(label: string | null | undefined) {
   const trimmed = label?.trim();
-  if (!trimmed || isFilesystemLikeLabel(trimmed)) return "Catalog";
+  if (!trimmed || isFilesystemLikeLabel(trimmed)) return t("ui.agentSkills.source.catalog");
   return trimmed;
 }
 
@@ -103,7 +104,7 @@ export function buildAgentSkillSourceMeta(skill: SourceSkill): AgentSkillSourceM
   }
 
   if (skill.sourceBadge === "paperclip") {
-    return { icon: Paperclip, label: skill.sourceLabel?.trim() || "Paperclip managed" };
+    return { icon: Paperclip, label: skill.sourceLabel?.trim() || t("ui.agentSkills.source.paperclipManaged") };
   }
 
   if (skill.sourceBadge === "catalog" || skill.sourceType === "catalog") {

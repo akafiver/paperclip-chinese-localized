@@ -42,7 +42,7 @@ describe("StatusIcon", () => {
     expect(html).not.toContain("bg-cyan");
     expect(html).not.toContain("border-cyan");
     // Full blocked reason still rides on the accessible label.
-    expect(html).toContain("Blocked · waiting on active sub-task PAP-9");
+    expect(html).toContain("已阻塞 - 等待活跃子任务 PAP-9");
   });
 
   it("surfaces attention-required blocked copy and keeps the blocked glyph", () => {
@@ -61,7 +61,7 @@ describe("StatusIcon", () => {
         }}
       />,
     );
-    expect(html).toContain("Blocked · 3 blockers need attention; 2 covered by active work");
+    expect(html).toContain("已阻塞 - 3 个阻塞项需要注意；2 个由活跃工作覆盖");
     // needs_attention is not "covered", so it keeps the blocked glyph (not in_queue).
     expect(html).toContain("var(--status-task-icon-blocked)");
     expect(html).not.toContain("var(--status-task-icon-in_queue)");
@@ -83,7 +83,7 @@ describe("StatusIcon", () => {
         }}
       />,
     );
-    expect(html).toContain("Blocked · review stalled on PAP-2279");
+    expect(html).toContain("已阻塞 - 复核卡在 PAP-2279");
   });
 
   it("keeps the onChange picker working with the glyph", () => {

@@ -160,6 +160,17 @@ export function buildRoutineGroups(
   groupByValue: RoutineGroupBy,
   projectById: Map<string, { name: string }>,
   agentById: Map<string, { name: string }>,
+  labels: {
+    noProject: string;
+    unknownProject: string;
+    unassigned: string;
+    unknownAgent: string;
+  } = {
+    noProject: "No project",
+    unknownProject: "Unknown project",
+    unassigned: "Unassigned",
+    unknownAgent: "Unknown agent",
+  },
 ): RoutineGroup[] {
   if (groupByValue === "none" || groupByValue === "folder") {
     return [{ key: "__all", label: null, items: routines }];
@@ -169,13 +180,13 @@ export function buildRoutineGroups(
     const groups = groupBy(routines, (routine) => routine.projectId ?? "__no_project");
     return Object.keys(groups)
       .sort((left, right) => {
-        const leftLabel = left === "__no_project" ? "No project" : (projectById.get(left)?.name ?? "Unknown project");
-        const rightLabel = right === "__no_project" ? "No project" : (projectById.get(right)?.name ?? "Unknown project");
+        const leftLabel = left === "__no_project" ? labels.noProject : (projectById.get(left)?.name ?? labels.unknownProject);
+        const rightLabel = right === "__no_project" ? labels.noProject : (projectById.get(right)?.name ?? labels.unknownProject);
         return leftLabel.localeCompare(rightLabel);
       })
       .map((key) => ({
         key,
-        label: key === "__no_project" ? "No project" : (projectById.get(key)?.name ?? "Unknown project"),
+        label: key === "__no_project" ? labels.noProject : (projectById.get(key)?.name ?? labels.unknownProject),
         items: groups[key]!,
       }));
   }
@@ -183,13 +194,13 @@ export function buildRoutineGroups(
   const groups = groupBy(routines, (routine) => routine.assigneeAgentId ?? "__unassigned");
   return Object.keys(groups)
     .sort((left, right) => {
-      const leftLabel = left === "__unassigned" ? "Unassigned" : (agentById.get(left)?.name ?? "Unknown agent");
-      const rightLabel = right === "__unassigned" ? "Unassigned" : (agentById.get(right)?.name ?? "Unknown agent");
+      const leftLabel = left === "__unassigned" ? labels.unassigned : (agentById.get(left)?.name ?? labels.unknownAgent);
+      const rightLabel = right === "__unassigned" ? labels.unassigned : (agentById.get(right)?.name ?? labels.unknownAgent);
       return leftLabel.localeCompare(rightLabel);
     })
     .map((key) => ({
       key,
-      label: key === "__unassigned" ? "Unassigned" : (agentById.get(key)?.name ?? "Unknown agent"),
+      label: key === "__unassigned" ? labels.unassigned : (agentById.get(key)?.name ?? labels.unknownAgent),
       items: groups[key]!,
     }));
 }
@@ -203,14 +214,29 @@ export function buildRoutineSections(
   groupByValue: RoutineGroupBy,
   projectById: Map<string, { name: string }>,
   agentById: Map<string, { name: string }>,
+  labels: {
+    custom: string;
+    builtIn: string;
+    noProject: string;
+    unknownProject: string;
+    unassigned: string;
+    unknownAgent: string;
+  } = {
+    custom: "Custom routines",
+    builtIn: "Built-in routines",
+    noProject: "No project",
+    unknownProject: "Unknown project",
+    unassigned: "Unassigned",
+    unknownAgent: "Unknown agent",
+  },
 ): RoutineGroup[] {
   const builtInRoutines = routines.filter(isBuiltInRoutine);
   const customRoutines = routines.filter((routine) => !isBuiltInRoutine(routine));
-  const customGroups = buildRoutineGroups(customRoutines, groupByValue, projectById, agentById)
+  const customGroups = buildRoutineGroups(customRoutines, groupByValue, projectById, agentById, labels)
     .filter((group) => group.items.length > 0)
     .map((group) => (
       builtInRoutines.length > 0 && groupByValue === "none" && group.key === "__all"
-        ? { ...group, label: "Custom routines" }
+        ? { ...group, label: labels.custom }
         : group
     ));
 
@@ -220,7 +246,7 @@ export function buildRoutineSections(
     ...customGroups,
     {
       key: builtInRoutineGroupKey,
-      label: "Built-in routines",
+      label: labels.builtIn,
       items: builtInRoutines,
     },
   ];
@@ -379,7 +405,7 @@ export function Routines() {
     resourceKey: "live-runs",
     queryKey: liveRunsQueryKey,
     enabled: !!selectedCompanyId && activeTab === "runs",
-    // Event-sourced via LiveUpdatesProvider (#9627); no interval poll needed.
+    // Event-sourced via LiveUpdatesProvider (PAP-9627); no interval poll needed.
     refetchInterval: false,
     leaderOnly: true,
   });
@@ -655,8 +681,15 @@ export function Routines() {
     [folderFilteredRoutines, routineViewState.sortDir, routineViewState.sortField],
   );
   const routineSections = useMemo(
-    () => buildRoutineSections(sortedRoutines, routineViewState.groupBy, projectById, agentById),
-    [agentById, projectById, routineViewState.groupBy, sortedRoutines],
+    () => buildRoutineSections(sortedRoutines, routineViewState.groupBy, projectById, agentById, {
+      custom: t("ui.routines.custom"),
+      builtIn: t("ui.routines.builtIn"),
+      noProject: t("ui.routines.noProjectLabel"),
+      unknownProject: t("ui.routines.unknownProject"),
+      unassigned: t("ui.routines.unassigned"),
+      unknownAgent: t("ui.routines.unknownAgent"),
+    }),
+    [agentById, projectById, routineViewState.groupBy, sortedRoutines, t],
   );
   const recentRunsIssueLinkState = useMemo(
     () =>
@@ -740,8 +773,8 @@ export function Routines() {
   function handleToggleEnabled(routine: RoutineListItem, enabled: boolean) {
     if (!enabled && !routine.assigneeAgentId) {
       pushToast({
-        title: "Default agent required",
-        body: "Set a default agent before enabling routine automation.",
+        title: t("ui.routines.defaultAgentRequired"),
+        body: t("ui.routines.defaultAgentRequiredBody"),
         tone: "warn",
       });
       return;
@@ -797,7 +830,7 @@ export function Routines() {
         <TabsContent value="routines" className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">
-              {visibleRoutines.length} routine{visibleRoutines.length === 1 ? "" : "s"}
+              {visibleRoutines.length} {visibleRoutines.length === 1 ? t("ui.routines.routine") : t("ui.routines.routinesCount")}
             </p>
             <div className="flex items-center gap-1">
               <Popover>
@@ -1201,7 +1234,7 @@ export function Routines() {
               result={railFolderResult}
               selection={folderSelection}
               allLabel={t("ui.routines.allRoutines")}
-              itemLabelPlural="routines"
+              itemLabelPlural={t("ui.routines.routinesCount")}
               loading={foldersLoading}
               onSelect={setFolderSelection}
               onCreate={() => openCreateFolder()}
@@ -1228,7 +1261,7 @@ export function Routines() {
           {routineViewState.groupBy === "folder" && !hasRoutineFolders && !foldersLoading && visibleRoutines.length > 0 ? (
             <AllUnfiledBanner
               storageKey={`paperclip:routines-folder-nudge:${selectedCompanyId ?? "none"}`}
-              itemLabelPlural="routines"
+              itemLabelPlural={t("ui.routines.routinesCount")}
               onCreateFolder={() => openCreateFolder()}
             />
           ) : null}
@@ -1262,7 +1295,7 @@ export function Routines() {
                 <div className="mt-3 flex justify-center">
                   <Button size="sm" onClick={openCreateRoutine}>
                     <Plus className="mr-2 h-3.5 w-3.5" />
-                    New routine in this folder
+                    {t("ui.routines.newRoutineInThisFolder")}
                   </Button>
                 </div>
               ) : null}
@@ -1362,7 +1395,7 @@ export function Routines() {
       <DeleteFolderDialog
         open={deleteFolderTarget !== null}
         folder={deleteFolderTarget}
-        itemLabelPlural="routines"
+        itemLabelPlural={t("ui.routines.routinesCount")}
         pending={deleteFolder.isPending}
         onOpenChange={(open) => {
           if (!open) setDeleteFolderTarget(null);
@@ -1376,8 +1409,8 @@ export function Routines() {
         onOpenChange={setMobileFoldersOpen}
         result={railFolderResult}
         selection={folderSelection}
-        allLabel="All routines"
-        itemLabelPlural="Routines"
+        allLabel={t("ui.routines.allRoutines")}
+        itemLabelPlural={t("ui.routines.routinesCount")}
         onSelect={setFolderSelection}
         onCreate={() => openCreateFolder()}
       />
@@ -1405,11 +1438,12 @@ export function Routines() {
 }
 
 function FolderIconHeader({ label, count }: { label: string; count: number }) {
+  const { t } = useTranslation();
   return (
     <div className="flex min-w-0 items-center gap-2 text-sm">
       <Repeat className="h-3.5 w-3.5 text-muted-foreground" />
       <span className="truncate font-medium">{label}</span>
-      <span className="text-muted-foreground">{count} routine{count === 1 ? "" : "s"}</span>
+      <span className="text-muted-foreground">{count} {count === 1 ? t("ui.routines.routine") : t("ui.routines.routinesCount")}</span>
     </div>
   );
 }

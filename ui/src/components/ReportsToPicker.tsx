@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/popover";
 import { User } from "lucide-react";
 import { cn } from "../lib/utils";
+import { useTranslation } from "@/i18n";
 import { roleLabels } from "./agent-config-primitives";
 import { AgentIcon } from "./AgentIconPicker";
 
@@ -27,6 +28,7 @@ export function ReportsToPicker({
   disabledEmptyLabel?: string;
   chooseLabel?: string;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const exclude = new Set(excludeAgentIds);
   const rows = agents.filter(
@@ -99,7 +101,7 @@ export function ReportsToPicker({
         )}
         {unknownManager && (
           <div className="px-2 py-1.5 text-xs text-muted-foreground border-b border-border mb-0.5">
-            Saved manager is missing from this company. Choose a new manager or clear.
+            {t("ui.reportsToPicker.savedManagerMissing")}
           </div>
         )}
         {rows.map((a) => (

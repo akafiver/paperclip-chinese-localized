@@ -13,6 +13,7 @@ import { ApiError } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useTranslation } from "@/i18n";
 import {
   Dialog,
   DialogContent,
@@ -135,6 +136,7 @@ export function AddConnectionDialog({
   defaultApplicationId?: string | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { pushToast } = useToast();
 
@@ -279,30 +281,29 @@ export function AddConnectionDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Add application</DialogTitle>
+          <DialogTitle>{t("ui.toolsConnections.addApplication")}</DialogTitle>
           <DialogDescription>
-            Choose an existing application or create one as part of the same connection flow. Credentials stay as
-            vault references and the connection is probed before activation.
+            {t("ui.toolsConnections.addApplicationDescription")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className={step === 1 ? "font-medium text-foreground" : ""}>1 Application</span>
+            <span className={step === 1 ? "font-medium text-foreground" : ""}>1 {t("ui.toolsConnections.application")}</span>
             <span>/</span>
-            <span className={step === 2 ? "font-medium text-foreground" : ""}>2 Connection</span>
+            <span className={step === 2 ? "font-medium text-foreground" : ""}>2 {t("ui.toolsConnections.connection")}</span>
           </div>
 
           {step === 1 && !locked ? (
             <>
               <div className="space-y-1.5">
-                <Label>Application</Label>
+                <Label>{t("ui.toolsConnections.application")}</Label>
                 <Select value={applicationMode} onValueChange={(v) => setApplicationMode(v as "existing" | "new")}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="existing">Use existing application</SelectItem>
+                    <SelectItem value="existing">{t("ui.toolsConnections.useExistingApplication")}</SelectItem>
                     <SelectItem value="new">Create new application</SelectItem>
                   </SelectContent>
                 </Select>

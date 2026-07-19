@@ -58,7 +58,7 @@ export function Sidebar() {
   const [workOpen, setWorkOpen] = useState(true);
   const [companyOpen, setCompanyOpen] = useState(true);
   const { selectedCompanyId, selectedCompany } = useCompany();
-  const { isMobile, collapsed, collapseLocked, peeking, toggleCollapsed, setCollapsed } = useSidebar();
+  const { isMobile, collapsed, peeking, toggleCollapsed, setCollapsed } = useSidebar();
   const rail = collapsed && !peeking;
   const inboxBadge = useInboxBadge(selectedCompanyId);
   const { data: experimentalSettings } = useQuery({
@@ -71,7 +71,7 @@ export function Sidebar() {
     resourceKey: "live-runs",
     queryKey: liveRunsQueryKey,
     enabled: !!selectedCompanyId,
-    // Event-sourced via LiveUpdatesProvider (#9627) + reconnect reconcile — no
+    // Event-sourced via LiveUpdatesProvider (PAP-9627) + reconnect reconcile — no
     // interval poll needed. Polling here also re-armed React Query's timer on
     // every live-event cache write, a major source of steady-state churn.
     refetchInterval: false,
@@ -146,10 +146,8 @@ export function Sidebar() {
             {/* Desktop-only collapse/expand affordance. While peeking (hover flyout
                 over the collapsed rail) it becomes a Pin that promotes the peek to a
                 pinned-expanded sidebar; otherwise it toggles the pinned rail. Mobile
-                uses the off-canvas drawer, so this control is hidden there. It is
-                also hidden while a secondary sidebar forces the rail (collapseLocked):
-                the user cannot expand the primary while a secondary sidebar is shown. */}
-            {!isMobile && !collapseLocked ? (
+                uses the off-canvas drawer, so this control is hidden there. */}
+            {!isMobile ? (
               peeking ? (
                 <Button
                   variant="ghost"

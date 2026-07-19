@@ -46,6 +46,7 @@ import { pinDocumentScrollToZero } from "../lib/pin-document-scroll";
 import { cn } from "../lib/utils";
 import { NotFoundPage } from "../pages/NotFound";
 import { PluginSlotMount, resolveRouteSidebarSlot, usePluginSlots } from "../plugins/slots";
+import { useTranslation } from "@/i18n";
 
 function getCompanyRouteSegment(pathname: string, companyPrefix: string | undefined): string | null {
   return getCompanyPathSegments(pathname, companyPrefix)[0]?.toLowerCase() ?? null;
@@ -61,17 +62,8 @@ function getCompanyPathSegments(pathname: string, companyPrefix: string | undefi
 
 const RESERVED_APP_SUBPATHS = new Set(["browse", "connect", "review", "attention", "gateways", "advanced", "app"]);
 
-function isSkillsStoreRoute(pathname: string, companyPrefix: string | undefined) {
-  const segments = pathname.split("/").filter(Boolean);
-  if (segments[0]?.toLowerCase() === "skills") return true;
-  if (!companyPrefix) return false;
-  return (
-    segments[0]?.toUpperCase() === companyPrefix.toUpperCase() &&
-    segments[1]?.toLowerCase() === "skills"
-  );
-}
-
 export function Layout() {
+  const { t } = useTranslation();
   const {
     sidebarOpen,
     setSidebarOpen,
@@ -81,7 +73,6 @@ export function Layout() {
     peeking,
     setPeeking,
     isMobile,
-    setForceCollapsed,
   } = useSidebar();
   const { openNewIssue, openOnboarding } = useDialogActions();
   const { togglePanelVisible } = usePanel();
@@ -113,9 +104,6 @@ export function Layout() {
     isAppsRoute && companyPathSegments[1]?.toLowerCase() === "app" && companyPathSegments[2]
       ? companyPathSegments[2]
       : null;
-  // The Skills Store renders its own secondary (category) sidebar, so the main
-  // app nav collapses to its rail throughout the Skills Store section (PAP-10879).
-  const isSkillsRoute = isSkillsStoreRoute(location.pathname, companyPrefix);
   const onboardingTriggered = useRef(false);
   const lastMainScrollTop = useRef(0);
   const previousPathname = useRef<string | null>(null);
@@ -188,17 +176,6 @@ export function Layout() {
     queryKey: queryKeys.instance.generalSettings,
     queryFn: () => instanceSettingsApi.getGeneral(),
   }).data?.keyboardShortcuts === true;
-
-  // A secondary sidebar always collapses the app sidebar to its rail (still
-  // peek-able) — a hard invariant that overrides the user pin while the route
-  // is active, but does NOT mutate the persisted preference. Clearing the force
-  // on cleanup restores the user's expanded/collapsed choice when navigating
-  // off the takeover route (PAP-10694).
-  const forceRailCollapsed = hasSecondarySidebar || isSkillsRoute;
-  useLayoutEffect(() => {
-    setForceCollapsed(forceRailCollapsed);
-    return () => setForceCollapsed(false);
-  }, [forceRailCollapsed, setForceCollapsed]);
 
   useEffect(() => {
     if (companiesLoading || onboardingTriggered.current) return;
@@ -548,17 +525,17 @@ export function Layout() {
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-(--z-200) focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        Skip to Main Content
+        {t("ui.layout.skipToMainContent")}
       </a>
       <WorktreeBanner />
       <DevRestartBanner devServer={health?.devServer} />
-      <div className={cn("min-h-0 flex-1", isMobile ? "w-full" : "flex overflow-clip")}>
+      <div className={cn("min-h-0 min-w-0 flex-1", isMobile ? "w-full" : "flex overflow-clip")}>
         {isMobile && sidebarOpen && (
           <button
             type="button"
             className="fixed inset-0 z-40 bg-black/50"
             onClick={() => setSidebarOpen(false)}
-            aria-label="Close sidebar"
+            aria-label={t("ui.layout.closeSidebar")}
           />
         )}
 
@@ -591,7 +568,7 @@ export function Layout() {
             onPanelFocusCapture={collapsed ? handlePanelFocus : undefined}
             onPanelBlurCapture={collapsed ? handlePanelBlur : undefined}
           >
-            <div className="flex flex-1 min-h-0">
+            <div className="flex min-w-0 flex-1 min-h-0">
               <Sidebar />
             </div>
             <SidebarAccountMenu
@@ -620,13 +597,13 @@ export function Layout() {
               </div>
             ) : null}
           </div>
-          <div className={cn(isMobile ? "block" : "flex flex-1 min-h-0")}>
+          <div className={cn(isMobile ? "block" : "flex min-w-0 flex-1 min-h-0")}>
             <main
               id="main-content"
               ref={mainContentRef}
               tabIndex={-1}
               className={cn(
-                "flex-1 p-4 outline-none md:p-6",
+                "min-w-0 flex-1 p-4 outline-none md:p-6",
                 // Reserve the scrollbar gutter on desktop so pages whose height
                 // changes (e.g. switching skill-detail tabs) don't widen/shift
                 // when the vertical scrollbar appears or disappears (PAP-10907).

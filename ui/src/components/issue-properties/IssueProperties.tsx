@@ -77,6 +77,7 @@ import { PropertyChip, PropertyRow, PropertySection } from "./primitives";
 import { IssueCasesPanel } from "../IssueCasesPanel";
 import { ExpandRelationListButton, RemovableIssueReferencePill } from "./relation-controls";
 import { Badge } from "@/components/ui/badge";
+import { useTranslation } from "@/i18n";
 
 function TruncatedCopyable({ value, icon: Icon }: { value: string; icon: ComponentType<{ className?: string }> }) {
   const [copied, setCopied] = useState(false);
@@ -143,6 +144,7 @@ export function IssueProperties({
   externalObjectsError,
   onRetryExternalObjects,
 }: IssuePropertiesProps) {
+  const { t } = useTranslation();
   const { selectedCompanyId } = useCompany();
   const queryClient = useQueryClient();
   const companyId = issue.companyId ?? selectedCompanyId;
@@ -1775,7 +1777,7 @@ export function IssueProperties({
     <>
       <input
         className="w-full px-2 py-1.5 text-xs bg-transparent outline-none border-b border-border mb-1 placeholder:text-muted-foreground/50"
-        placeholder="Search tasks..."
+        placeholder={t("ui.issueProperties.searchTasks")}
         value={parentSearch}
         onChange={(e) => setParentSearch(e.target.value)}
         autoFocus={!inline}
@@ -1791,7 +1793,7 @@ export function IssueProperties({
             setParentOpen(false);
           }}
         >
-          No parent
+          {t("ui.issueProperties.noParent")}
         </button>
         {parentOptions.map((candidate) => (
           <button
@@ -1846,11 +1848,11 @@ export function IssueProperties({
     <>
       <input
         className="w-full px-2 py-1.5 text-xs bg-transparent outline-none border-b border-border mb-1 placeholder:text-muted-foreground/50"
-        placeholder="Search tasks..."
+        placeholder={t("ui.issueProperties.searchTasks")}
         value={blockedBySearch}
         onChange={(e) => setBlockedBySearch(e.target.value)}
         autoFocus={!inline}
-        aria-label="Search tasks to add as blockers"
+        aria-label={t("ui.issueProperties.searchTasksToAddBlockers")}
       />
       <div className="max-h-48 overflow-y-auto overscroll-contain">
         <button

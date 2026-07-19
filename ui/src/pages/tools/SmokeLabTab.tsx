@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
+import { useTranslation } from "@/i18n";
 import {
   LIFECYCLE_STAGES,
   SMOKE_PATH_LABELS,
@@ -67,6 +68,7 @@ const HEALTH_STYLES: Record<string, string> = {
 };
 
 export function SmokeLabTab({ companyId }: { companyId: string }) {
+  const { t } = useTranslation();
   const { enabled, loaded } = useSmokeLabEnabled();
   const qc = useQueryClient();
   const { pushToast } = useToast();
@@ -396,14 +398,14 @@ export function SmokeLabTab({ companyId }: { companyId: string }) {
             ) : (
               <Play className="h-4 w-4" />
             )}
-            Run browser smoke now
+            {t("ui.smokeLab.runBrowserSmokeNow")}
           </Button>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-(--gtc-64)">
           <div className="rounded-lg border border-border">
             {runs.length === 0 && (
-              <p className="p-4 text-sm text-muted-foreground">No runs recorded yet.</p>
+              <p className="p-4 text-sm text-muted-foreground">{t("ui.smokeLab.noRunsRecorded")}</p>
             )}
             <ul className="divide-y divide-border">
               {runs.map((run: SmokeRun) => {

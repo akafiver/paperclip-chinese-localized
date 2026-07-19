@@ -23,13 +23,14 @@ import { timeAgo } from "@/lib/timeAgo";
 import { AppLogo } from "./AppLogo";
 import { useReviewCount } from "./useReviewCount";
 import { AdvancedToolsLink } from "./store-cards";
+import { useTranslation } from "@/i18n";
 
 const BROWSE_HREF = "/apps/browse";
 
 type StatusFilter = "all" | "attention";
 
 type AppStatus = {
-  label: "Healthy" | "Needs attention" | "Paused" | "Not connected";
+  labelKey: string;
   tone: "connected" | "attention" | "paused" | "not_connected";
 };
 
@@ -49,19 +50,19 @@ type AppRow = {
  */
 function statusFor(application: ToolApplication, connections: ToolConnection[]): AppStatus {
   if (connections.length === 0) {
-    return { label: "Not connected", tone: "not_connected" };
+    return { labelKey: "ui.appsConnections.status.notConnected", tone: "not_connected" };
   }
   if (
     application.status === "disabled" ||
     application.status === "archived" ||
     connections.every((connection) => connection.enabled === false || connection.status === "disabled")
   ) {
-    return { label: "Paused", tone: "paused" };
+    return { labelKey: "ui.appsConnections.status.paused", tone: "paused" };
   }
   if (connections.some((connection) => isAttentionHealthStatus(connection.healthStatus))) {
-    return { label: "Needs attention", tone: "attention" };
+    return { labelKey: "ui.appsConnections.status.needsAttention", tone: "attention" };
   }
-  return { label: "Healthy", tone: "connected" };
+  return { labelKey: "ui.appsConnections.status.healthy", tone: "connected" };
 }
 
 /** The single health-derived predicate that drives highlight, pill, banner, filter (F6). */
@@ -77,6 +78,7 @@ const STATUS_CLASS: Record<AppStatus["tone"], string> = {
 };
 
 export function Connections() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { selectedCompany, selectedCompanyId } = useCompany();
   const { setBreadcrumbs } = useBreadcrumbs();
@@ -85,9 +87,9 @@ export function Connections() {
 
   useEffect(() => {
     setBreadcrumbs([
-      { label: selectedCompany?.name ?? "Company", href: "/dashboard" },
-      { label: "Apps", href: "/apps" },
-      { label: "Connections" },
+      { label: selectedCompany?.name ?? t("ui.common.company"), href: "/dashboard" },
+      { label: t("ui.appsConnect.apps"), href: "/apps" },
+      { label: t("ui.appsConnections.connections") },
     ]);
     return () => setBreadcrumbs([]);
   }, [setBreadcrumbs, selectedCompany?.name]);
@@ -200,17 +202,17 @@ export function Connections() {
         <div className="space-y-5">
           <header className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Connections</h1>
+              <h1 className="text-2xl font-bold tracking-tight">{t("ui.appsConnections.connections")}</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                The tools you’ve connected, and whether they’re working.
+                {t("ui.appsConnections.description")}
               </p>
             </div>
-            <Button onClick={() => navigate(BROWSE_HREF)}>Connect an app</Button>
+            <Button onClick={() => navigate(BROWSE_HREF)}>{t("ui.appsConnect.connectApp")}</Button>
           </header>
 
           <div className="flex flex-wrap items-center gap-2">
             <FilterChip active={filter === "all"} onClick={() => setFilter("all")}>
-              All ({rows.length})
+              {t("ui.appsConnections.all", { count: rows.length })}
             </FilterChip>
             <FilterChip
               active={filter === "attention"}
@@ -218,7 +220,7 @@ export function Connections() {
               disabled={rowsNeedingAttention.length === 0}
               onClick={() => setFilter("attention")}
             >
-              Needs attention ({rowsNeedingAttention.length})
+              {t("ui.appsConnections.needsAttention", { count: rowsNeedingAttention.length })}
             </FilterChip>
           </div>
 
@@ -250,13 +252,13 @@ export function Connections() {
               <ShieldAlert className="h-5 w-5 shrink-0 text-red-600 dark:text-red-400" />
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold text-red-900 dark:text-red-100">
-                  {rowsNeedingAttention.length} {rowsNeedingAttention.length === 1 ? "app needs" : "apps need"} attention
+                  {t("ui.appsConnections.attentionCount", { count: rowsNeedingAttention.length })}
                 </div>
                 <div className="truncate text-xs text-red-700 dark:text-red-300">
                   {floatSummary(rowsNeedingAttention)}
                 </div>
               </div>
-              <span className="shrink-0 text-xs font-semibold text-red-800 dark:text-red-200">Fix →</span>
+              <span className="shrink-0 text-xs font-semibold text-red-800 dark:text-red-200">{t("ui.appsConnections.fix")}</span>
             </button>
           )}
 
@@ -264,10 +266,10 @@ export function Connections() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/40 text-left text-(length:--text-micro) font-semibold uppercase tracking-wide text-muted-foreground">
-                  <th className="px-4 py-2.5">App</th>
-                  <th className="px-4 py-2.5">Status</th>
-                  <th className="px-4 py-2.5">Actions</th>
-                  <th className="px-4 py-2.5">Last used</th>
+                  <th className="px-4 py-2.5">{t("ui.appsConnections.app")}</th>
+                  <th className="px-4 py-2.5">{t("ui.appsConnections.statusLabel")}</th>
+                  <th className="px-4 py-2.5">{t("ui.appsConnections.actions")}</th>
+                  <th className="px-4 py-2.5">{t("ui.appsConnections.lastUsed")}</th>
                   <th className="px-4 py-2.5" />
                 </tr>
               </thead>
@@ -277,20 +279,20 @@ export function Connections() {
                   const attention = rowNeedsAttention(row);
                   const hint =
                     status.tone === "attention"
-                      ? "The key stopped working — reconnect to fix."
+                      ? t("ui.appsConnections.hints.attention")
                       : status.tone === "paused"
-                        ? "Paused — agents can’t use it right now."
+                        ? t("ui.appsConnections.hints.paused")
                         : status.tone === "not_connected"
-                          ? "Connect it so agents can use it."
+                          ? t("ui.appsConnections.hints.notConnected")
                         : null;
                   const appHref = primaryConnection
                     ? `/apps/${primaryConnection.id}`
                     : `/apps/app/${application.id}`;
                   const actionLabel = !primaryConnection
-                    ? "Connect"
+                    ? t("ui.appsConnections.connect")
                     : status.tone === "attention"
-                      ? "Reconnect"
-                      : "Open";
+                      ? t("ui.appsConnections.reconnect")
+                      : t("ui.appsConnections.open");
                   return (
                     <tr
                       key={application.id}
@@ -324,11 +326,11 @@ export function Connections() {
                             STATUS_CLASS[status.tone],
                           )}
                         >
-                          {status.label}
+                          {t(status.labelKey)}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-xs text-muted-foreground">{row.actionCount} on</span>
+                        <span className="text-xs text-muted-foreground">{t("ui.appsConnections.actionsOn", { count: row.actionCount })}</span>
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-xs text-muted-foreground">
@@ -356,7 +358,7 @@ export function Connections() {
 
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-muted-foreground">
-              Apps you connect become available to every agent unless you change “Who can use it”.
+              {t("ui.appsConnections.defaultAvailability")}
             </p>
             <AdvancedToolsLink />
           </div>
@@ -414,12 +416,13 @@ function floatSummary(rows: AppRow[]): string {
 }
 
 function EmptyConnections({ onBrowse }: { onBrowse: () => void }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight">Connections</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("ui.appsConnections.connections")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          The tools you’ve connected, and whether they’re working.
+          {t("ui.appsConnections.description")}
         </p>
       </header>
 
@@ -427,13 +430,12 @@ function EmptyConnections({ onBrowse }: { onBrowse: () => void }) {
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
           <AppWindow className="h-6 w-6 text-muted-foreground" />
         </div>
-        <p className="mt-4 text-sm font-medium text-foreground">No connections yet.</p>
+        <p className="mt-4 text-sm font-medium text-foreground">{t("ui.appsConnections.noConnectionsYet")}</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Add one from <span className="font-medium text-foreground">Apps</span> to give your agents
-          the tools they need.
+          {t("ui.appsConnections.addFromAppsPrefix")} <span className="font-medium text-foreground">{t("ui.appsConnect.apps")}</span> {t("ui.appsConnections.addFromAppsSuffix")}
         </p>
         <Button className="mt-6" onClick={onBrowse}>
-          Browse apps
+          {t("ui.appsSidebar.browse")}
         </Button>
       </div>
     </div>

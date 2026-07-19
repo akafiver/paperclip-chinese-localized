@@ -139,7 +139,7 @@ describe("IssueRow", () => {
       root.render(<IssueRow issue={createIssue()} selected unreadState="visible" />);
     });
 
-    const markReadButton = container.querySelector('button[aria-label="Mark as read"]');
+    const markReadButton = container.querySelector('button[aria-label="标记为已读"]');
     const unreadDot = markReadButton?.querySelector("span");
     // Selected rows neutralize the status glyph to muted via `!`-important
     // utilities, which override the glyph's inline colour var. The glyph is an
@@ -177,7 +177,7 @@ describe("IssueRow", () => {
     // In flow, not an absolute overlay.
     expect(slot?.className).not.toContain("absolute");
     // Read rows carry no dot button in the slot.
-    expect(slot?.querySelector('button[aria-label="Mark as read"]')).toBeNull();
+    expect(slot?.querySelector('button[aria-label="标记为已读"]')).toBeNull();
 
     act(() => {
       root.unmount();
@@ -194,11 +194,11 @@ describe("IssueRow", () => {
     // any leading control such as a parent's collapse caret).
     const slot = container.querySelector('[data-testid="issue-row-unread-slot"]');
     expect(slot).not.toBeNull();
-    expect(slot?.querySelector('button[aria-label="Mark as read"]')).not.toBeNull();
+    expect(slot?.querySelector('button[aria-label="标记为已读"]')).not.toBeNull();
 
     // Mobile: a separate in-flow, order-first dot (mobile has no reserved slot).
     const mobileDot = container
-      .querySelector('button[aria-label="Mark as read"].sm\\:hidden, span.sm\\:hidden button[aria-label="Mark as read"]')
+      .querySelector('button[aria-label="标记为已读"].sm\\:hidden, span.sm\\:hidden button[aria-label="标记为已读"]')
       ?.closest("span.sm\\:hidden");
     expect(mobileDot).not.toBeNull();
     expect(mobileDot?.className).toContain("order-first");
@@ -386,7 +386,7 @@ describe("IssueRow", () => {
 
     const badges = container.querySelectorAll('[data-testid="issue-row-parked-blocker"]');
     expect(badges.length).toBeGreaterThan(0);
-    expect(badges[0]?.textContent).toContain("Blocked by parked work");
+    expect(badges[0]?.textContent).toContain("被搁置任务阻塞");
 
     act(() => {
       root.unmount();

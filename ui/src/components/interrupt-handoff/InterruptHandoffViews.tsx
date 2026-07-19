@@ -10,6 +10,7 @@ import {
   type ReassignInterruptCopy,
   type TimelineAssigneeLike,
 } from "../../lib/interrupt-handoff";
+import { useTranslation } from "@/i18n";
 
 /**
  * Presentational views for the interrupt-handoff UX clarity surfaces (PAP-10669).
@@ -56,6 +57,7 @@ export function AssigneeChip({
   resolvers: HandoffChipResolvers;
   className?: string;
 }) {
+  const { t } = useTranslation();
   if (assignee.agentId) {
     return (
       <span className={cn(CHIP_CLASS, className)} data-testid="handoff-assignee-chip" data-kind="agent">
@@ -80,8 +82,8 @@ export function AssigneeChip({
       data-testid="handoff-assignee-chip"
       data-kind="unassigned"
     >
-      <span className="sr-only">No responsible — </span>
-      Unassigned
+      <span className="sr-only">{t("ui.commentThread.noResponsible")} - </span>
+      {t("ui.interruptHandoff.unassigned")}
     </span>
   );
 }

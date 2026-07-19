@@ -72,6 +72,7 @@ import {
   RelativeTime,
 } from "./shared";
 import { groupCatalogByApp, type AppGroup } from "./profiles/profile-model";
+import { useTranslation } from "@/i18n";
 
 const ANY_VALUE = "__any__";
 
@@ -535,7 +536,25 @@ function RuleBuilder({
   onCancel: () => void;
   onSave: () => void;
 }) {
+  const { t } = useTranslation();
   const sentence = formSentence(form, maps, catalogByToolName);
+  const whenOptions: Array<{ value: WhenMode; label: string }> = [
+    { value: "everyone", label: t("ui.toolsPolicies.everyone") },
+    { value: "agent", label: t("ui.toolsPolicies.specificAgent") },
+    { value: "project", label: t("ui.toolsPolicies.agentsInProject") },
+  ];
+  const usesOptions: Array<{ value: UsesMode; label: string }> = [
+    { value: "anything", label: t("ui.toolsPolicies.anything") },
+    { value: "app", label: t("ui.toolsPolicies.specificApp") },
+    { value: "actions", label: t("ui.toolsPolicies.specificActions") },
+    { value: "capability", label: t("ui.toolsPolicies.actionsByCapability") },
+  ];
+  const outcomeOptions: Array<{ value: BuilderPolicyType; label: string }> = [
+    { value: "allow", label: t("ui.toolsPolicies.allow") },
+    { value: "block", label: t("ui.toolsPolicies.block") },
+    { value: "require_approval", label: t("ui.toolsPolicies.askFirst") },
+    { value: "rate_limit", label: t("ui.toolsPolicies.limit") },
+  ];
   const selectedTools = new Set(parseList(form.toolNames));
   const setToolNames = (next: Set<string>) => setForm({ ...form, usesMode: "actions", toolNames: [...next].sort().join(", ") });
   const toggleTool = (toolName: string) => {
@@ -559,14 +578,14 @@ function RuleBuilder({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <Button variant="ghost" size="sm" className="px-0" onClick={onCancel}>
-            Back to rules
+            {t("ui.toolsPolicies.backToRules")}
           </Button>
-          <h2 className="text-lg font-semibold text-foreground">{form.id ? "Edit rule" : "New rule"}</h2>
+          <h2 className="text-lg font-semibold text-foreground">{form.id ? t("ui.toolsPolicies.editRule") : t("ui.toolsPolicies.newRule")}</h2>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={onCancel}>Cancel</Button>
+          <Button variant="outline" size="sm" onClick={onCancel}>{t("ui.common.cancel")}</Button>
           <Button size="sm" onClick={onSave} disabled={saving}>
-            {saving ? "Saving..." : "Save rule"}
+            {saving ? t("ui.toolsPolicies.saving") : t("ui.toolsPolicies.saveRule")}
           </Button>
         </div>
       </div>
@@ -577,19 +596,15 @@ function RuleBuilder({
 
       <div className="grid gap-4 lg:grid-cols-(--gtc-61)">
         <section className="space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">When</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t("ui.toolsPolicies.when")}</h3>
           <div className="grid gap-2">
-            {[
-              ["everyone", "Everyone"],
-              ["agent", "Specific agent"],
-              ["project", "Agents in a project"],
-            ].map(([value, label]) => (
+            {whenOptions.map(({ value, label }) => (
               <Button
                 key={value}
                 variant={form.whenMode === value ? "secondary" : "outline"}
                 size="sm"
                 className="justify-start"
-                onClick={() => setForm({ ...form, whenMode: value as WhenMode })}
+                onClick={() => setForm({ ...form, whenMode: value })}
               >
                 {label}
               </Button>
@@ -597,18 +612,18 @@ function RuleBuilder({
           </div>
           {form.whenMode === "agent" ? (
             <Select value={form.agentId} onValueChange={(agentId) => setForm({ ...form, agentId })}>
-              <SelectTrigger><SelectValue placeholder="Choose agent" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t("ui.toolsPolicies.chooseAgent")} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ANY_VALUE}>Choose agent</SelectItem>
+                <SelectItem value={ANY_VALUE}>{t("ui.toolsPolicies.chooseAgent")}</SelectItem>
                 {agents.map((agent) => <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>)}
               </SelectContent>
             </Select>
           ) : null}
           {form.whenMode === "project" ? (
             <Select value={form.projectId} onValueChange={(projectId) => setForm({ ...form, projectId })}>
-              <SelectTrigger><SelectValue placeholder="Choose project" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t("ui.toolsPolicies.chooseProject")} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ANY_VALUE}>Choose project</SelectItem>
+                <SelectItem value={ANY_VALUE}>{t("ui.toolsPolicies.chooseProject")}</SelectItem>
                 {projects.map((project) => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -616,20 +631,15 @@ function RuleBuilder({
         </section>
 
         <section className="space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">Uses</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t("ui.toolsPolicies.uses")}</h3>
           <div className="grid gap-2">
-            {[
-              ["anything", "Anything"],
-              ["app", "A specific app"],
-              ["actions", "Specific actions"],
-              ["capability", "Actions by capability"],
-            ].map(([value, label]) => (
+            {usesOptions.map(({ value, label }) => (
               <Button
                 key={value}
                 variant={form.usesMode === value ? "secondary" : "outline"}
                 size="sm"
                 className="justify-start"
-                onClick={() => setForm({ ...form, usesMode: value as UsesMode })}
+                onClick={() => setForm({ ...form, usesMode: value })}
               >
                 {label}
               </Button>
@@ -637,18 +647,18 @@ function RuleBuilder({
           </div>
           {form.usesMode === "app" ? (
             <Select value={form.applicationId} onValueChange={(applicationId) => setForm({ ...form, applicationId })}>
-              <SelectTrigger><SelectValue placeholder="Choose app" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t("ui.toolsPolicies.chooseApp")} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ANY_VALUE}>Choose app</SelectItem>
+                <SelectItem value={ANY_VALUE}>{t("ui.toolsPolicies.chooseApp")}</SelectItem>
                 {applications.map((app) => <SelectItem key={app.id} value={app.id}>{app.name}</SelectItem>)}
               </SelectContent>
             </Select>
           ) : null}
           {form.usesMode === "capability" ? (
             <Select value={form.riskLevel} onValueChange={(riskLevel) => setForm({ ...form, riskLevel })}>
-              <SelectTrigger><SelectValue placeholder="Choose capability" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t("ui.toolsPolicies.chooseCapability")} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ANY_VALUE}>Choose capability</SelectItem>
+                <SelectItem value={ANY_VALUE}>{t("ui.toolsPolicies.chooseCapability")}</SelectItem>
                 {CAPABILITY_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                 ))}
@@ -658,7 +668,7 @@ function RuleBuilder({
           {form.usesMode === "actions" ? (
             <div className="max-h-80 overflow-y-auto rounded-md border border-border">
               {appGroups.length === 0 ? (
-                <div className="p-3 text-sm text-muted-foreground">No app actions discovered yet.</div>
+                <div className="p-3 text-sm text-muted-foreground">{t("ui.toolsPolicies.noAppActions")}</div>
               ) : (
                 appGroups.map((group) => {
                   const selectedCount = group.tools.filter((tool) => selectedTools.has(tool.toolName)).length;
@@ -670,7 +680,7 @@ function RuleBuilder({
                           onCheckedChange={() => toggleGroup(group)}
                         />
                         <span className="flex-1">{group.name}</span>
-                        <span className="text-xs text-muted-foreground">{selectedCount} of {group.tools.length}</span>
+                        <span className="text-xs text-muted-foreground">{t("ui.toolsPolicies.selectedOfTotal", { selected: selectedCount, total: group.tools.length })}</span>
                       </label>
                       <div className="pb-2 pl-8 pr-3">
                         {group.tools.map((tool) => (
@@ -689,9 +699,9 @@ function RuleBuilder({
         </section>
 
         <section className="space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">Then</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t("ui.toolsPolicies.then")}</h3>
           <div className="grid gap-2">
-            {OUTCOMES.map((outcome) => (
+            {outcomeOptions.map((outcome) => (
               <Button
                 key={outcome.value}
                 variant={form.policyType === outcome.value ? "secondary" : "outline"}
@@ -706,17 +716,17 @@ function RuleBuilder({
           {form.policyType === "rate_limit" ? (
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1.5">
-                <Label htmlFor="limit-count">Times</Label>
+                <Label htmlFor="limit-count">{t("ui.toolsPolicies.times")}</Label>
                 <Input id="limit-count" inputMode="numeric" value={form.rateLimitLimit} onChange={(e) => setForm({ ...form, rateLimitLimit: e.target.value })} />
               </div>
               <div className="space-y-1.5">
-                <Label>Per</Label>
+                <Label>{t("ui.toolsPolicies.per")}</Label>
                 <Select value={form.rateLimitWindowSeconds} onValueChange={(rateLimitWindowSeconds) => setForm({ ...form, rateLimitWindowSeconds })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="3600">Hour</SelectItem>
-                    <SelectItem value="86400">Day</SelectItem>
-                    <SelectItem value="60">Minute</SelectItem>
+                    <SelectItem value="3600">{t("ui.toolsPolicies.hour")}</SelectItem>
+                    <SelectItem value="86400">{t("ui.toolsPolicies.day")}</SelectItem>
+                    <SelectItem value="60">{t("ui.toolsPolicies.minute")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -728,31 +738,31 @@ function RuleBuilder({
       <details className="rounded-md border border-border p-3">
         <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-foreground">
           <ChevronDown className="h-4 w-4" />
-          Advanced
+          {t("ui.toolsPolicies.advanced")}
         </summary>
         <div className="mt-3 grid gap-3 lg:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="rule-name">Rule name</Label>
+            <Label htmlFor="rule-name">{t("ui.toolsPolicies.ruleName")}</Label>
             <Input id="rule-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={sentenceText(sentence)} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="rule-priority">Priority</Label>
+            <Label htmlFor="rule-priority">{t("ui.toolsPolicies.priority")}</Label>
             <Input id="rule-priority" inputMode="numeric" value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} />
           </div>
           <div className="space-y-1.5">
-            <Label>Raw connection</Label>
+            <Label>{t("ui.toolsPolicies.rawConnection")}</Label>
             <Select value={form.connectionId} onValueChange={(connectionId) => setForm({ ...form, connectionId })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ANY_VALUE}>Any connection</SelectItem>
+                <SelectItem value={ANY_VALUE}>{t("ui.toolsPolicies.anyConnection")}</SelectItem>
                 {[...maps.connection.entries()].map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 lg:col-span-2">
             <div>
-              <p className="text-sm font-medium text-foreground">On</p>
-              <p className="text-xs text-muted-foreground">Turn this off to keep the rule saved without matching.</p>
+              <p className="text-sm font-medium text-foreground">{t("ui.toolsPolicies.on")}</p>
+              <p className="text-xs text-muted-foreground">{t("ui.toolsPolicies.onDescription")}</p>
             </div>
             <ToggleSwitch checked={form.enabled} onCheckedChange={(enabled) => setForm({ ...form, enabled })} />
           </div>
@@ -763,20 +773,21 @@ function RuleBuilder({
 }
 
 function StarterCards({ onStart }: { onStart: (form: PolicyFormState) => void }) {
+  const { t } = useTranslation();
   const starters = [
     {
-      title: "Block destructive actions everywhere",
-      form: emptyPolicyForm({ policyType: "block", usesMode: "capability", riskLevel: "destructive", name: "Block destructive actions everywhere" }),
+      title: t("ui.toolsPolicies.starters.blockDestructive"),
+      form: emptyPolicyForm({ policyType: "block", usesMode: "capability", riskLevel: "destructive", name: t("ui.toolsPolicies.starters.blockDestructive") }),
     },
     {
-      title: "Ask first before selected actions",
-      form: emptyPolicyForm({ policyType: "require_approval", usesMode: "actions", name: "Ask first before selected actions" }),
+      title: t("ui.toolsPolicies.starters.askFirst"),
+      form: emptyPolicyForm({ policyType: "require_approval", usesMode: "actions", name: t("ui.toolsPolicies.starters.askFirst") }),
     },
     {
-      title: "Limit a noisy action",
-      form: emptyPolicyForm({ policyType: "rate_limit", usesMode: "actions", rateLimitLimit: "50", name: "Limit a noisy action" }),
+      title: t("ui.toolsPolicies.starters.limitNoisy"),
+      form: emptyPolicyForm({ policyType: "rate_limit", usesMode: "actions", rateLimitLimit: "50", name: t("ui.toolsPolicies.starters.limitNoisy") }),
     },
-    { title: "Start from scratch", form: emptyPolicyForm() },
+    { title: t("ui.toolsPolicies.starters.startScratch"), form: emptyPolicyForm() },
   ];
   return (
     <div className="grid gap-2 sm:grid-cols-2">
@@ -795,6 +806,7 @@ function StarterCards({ onStart }: { onStart: (form: PolicyFormState) => void })
 }
 
 export function PoliciesTab({ companyId }: { companyId: string }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { pushToast } = useToast();
   const [form, setForm] = useState<PolicyFormState | null>(null);
@@ -982,17 +994,17 @@ export function PoliciesTab({ companyId }: { companyId: string }) {
   return (
     <div className="space-y-5">
       <ToolsPageHeader
-        title="Rules"
-        description="Rules are checked top to bottom — the first one that matches decides."
+        title={t("ui.toolsPolicies.rules")}
+        description={t("ui.toolsPolicies.rulesDescription")}
         actions={
           <>
             <Button size="sm" variant="outline" onClick={() => setTestOpen(true)}>
               <FlaskConical className="mr-1 h-4 w-4" />
-              Test a rule
+              {t("ui.toolsPolicies.testRule")}
             </Button>
             <Button size="sm" onClick={() => setForm(emptyPolicyForm())}>
               <Plus className="mr-1 h-4 w-4" />
-              New rule
+              {t("ui.toolsPolicies.newRule")}
             </Button>
           </>
         }
@@ -1007,9 +1019,9 @@ export function PoliciesTab({ companyId }: { companyId: string }) {
           <div className="space-y-3">
             <EmptyState
               icon={Shield}
-              message="No rules yet"
-              description="Start with a template or create a rule from scratch."
-              action="New rule"
+              message={t("ui.toolsPolicies.noRules")}
+              description={t("ui.toolsPolicies.noRulesDescription")}
+              action={t("ui.toolsPolicies.newRule")}
               onAction={() => setForm(emptyPolicyForm())}
             />
             <StarterCards onStart={setForm} />
@@ -1110,15 +1122,15 @@ export function PoliciesTab({ companyId }: { companyId: string }) {
       </div>
 
       <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-foreground">Remembered approvals</h3>
-        <p className="text-sm text-muted-foreground">When you approve an Ask-first request, Paperclip can remember the decision.</p>
+        <h3 className="text-sm font-semibold text-foreground">{t("ui.toolsPolicies.rememberedApprovals")}</h3>
+        <p className="text-sm text-muted-foreground">{t("ui.toolsPolicies.rememberedApprovalsDescription")}</p>
         {trustRules.isLoading ? (
           <LoadingState />
         ) : trustRules.error ? (
           <ErrorState error={trustRules.error} onRetry={() => trustRules.refetch()} />
         ) : (trustRules.data?.trustRules ?? []).length === 0 ? (
           <div className="rounded-md border border-border px-4 py-6 text-sm text-muted-foreground">
-            No remembered approvals yet.
+            {t("ui.toolsPolicies.noRememberedApprovals")}
           </div>
         ) : (
           <div className="divide-y divide-border rounded-md border border-border">

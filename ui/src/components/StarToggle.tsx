@@ -1,6 +1,7 @@
 import type { MouseEvent } from "react";
 import { Loader2, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/i18n";
 import { cn } from "../lib/utils";
 
 export interface StarToggleProps {
@@ -51,7 +52,8 @@ export function StarToggle({
   className,
   revealClassName,
 }: StarToggleProps) {
-  const ariaLabel = starred ? `Unstar ${resourceName}` : `Star ${resourceName}`;
+  const { t } = useTranslation();
+  const ariaLabel = starred ? t("ui.starToggle.unstarResource", { resourceName }) : t("ui.starToggle.starResource", { resourceName });
   const Icon = pending ? Loader2 : Star;
 
   function handleClick(event: MouseEvent<HTMLButtonElement>) {
@@ -63,7 +65,13 @@ export function StarToggle({
   }
 
   if (size === "button") {
-    const label = pending ? "Saving..." : error ? "Retry star" : starred ? "Starred" : "Star";
+    const label = pending
+      ? t("ui.starToggle.saving")
+      : error
+        ? t("ui.starToggle.retryStar")
+        : starred
+          ? t("ui.starToggle.starred")
+          : t("ui.starToggle.star");
     return (
       <Button
         type="button"
@@ -74,7 +82,7 @@ export function StarToggle({
         aria-busy={pending ? "true" : undefined}
         disabled={pending}
         onClick={handleClick}
-        title={error ? "Couldn't save — retry" : undefined}
+        title={error ? t("ui.starToggle.couldNotSaveRetry") : undefined}
         className={cn(
           error
             ? "text-red-500 hover:text-red-500"
@@ -111,7 +119,7 @@ export function StarToggle({
       aria-busy={pending ? "true" : undefined}
       disabled={pending}
       onClick={handleClick}
-      title={error ? "Couldn't save — retry" : undefined}
+      title={error ? t("ui.starToggle.couldNotSaveRetry") : undefined}
       className={cn(
         "h-6 w-6 shrink-0",
         visible ? "opacity-100" : revealClassName ?? DEFAULT_ROW_REVEAL,

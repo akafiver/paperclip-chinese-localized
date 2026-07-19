@@ -116,10 +116,10 @@ export function InstanceGeneralSettings() {
           </div>
           <div className="text-sm text-muted-foreground">
             {healthQuery.data?.deploymentMode === "local_trusted"
-              ? "Local trusted mode is optimized for a local operator. Browser requests run as local board context and no sign-in is required."
+              ? t("ui.instanceGeneral.localTrustedDescription")
               : healthQuery.data?.deploymentExposure === "public"
-                ? "Authenticated public mode requires sign-in for board access and is intended for public URLs."
-                : "Authenticated private mode requires sign-in and is intended for LAN, VPN, or other private-network deployments."}
+                ? t("ui.instanceGeneral.authenticatedPublicDescription")
+                : t("ui.instanceGeneral.authenticatedPrivateDescription")}
           </div>
           <div className="grid gap-3 md:grid-cols-3">
               <StatusBox
@@ -143,9 +143,7 @@ export function InstanceGeneralSettings() {
           <div className="space-y-1.5">
             <h2 className="text-sm font-semibold">{t("ui.instanceGeneral.censorUsername")}</h2>
             <p className="max-w-2xl text-sm text-muted-foreground">
-              Hide the username segment in home-directory paths and similar operator-visible log output. Standalone
-              username mentions outside of paths are not yet masked in the live transcript view. This is off by
-              default.
+              {t("ui.instanceGeneral.censorUsernameDescription")}
             </p>
           </div>
           <ToggleSwitch
@@ -162,8 +160,7 @@ export function InstanceGeneralSettings() {
           <div className="space-y-1.5">
             <h2 className="text-sm font-semibold">{t("ui.instanceGeneral.keyboardShortcuts")}</h2>
             <p className="max-w-2xl text-sm text-muted-foreground">
-              Enable app keyboard shortcuts, including inbox navigation and global shortcuts like creating tasks or
-              toggling panels. This is off by default.
+              {t("ui.instanceGeneral.keyboardShortcutsDescription")}
             </p>
           </div>
           <ToggleSwitch
@@ -180,9 +177,7 @@ export function InstanceGeneralSettings() {
           <div className="space-y-1.5">
             <h2 className="text-sm font-semibold">{t("ui.instanceGeneral.backupRetention")}</h2>
             <p className="max-w-2xl text-sm text-muted-foreground">
-              Configure how long automatic database backups are retained. Backups run roughly
-              every hour and are compressed with gzip. Within the daily window all backups are
-              kept; beyond that, one backup per week and one per month are preserved.
+              {t("ui.instanceGeneral.backupRetentionDescription")}
             </p>
           </div>
 
@@ -208,7 +203,7 @@ export function InstanceGeneralSettings() {
                       })
                     }
                   >
-                    <div className="text-sm font-medium">{days} days</div>
+                    <div className="text-sm font-medium">{t("ui.instanceGeneral.days", { count: days })}</div>
                   </button>
                 );
               })}
@@ -220,7 +215,7 @@ export function InstanceGeneralSettings() {
             <div className="flex flex-wrap gap-2">
               {WEEKLY_RETENTION_PRESETS.map((weeks) => {
                 const active = backupRetention.weeklyWeeks === weeks;
-                const label = weeks === 1 ? "1 week" : `${weeks} weeks`;
+                const label = t("ui.instanceGeneral.weeks", { count: weeks });
                 return (
                   <button
                     key={weeks}
@@ -250,7 +245,7 @@ export function InstanceGeneralSettings() {
             <div className="flex flex-wrap gap-2">
               {MONTHLY_RETENTION_PRESETS.map((months) => {
                 const active = backupRetention.monthlyMonths === months;
-                const label = months === 1 ? "1 month" : `${months} months`;
+                const label = t("ui.instanceGeneral.months", { count: months });
                 return (
                   <button
                     key={months}
@@ -280,10 +275,9 @@ export function InstanceGeneralSettings() {
       <Card className="block p-5">
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <h2 className="text-sm font-semibold">AI feedback sharing</h2>
+            <h2 className="text-sm font-semibold">{t("ui.instanceGeneral.aiFeedbackSharing")}</h2>
             <p className="max-w-2xl text-sm text-muted-foreground">
-              Control whether thumbs up and thumbs down votes can send the voted AI output to
-              Paperclip Labs. Votes are always saved locally.
+              {t("ui.instanceGeneral.aiFeedbackSharingDescription")}
             </p>
             {FEEDBACK_TERMS_URL ? (
               <a
@@ -292,27 +286,26 @@ export function InstanceGeneralSettings() {
                 rel="noreferrer"
                 className="inline-flex text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
               >
-                Read our terms of service
+                {t("ui.instanceGeneral.readTerms")}
               </a>
             ) : null}
           </div>
           {feedbackDataSharingPreference === "prompt" ? (
             <div className="rounded-lg border border-border/70 bg-accent/20 px-3 py-2 text-sm text-muted-foreground">
-              No default is saved yet. The next thumbs up or thumbs down choice will ask once and
-              then save the answer here.
+              {t("ui.instanceGeneral.feedbackPromptUnset")}
             </div>
           ) : null}
           <div className="flex flex-wrap gap-2">
             {[
               {
                 value: "allowed",
-                label: "Always allow",
-                description: "Share voted AI outputs automatically.",
+                label: t("ui.instanceGeneral.alwaysAllow"),
+                description: t("ui.instanceGeneral.alwaysAllowDescription"),
               },
               {
                 value: "not_allowed",
-                label: "Don't allow",
-                description: "Keep voted AI outputs local only.",
+                label: t("ui.instanceGeneral.dontAllow"),
+                description: t("ui.instanceGeneral.dontAllowDescription"),
               },
             ].map((option) => {
               const active = feedbackDataSharingPreference === option.value;
@@ -344,11 +337,13 @@ export function InstanceGeneralSettings() {
             })}
           </div>
           <p className="text-xs text-muted-foreground">
-            To retest the first-use prompt in local dev, remove the{" "}
-            <code>feedbackDataSharingPreference</code> key from the{" "}
-            <code>instance_settings.general</code> JSON row for this instance, or set it back to{" "}
-            <code>"prompt"</code>. Unset and <code>"prompt"</code> both mean no default has been
-            chosen yet.
+            {t("ui.instanceGeneral.feedbackDevResetPrefix")}{" "}
+            <code>feedbackDataSharingPreference</code>
+            {t("ui.instanceGeneral.feedbackDevResetMiddle")}{" "}
+            <code>instance_settings.general</code>
+            {t("ui.instanceGeneral.feedbackDevResetBeforePrompt")}{" "}
+            <code>"prompt"</code>
+            {t("ui.instanceGeneral.feedbackDevResetSuffix")}
           </p>
         </div>
       </Card>
@@ -356,9 +351,9 @@ export function InstanceGeneralSettings() {
       <Card className="block p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1.5">
-            <h2 className="text-sm font-semibold">Sign out</h2>
+            <h2 className="text-sm font-semibold">{t("ui.instanceGeneral.signOut")}</h2>
             <p className="max-w-2xl text-sm text-muted-foreground">
-              Sign out of this Paperclip instance. You will be redirected to the login page.
+              {t("ui.instanceGeneral.signOutDescription")}
             </p>
           </div>
           <Button
@@ -368,7 +363,7 @@ export function InstanceGeneralSettings() {
             onClick={() => signOutMutation.mutate()}
           >
             <LogOut className="size-4" />
-            {signOutMutation.isPending ? "Signing out..." : "Sign out"}
+            {signOutMutation.isPending ? t("ui.instanceGeneral.signingOut") : t("ui.instanceGeneral.signOut")}
           </Button>
         </div>
       </Card>

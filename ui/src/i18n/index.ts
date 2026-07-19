@@ -9,12 +9,13 @@ function initialLocale() {
   if (typeof window !== "undefined") {
     const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
     if (stored && supportedLocales.includes(stored)) return stored;
-
-    const browserLocale = window.navigator.language;
-    if (supportedLocales.includes(browserLocale)) return browserLocale;
-    if (browserLocale.toLowerCase().startsWith("zh")) return "zh-CN";
   }
   return DEFAULT_LOCALE;
+}
+
+function syncDocumentLocale(locale: string) {
+  if (typeof document === "undefined") return;
+  document.documentElement.lang = locale;
 }
 
 const i18nextOptions: InitOptions = {
@@ -32,7 +33,10 @@ void i18n.use(initReactI18next).init(i18nextOptions).catch((error: unknown) => {
   console.error("Failed to initialize i18next", error);
 });
 
+syncDocumentLocale(i18n.language || DEFAULT_LOCALE);
+
 i18n.on("languageChanged", (locale) => {
+  syncDocumentLocale(locale);
   if (typeof window !== "undefined") {
     window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
   }

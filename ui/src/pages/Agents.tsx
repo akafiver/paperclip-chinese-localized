@@ -125,7 +125,7 @@ function describeEnvironment(
   capabilities?: EnvironmentCapabilities | null,
 ): EnvironmentDescriptor {
   const detail = environment.driver === "sandbox"
-    ? `${getSandboxProviderLabel(environment, capabilities)} sandbox provider`
+    ? getSandboxProviderLabel(environment, capabilities)
     : environment.driver === "local"
       ? translate("ui.agents.paperclipHost")
       : formatEnvironmentDriver(environment.driver);

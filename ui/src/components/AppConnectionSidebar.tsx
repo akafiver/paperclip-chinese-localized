@@ -16,12 +16,14 @@ import {
 } from "@/pages/apps/app-tabs";
 import { AppLogo } from "@/pages/apps/AppLogo";
 import { SidebarNavItem } from "./SidebarNavItem";
+import { useTranslation } from "@/i18n";
 
 type AppDetailSidebarProps =
   | { kind: "connection"; connectionId: string }
   | { kind: "application"; applicationId: string };
 
 export function AppDetailSidebar(props: AppDetailSidebarProps) {
+  const { t } = useTranslation();
   const { selectedCompanyId } = useCompany();
   const { isMobile, setSidebarOpen } = useSidebar();
 
@@ -80,7 +82,7 @@ export function AppDetailSidebar(props: AppDetailSidebarProps) {
           className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
         >
           <ChevronLeft className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate">All apps</span>
+          <span className="truncate">{t("ui.appTabs.allApps")}</span>
         </Link>
         <div className="flex min-w-0 items-center gap-2 px-2 py-1">
           <AppLogo name={appName} logoUrl={logoEntry?.logoUrl} size={28} />
@@ -96,12 +98,12 @@ export function AppDetailSidebar(props: AppDetailSidebarProps) {
             <SidebarNavItem
               key={tab.key}
               to={tabHref(props, tab.key)}
-              label={tab.label}
+              label={t(tab.labelKey)}
               icon={tab.icon}
               end
               badge={tab.key === "review" && reviewCount > 0 ? reviewCount : undefined}
               badgeTone="danger"
-              badgeLabel="needing review"
+              badgeLabel={t("ui.appTabs.needingReview")}
             />
           ))}
         </div>

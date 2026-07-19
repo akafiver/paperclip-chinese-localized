@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { brandChipBadge } from "@/lib/status-colors";
 import type { BuiltInAgentStatus } from "@/api/builtInAgents";
+import { useTranslation } from "@/i18n";
 
 /**
  * Provenance label ("Built-in"). Constant for the life of a built-in agent —
@@ -15,6 +16,7 @@ export function BuiltInAgentBadge({
   className?: string;
   compact?: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <Badge
       variant="outline"
@@ -23,9 +25,9 @@ export function BuiltInAgentBadge({
         compact && "px-1.5 py-0 text-(length:--text-nano)",
         className,
       )}
-      title="Ships with Paperclip"
+      title={t("ui.builtInAgentBadges.shipsWithPaperclip")}
     >
-      Built-in
+      {t("ui.builtInAgentBadges.builtIn")}
     </Badge>
   );
 }
@@ -44,6 +46,7 @@ export function BuiltInLifecycleChip({
   compact?: boolean;
   className?: string;
 }) {
+  const { t } = useTranslation();
   if (status !== "needs_setup" && status !== "pending_approval") return null;
   const isPendingApproval = status === "pending_approval";
   return (
@@ -56,11 +59,17 @@ export function BuiltInLifecycleChip({
       )}
       title={
         isPendingApproval
-          ? "Waiting on board hire approval before the feature can run"
-          : "Needs adapter/model setup before the feature can run"
+          ? t("ui.builtInAgentBadges.pendingApprovalTitle")
+          : t("ui.builtInAgentBadges.needsSetupTitle")
       }
     >
-      {isPendingApproval ? (compact ? "Approval" : "Pending approval") : compact ? "Setup" : "Needs setup"}
+      {isPendingApproval
+        ? compact
+          ? t("ui.builtInAgentBadges.approval")
+          : t("ui.builtInAgentBadges.pendingApproval")
+        : compact
+          ? t("ui.builtInAgentBadges.setup")
+          : t("ui.builtInAgentBadges.needsSetup")}
     </Badge>
   );
 }

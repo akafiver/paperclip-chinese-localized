@@ -14,6 +14,7 @@ import type { CompanySecret, EnvBinding, UserSecretDefinition } from "@paperclip
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useOptionalToastActions } from "@/context/ToastContext";
+import { useTranslation } from "@/i18n";
 import { EnvironmentVariableRow } from "./Row";
 import { parseDotenv } from "./parse-dotenv";
 import {
@@ -30,9 +31,6 @@ import {
 import type { EnvironmentVariableDirtyFields } from "./Row";
 
 const DEFAULT_RESERVED_PREFIXES = ["PAPERCLIP_"];
-
-const DEFAULT_HINT =
-  "Set the KEY to the env var name the process expects, for example GH_TOKEN. Choose a secret to resolve a stored value at run start. PAPERCLIP_* variables are injected automatically.";
 
 // Canonical entries for dirty comparison. Must mirror the emit semantics of
 // valueFromRows (trimmed names, incomplete refs dropped, last-writer-wins on
@@ -157,6 +155,7 @@ export const EnvironmentVariablesEditor = forwardRef<EnvironmentVariablesEditorH
   footerHint,
   onDirtyChange,
 }: EnvironmentVariablesEditorProps, ref) {
+  const { t } = useTranslation();
   const toast = useOptionalToastActions();
   const editorRootRef = useRef<HTMLDivElement | null>(null);
   const [rows, setRows] = useState<EnvRow[]>(() => rowsFromValue(value));
@@ -427,7 +426,7 @@ export const EnvironmentVariablesEditor = forwardRef<EnvironmentVariablesEditorH
   }, [recentlyUsedSecrets, rows]);
 
   const hasRows = rows.length > 0;
-  const hint = footerHint === undefined ? DEFAULT_HINT : footerHint;
+  const hint = footerHint === undefined ? t("ui.envEditor.defaultHint") : footerHint;
   const committedRowsById = useMemo(
     () => new Map(committedRows.map((row) => [row.id, row])),
     [committedRows],
@@ -481,7 +480,7 @@ export const EnvironmentVariablesEditor = forwardRef<EnvironmentVariablesEditorH
           })}
         </>
       ) : (
-        <p className="text-sm text-muted-foreground">No environment variables</p>
+        <p className="text-sm text-muted-foreground">{t("ui.envEditor.noEnvironmentVariables")}</p>
       )}
 
       {/* Footer bar */}
@@ -493,14 +492,14 @@ export const EnvironmentVariablesEditor = forwardRef<EnvironmentVariablesEditorH
           className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
         >
           <Plus className="size-3.5" />
-          Add variable
+          {t("ui.envEditor.addVariable")}
         </button>
 
         {quickBind.length > 0 && !disabled ? (
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="inline-flex items-center gap-1 text-(length:--text-micro) text-muted-foreground/70">
               <KeyRound className="size-3" />
-              Recently used:
+              {t("ui.envEditor.recentlyUsed")}:
             </span>
             {quickBind.map((secret) => (
               <button

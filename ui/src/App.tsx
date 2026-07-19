@@ -313,9 +313,10 @@ function LegacySettingsRedirect() {
   const location = useLocation();
   const { companies, selectedCompany, loading } = useCompany();
   const { companyPrefix } = useParams<{ companyPrefix?: string }>();
+  const { t } = useTranslation();
 
   if (loading) {
-    return <div className="mx-auto max-w-xl py-10 text-sm text-muted-foreground">Loading...</div>;
+    return <div className="mx-auto max-w-xl py-10 text-sm text-muted-foreground">{t("ui.app.loading")}</div>;
   }
 
   const targetCompany =
@@ -373,6 +374,7 @@ function OnboardingRoutePage() {
   const { openOnboarding } = useDialogActions();
   const { onboardingOpen, onboardingRouteDismissed } = useDialogState();
   const { companyPrefix } = useParams<{ companyPrefix?: string }>();
+  const { t } = useTranslation();
 
   // The OnboardingWizard auto-opens on this route (and can also be opened
   // explicitly). While it is showing it covers the whole screen, so the
@@ -387,15 +389,15 @@ function OnboardingRoutePage() {
     : null;
 
   const title = matchedCompany
-    ? `Add another agent to ${matchedCompany.name}`
+    ? t("ui.app.onboardingRoute.addAgentTitle", { companyName: matchedCompany.name })
     : companies.length > 0
-      ? "Create another company"
-      : "Create your first company";
+      ? t("ui.app.onboardingRoute.createAnotherCompanyTitle")
+      : t("ui.app.onboardingRoute.createFirstCompanyTitle");
   const description = matchedCompany
-    ? "Run onboarding again to add an agent and a starter task for this company."
+    ? t("ui.app.onboardingRoute.addAgentDescription")
     : companies.length > 0
-      ? "Run onboarding again to create another company and seed its first agent."
-      : "Get started by creating a company and your first agent.";
+      ? t("ui.app.onboardingRoute.createAnotherCompanyDescription")
+      : t("ui.app.onboardingRoute.createFirstCompanyDescription");
 
   return (
     <div className="mx-auto max-w-xl py-10">
@@ -410,7 +412,7 @@ function OnboardingRoutePage() {
                 : openOnboarding()
             }
           >
-            {matchedCompany ? "Add Agent" : "Start Onboarding"}
+            {matchedCompany ? t("ui.app.onboardingRoute.addAgent") : t("ui.app.onboardingRoute.startOnboarding")}
           </Button>
         </div>
       </div>
@@ -421,9 +423,10 @@ function OnboardingRoutePage() {
 function CompanyRootRedirect() {
   const { companies, selectedCompany, loading } = useCompany();
   const location = useLocation();
+  const { t } = useTranslation();
 
   if (loading) {
-    return <div className="mx-auto max-w-xl py-10 text-sm text-muted-foreground">Loading...</div>;
+    return <div className="mx-auto max-w-xl py-10 text-sm text-muted-foreground">{t("ui.app.loading")}</div>;
   }
 
   const targetCompany = selectedCompany ?? companies[0] ?? null;
@@ -445,9 +448,10 @@ function CompanyRootRedirect() {
 function UnprefixedBoardRedirect() {
   const location = useLocation();
   const { companies, selectedCompany, loading } = useCompany();
+  const { t } = useTranslation();
 
   if (loading) {
-    return <div className="mx-auto max-w-xl py-10 text-sm text-muted-foreground">Loading...</div>;
+    return <div className="mx-auto max-w-xl py-10 text-sm text-muted-foreground">{t("ui.app.loading")}</div>;
   }
 
   const targetCompany = selectedCompany ?? companies[0] ?? null;

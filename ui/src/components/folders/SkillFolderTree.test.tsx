@@ -106,9 +106,9 @@ describe("SkillFolderRail", () => {
 
   it("keeps virtual and folder counts on the same grid column", () => {
     const allRow = Array.from(container.querySelectorAll("button"))
-      .find((button) => button.textContent?.includes("All skills"));
+      .find((button) => button.textContent?.includes("全部技能"));
     const myLabel = Array.from(container.querySelectorAll("button"))
-      .find((button) => button.textContent?.includes("My Skills"));
+      .find((button) => button.textContent?.includes("我的技能"));
     const myRow = myLabel?.parentElement;
 
     expect(allRow?.className).toContain("grid-cols-(--gtc-folder-row-actions)");
@@ -119,13 +119,13 @@ describe("SkillFolderRail", () => {
 
   it("selects and toggles a folder when its row label is clicked", () => {
     const myLabel = Array.from(container.querySelectorAll("button"))
-      .find((button) => button.textContent?.includes("My Skills"));
+      .find((button) => button.textContent?.includes("我的技能"));
 
     expect(container.textContent).not.toContain("Ada");
     flushSync(() => myLabel?.click());
 
     expect(onSelect).toHaveBeenCalledWith("my-root");
     expect(container.textContent).toContain("Ada");
-    expect(container.querySelector('[aria-label="Collapse folder"]')).not.toBeNull();
+    expect(container.querySelector('[aria-label="折叠文件夹"]')).not.toBeNull();
   });
 });

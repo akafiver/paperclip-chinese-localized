@@ -51,7 +51,7 @@ describe("StarToggle", () => {
     await render(<StarToggle starred={false} resourceName="Alpha" onToggle={onToggle} />);
 
     const btn = button();
-    expect(btn?.getAttribute("aria-label")).toBe("Star Alpha");
+    expect(btn?.getAttribute("aria-label")).toBe("星标 Alpha");
     expect(btn?.getAttribute("aria-pressed")).toBe("false");
 
     await act(async () => { btn?.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
@@ -63,7 +63,7 @@ describe("StarToggle", () => {
     await render(<StarToggle starred resourceName="Alpha" onToggle={onToggle} />);
 
     const btn = button();
-    expect(btn?.getAttribute("aria-label")).toBe("Unstar Alpha");
+    expect(btn?.getAttribute("aria-label")).toBe("取消星标 Alpha");
     expect(btn?.getAttribute("aria-pressed")).toBe("true");
     // A starred (non-quiet) row control is visible at rest.
     expect(btn?.className).toContain("opacity-100");
@@ -95,12 +95,12 @@ describe("StarToggle", () => {
   it("surfaces a retry affordance on error for the button variant", async () => {
     await render(<StarToggle starred size="button" error resourceName="Alpha" onToggle={() => {}} />);
     const btn = button();
-    expect(btn?.textContent).toContain("Retry star");
-    expect(btn?.getAttribute("title")).toBe("Couldn't save — retry");
+    expect(btn?.textContent).toContain("重试星标");
+    expect(btn?.getAttribute("title")).toBe("保存失败 - 重试");
   });
 
   it("renders the labelled Star/Starred button variant", async () => {
     await render(<StarToggle starred size="button" resourceName="Alpha" onToggle={() => {}} />);
-    expect(button()?.textContent).toContain("Starred");
+    expect(button()?.textContent).toContain("已星标");
   });
 });

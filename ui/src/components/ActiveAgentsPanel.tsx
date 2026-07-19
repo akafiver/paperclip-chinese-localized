@@ -17,8 +17,10 @@ import { RunChatSurface } from "./RunChatSurface";
 import { useLiveRunTranscripts } from "./transcript/useLiveRunTranscripts";
 import { usePublishSharedQueryData, useSharedPollingQuery } from "../hooks/useSharedPolling";
 import { Badge } from "@/components/ui/badge";
+import { useTranslation } from "@/i18n";
 
 function RunCardRecoveryChip({ action }: { action: IssueRecoveryAction }) {
+  const { t } = useTranslation();
   const state = deriveActiveRecoveryDisplayState(action);
   if (!state) return null;
   const tone = RECOVERY_CHIP_DEFAULT_TONE[state];
@@ -29,7 +31,7 @@ function RunCardRecoveryChip({ action }: { action: IssueRecoveryAction }) {
       data-recovery-state={state}
       role="status"
       aria-label={tone.label}
-      title={`${tone.label} — open the source task to act.`}
+      title={t("ui.activeAgentsPanel.recoveryTitle", { label: tone.label })}
       className={cn(
         "gap-0.5 px-1.5 text-(length:--text-nano)",
         tone.className,
@@ -67,16 +69,19 @@ interface ActiveAgentsPanelProps {
 
 export function ActiveAgentsPanel({
   companyId,
-  title = "Agents",
+  title,
   minRunCount = MIN_DASHBOARD_RUNS,
   fetchLimit,
   cardLimit = DASHBOARD_RUN_CARD_LIMIT,
   gridClassName,
   cardClassName,
-  emptyMessage = "No recent agent runs.",
+  emptyMessage,
   queryScope = "dashboard",
   showMoreLink = true,
 }: ActiveAgentsPanelProps) {
+  const { t } = useTranslation();
+  const panelTitle = title ?? t("ui.activeAgentsPanel.title");
+  const resolvedEmptyMessage = emptyMessage ?? t("ui.activeAgentsPanel.emptyMessage");
   const liveRunsQueryKey = [...queryKeys.liveRuns(companyId), queryScope, { minRunCount, fetchLimit }] as const;
   const sharedLiveRuns = useSharedPollingQuery({
     companyId,
@@ -130,11 +135,11 @@ export function ActiveAgentsPanel({
   return (
     <div>
       <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        {title}
+        {panelTitle}
       </h3>
       {runs.length === 0 ? (
         <div className="rounded-xl border border-border p-4">
-          <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+          <p className="text-sm text-muted-foreground">{resolvedEmptyMessage}</p>
         </div>
       ) : (
         <div className={cn("grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4", gridClassName)}>
@@ -155,7 +160,7 @@ export function ActiveAgentsPanel({
       {showMoreLink && hiddenRunCount > 0 && (
         <div className="mt-3 flex justify-end text-xs text-muted-foreground">
           <Link to="/dashboard/live" className="hover:text-foreground hover:underline">
-            {hiddenRunCount} more active/recent run{hiddenRunCount === 1 ? "" : "s"}
+            {t("ui.activeAgentsPanel.moreRuns", { count: hiddenRunCount })}
           </Link>
         </div>
       )}
@@ -180,6 +185,13 @@ const AgentRunCard = memo(function AgentRunCard({
   isActive: boolean;
   className?: string;
 }) {
+  const { t } = useTranslation();
+  const runTimingLabel = isActive
+    ? t("ui.activeAgentsPanel.liveNow")
+    : run.finishedAt
+      ? t("ui.activeAgentsPanel.finishedAt", { time: relativeTime(run.finishedAt, t) })
+      : t("ui.activeAgentsPanel.startedAt", { time: relativeTime(run.createdAt, t) });
+
   return (
     <div className={cn(
       "flex h-(--sz-320px) flex-col overflow-hidden rounded-xl border shadow-sm",
@@ -203,7 +215,7 @@ const AgentRunCard = memo(function AgentRunCard({
               <Identity name={run.agentName} size="sm" className="[&>span:last-child]:!text-(length:--text-micro)" />
             </div>
             <div className="mt-2 flex items-center gap-2 text-(length:--text-micro) text-muted-foreground">
-              <span>{isActive ? "Live now" : run.finishedAt ? `Finished ${relativeTime(run.finishedAt)}` : `Started ${relativeTime(run.createdAt)}`}</span>
+              <span>{runTimingLabel}</span>
             </div>
           </div>
 

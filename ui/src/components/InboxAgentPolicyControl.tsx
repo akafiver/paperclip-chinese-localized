@@ -10,22 +10,23 @@ import { AgentIcon } from "./AgentIconPicker";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { RadioCardGroup, type RadioCardOption } from "@/components/ui/radio-card";
+import { useTranslation } from "@/i18n";
 
-const MODE_OPTIONS: RadioCardOption[] = [
+const MODE_OPTION_KEYS = [
   {
     value: "open",
-    title: "Any of my agents",
-    description: "Let any agent you manage archive tasks out of your inbox.",
+    titleKey: "ui.inboxAgentPolicy.modes.open.title",
+    descriptionKey: "ui.inboxAgentPolicy.modes.open.description",
   },
   {
     value: "allowlist",
-    title: "Only chosen agents",
-    description: "Restrict inbox tidying to the agents you pick below.",
+    titleKey: "ui.inboxAgentPolicy.modes.allowlist.title",
+    descriptionKey: "ui.inboxAgentPolicy.modes.allowlist.description",
   },
   {
     value: "disabled",
-    title: "Off",
-    description: "Agents can never archive tasks from your inbox.",
+    titleKey: "ui.inboxAgentPolicy.modes.disabled.title",
+    descriptionKey: "ui.inboxAgentPolicy.modes.disabled.description",
   },
 ];
 
@@ -46,6 +47,7 @@ interface Draft {
  * "Archived by …" attribution live elsewhere (inbox rows / properties pane).
  */
 export function InboxAgentPolicyControl({ companyId }: { companyId: string | null | undefined }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState<Draft | null>(null);
   const lastServerKeyRef = useRef<string | null>(null);
@@ -65,6 +67,14 @@ export function InboxAgentPolicyControl({ companyId }: { companyId: string | nul
   const selectableAgents = useMemo(
     () => (agentsQuery.data ?? []).filter(isAgentTaskTarget),
     [agentsQuery.data],
+  );
+  const modeOptions = useMemo<RadioCardOption[]>(
+    () => MODE_OPTION_KEYS.map((option) => ({
+      value: option.value,
+      title: t(option.titleKey),
+      description: t(option.descriptionKey),
+    })),
+    [t],
   );
 
   // Adopt server state on first load, or on refetch when the user has not
@@ -120,29 +130,28 @@ export function InboxAgentPolicyControl({ companyId }: { companyId: string | nul
   };
 
   return (
-    <section className="space-y-4" aria-label="Let agents tidy my inbox">
+    <section className="space-y-4" aria-label={t("ui.inboxAgentPolicy.title")}>
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <Inbox className="h-5 w-5 text-muted-foreground" />
-          <h2 className="text-base font-semibold">Let agents tidy my inbox</h2>
+          <h2 className="text-base font-semibold">{t("ui.inboxAgentPolicy.title")}</h2>
         </div>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Choose whether the agents you manage may archive tasks out of your inbox on your behalf. You can
-          undo any archive, and every agent archive is attributed in the task&apos;s properties.
+          {t("ui.inboxAgentPolicy.description")}
         </p>
       </div>
 
       <RadioCardGroup
-        ariaLabel="Inbox agent archiving policy"
+        ariaLabel={t("ui.inboxAgentPolicy.ariaLabel")}
         value={draft.mode}
         onValueChange={(value) => setDraft((current) => (current ? { ...current, mode: value as InboxAgentPolicyMode } : current))}
-        options={MODE_OPTIONS}
+        options={modeOptions}
         className="max-w-2xl"
       />
 
       {draft.mode === "allowlist" ? (
         <div className="max-w-2xl space-y-2 rounded-md border border-border p-3">
-          <div className="text-sm font-medium">Agents allowed to tidy my inbox</div>
+          <div className="text-sm font-medium">{t("ui.inboxAgentPolicy.allowedAgents")}</div>
           {selectableAgents.length === 0 ? (
             <p className="text-xs text-muted-foreground">You don&apos;t manage any agents yet.</p>
           ) : (

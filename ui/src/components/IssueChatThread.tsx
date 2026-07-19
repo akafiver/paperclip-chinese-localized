@@ -82,6 +82,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { t as translate, useTranslation } from "@/i18n";
 import {
   Dialog,
   DialogContent,
@@ -305,13 +306,17 @@ function findCoTSegmentIndex(
   return -1;
 }
 
-function useLiveElapsed(startMs: number | null | undefined, active: boolean): string | null {
+function useLiveElapsed(
+  startMs: number | null | undefined,
+  active: boolean,
+  translate: (key: string, params?: Record<string, unknown>) => string,
+): string | null {
   // Drive the 1s refresh from the shared page-wide ticker instead of a
   // per-instance setInterval, so a thread with many live elements uses one
   // timer rather than one per element.
   useSecondTick(Boolean(active && startMs));
   if (!active || !startMs) return null;
-  return formatDurationWords(Date.now() - startMs);
+  return formatDurationWords(Date.now() - startMs, translate);
 }
 
 function readCustomString(custom: Record<string, unknown>, key: string): string {
@@ -793,7 +798,7 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 function commentDateLabel(date: Date | string | undefined): string {
   if (!date) return "";
   const then = new Date(date).getTime();
-  if (Date.now() - then < WEEK_MS) return timeAgo(date);
+  if (Date.now() - then < WEEK_MS) return timeAgo(date, translate);
   return formatShortDate(date);
 }
 
@@ -933,6 +938,7 @@ function IssueChatChainOfThought({
   message: ThreadMessage;
   cotParts: readonly IssueChatCoTPart[];
 }) {
+  const { t } = useTranslation();
   const { agentMap } = useContext(IssueChatCtx);
   const custom = message.metadata.custom as Record<string, unknown>;
   const runAgentId = typeof custom.runAgentId === "string" ? custom.runAgentId : null;
@@ -964,7 +970,7 @@ function IssueChatChainOfThought({
     segmentCount: rawSegments.length,
   });
   const [expanded, setExpanded] = useState(isActive);
-  const liveElapsed = useLiveElapsed(segmentTiming?.startMs, isActive);
+  const liveElapsed = useLiveElapsed(segmentTiming?.startMs, isActive, t);
 
   useEffect(() => {
     if (isActive) setExpanded(true);
@@ -973,15 +979,15 @@ function IssueChatChainOfThought({
   let headerVerb: string;
   let headerSuffix: string | null = null;
   if (isActive) {
-    headerVerb = "Working";
-    if (liveElapsed) headerSuffix = `for ${liveElapsed}`;
+    headerVerb = t("ui.issueChatMessages.cotWorking");
+    if (liveElapsed) headerSuffix = t("ui.issueChatMessages.cotForDuration", { duration: liveElapsed });
   } else if (segmentTiming) {
     const durationMs = segmentTiming.endMs - segmentTiming.startMs;
-    const durationText = formatDurationWords(durationMs);
-    headerVerb = "Worked";
-    if (durationText) headerSuffix = `for ${durationText}`;
+    const durationText = formatDurationWords(durationMs, t);
+    headerVerb = t("ui.issueChatMessages.cotWorked");
+    if (durationText) headerSuffix = t("ui.issueChatMessages.cotForDuration", { duration: durationText });
   } else {
-    headerVerb = "Worked";
+    headerVerb = t("ui.issueChatMessages.cotWorked");
   }
 
   const toolSummary = toolCountSummary(toolParts);
@@ -1169,8 +1175,8 @@ function CopyablePreBlock({ children, className }: { children: string; className
           "absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-md bg-background/80 text-muted-foreground opacity-0 backdrop-blur-sm transition-opacity hover:text-foreground group-hover/pre:opacity-100",
           copied && "opacity-100",
         )}
-        title="Copy"
-        aria-label="Copy"
+        title={translate("ui.agentBubble.copy")}
+        aria-label={translate("ui.agentBubble.copy")}
         onClick={() => {
           void copyTextToClipboard(children).then(() => {
             setCopied(true);
@@ -1550,8 +1556,8 @@ function IssueChatUserMessage({
             <button
               type="button"
               className="inline-flex h-6 w-6 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
-              title="Copy message"
-              aria-label="Copy message"
+              title={translate("ui.agentBubble.copyMessage")}
+              aria-label={translate("ui.agentBubble.copyMessage")}
               onClick={() => {
                 const text = message.content
                   .filter((p): p is { type: "text"; text: string } => p.type === "text")
@@ -1576,8 +1582,8 @@ function IssueChatUserMessage({
             <button
               type="button"
               className="inline-flex h-6 w-6 items-center justify-center text-muted-foreground transition-colors hover:text-destructive"
-              title="Delete comment"
-              aria-label="Delete comment"
+              title={translate("ui.issueChat.deleteComment")}
+              aria-label={translate("ui.issueChat.deleteComment")}
               onClick={handleDeleteComment}
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -1608,17 +1614,17 @@ function IssueChatUserMessage({
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete comment?</DialogTitle>
+            <DialogTitle>{translate("ui.issueChat.deleteCommentTitle")}</DialogTitle>
             <DialogDescription>
-              This will replace the comment with a deleted-comment marker.
+              {translate("ui.issueChat.deleteCommentDescription")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-              Cancel
+              {translate("ui.common.cancel")}
             </Button>
             <Button variant="destructive" onClick={confirmDeleteComment}>
-              Delete comment
+              {translate("ui.issueChat.deleteComment")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1734,8 +1740,8 @@ function IssueChatAssistantMessage({
       <button
         type="button"
         className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        title="Copy message"
-        aria-label="Copy message"
+        title={translate("ui.agentBubble.copyMessage")}
+        aria-label={translate("ui.agentBubble.copyMessage")}
         onClick={() => {
           void copyTextToClipboard(copyText).then(() => {
             setCopied(true);
@@ -1778,8 +1784,8 @@ function IssueChatAssistantMessage({
             variant="ghost"
             size="icon-xs"
             className="text-muted-foreground hover:text-foreground"
-            title="More actions"
-            aria-label="More actions"
+            title={translate("ui.agentBubble.moreActions")}
+            aria-label={translate("ui.agentBubble.moreActions")}
           >
             <MoreHorizontal className="h-3.5 w-3.5" />
           </Button>
@@ -1797,7 +1803,7 @@ function IssueChatAssistantMessage({
             }}
           >
             <Copy className="mr-2 h-3.5 w-3.5" />
-            Copy message
+            {translate("ui.agentBubble.copyMessage")}
           </DropdownMenuItem>
           {canStopRun && onStopRun && runId ? (
             <DropdownMenuItem
@@ -2078,8 +2084,8 @@ function IssueChatFeedbackButtons({
             ? "text-green-600 dark:text-green-400"
             : "text-muted-foreground hover:bg-accent hover:text-foreground",
         )}
-        title="Helpful"
-        aria-label="Helpful"
+        title={translate("ui.agentBubble.helpful")}
+        aria-label={translate("ui.agentBubble.helpful")}
         onClick={handleThumbsUp}
       >
         <ThumbsUp className="h-3.5 w-3.5" />
@@ -2095,19 +2101,19 @@ function IssueChatFeedbackButtons({
                 ? "text-amber-600 dark:text-amber-400"
                 : "text-muted-foreground hover:bg-accent hover:text-foreground",
             )}
-            title="Needs work"
-            aria-label="Needs work"
+            title={translate("ui.agentBubble.needsWork")}
+            aria-label={translate("ui.agentBubble.needsWork")}
             onClick={handleThumbsDown}
           >
             <ThumbsDown className="h-3.5 w-3.5" />
           </button>
         </PopoverTrigger>
         <PopoverContent side="top" align="start" className="w-80 p-3">
-          <div className="mb-2 text-sm font-medium">What could have been better?</div>
+          <div className="mb-2 text-sm font-medium">{translate("ui.agentBubble.feedbackPrompt")}</div>
           <Textarea
             value={downvoteReason}
             onChange={(event) => setDownvoteReason(event.target.value)}
-            placeholder="Add a short note"
+            placeholder={translate("ui.agentBubble.addShortNote")}
             className="min-h-20 resize-y bg-background text-sm"
             disabled={isSaving}
           />
@@ -2122,7 +2128,7 @@ function IssueChatFeedbackButtons({
                 setDownvoteReason("");
               }}
             >
-              Dismiss
+              {translate("ui.agentBubble.dismiss")}
             </Button>
             <Button
               type="button"
@@ -2130,7 +2136,7 @@ function IssueChatFeedbackButtons({
               disabled={isSaving || !downvoteReason.trim()}
               onClick={handleSubmitReason}
             >
-              {isSaving ? "Saving..." : "Save note"}
+              {isSaving ? translate("ui.agentBubble.saving") : translate("ui.agentBubble.saveNote")}
             </Button>
           </div>
         </PopoverContent>
@@ -2147,21 +2153,20 @@ function IssueChatFeedbackButtons({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Save your feedback sharing preference</DialogTitle>
+            <DialogTitle>{translate("ui.agentBubble.sharingPreferenceTitle")}</DialogTitle>
             <DialogDescription>
-              Choose whether voted AI outputs can be shared with Paperclip Labs. This
-              answer becomes the default for future thumbs up and thumbs down votes.
+              {translate("ui.agentBubble.sharingPreferenceDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 text-sm text-muted-foreground">
-            <p>This vote is always saved locally.</p>
+            <p>{translate("ui.agentBubble.voteSavedLocally")}</p>
             <p>
-              Choose <span className="font-medium text-foreground">Always allow</span> to share
-              this vote and future voted AI outputs. Choose{" "}
-              <span className="font-medium text-foreground">Don't allow</span> to keep this vote
-              and future votes local.
+              {translate("ui.agentBubble.chooseAllowPrefix")} <span className="font-medium text-foreground">{translate("ui.agentBubble.alwaysAllow")}</span>{" "}
+              {translate("ui.agentBubble.chooseAllowMiddle")}{" "}
+              <span className="font-medium text-foreground">{translate("ui.agentBubble.dontAllow")}</span>{" "}
+              {translate("ui.agentBubble.chooseAllowSuffix")}
             </p>
-            <p>You can change this later in Instance Settings &gt; General.</p>
+            <p>{translate("ui.agentBubble.changeLater")}</p>
             {termsUrl ? (
               <a
                 href={termsUrl}
@@ -2169,7 +2174,7 @@ function IssueChatFeedbackButtons({
                 rel="noreferrer"
                 className="inline-flex text-sm text-foreground underline underline-offset-4"
               >
-                Read our terms of service
+                {translate("ui.agentBubble.readTerms")}
               </a>
             ) : null}
           </div>
@@ -2186,7 +2191,7 @@ function IssueChatFeedbackButtons({
                 ).then(() => setPendingSharingDialog(null));
               }}
             >
-              {isSaving ? "Saving..." : "Don't allow"}
+              {isSaving ? translate("ui.agentBubble.saving") : translate("ui.agentBubble.dontAllow")}
             </Button>
             <Button
               type="button"
@@ -2199,7 +2204,7 @@ function IssueChatFeedbackButtons({
                 }).then(() => setPendingSharingDialog(null));
               }}
             >
-              {isSaving ? "Saving..." : "Always allow"}
+              {isSaving ? translate("ui.agentBubble.saving") : translate("ui.agentBubble.alwaysAllow")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2674,8 +2679,8 @@ function SystemNoticeCommentRow({
             <button
               type="button"
               className="inline-flex h-6 w-6 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
-              title="Copy link"
-              aria-label="Copy link to system notice"
+              title={translate("ui.issueChat.copyLink")}
+              aria-label={translate("ui.issueChat.copyLinkToSystemNotice")}
               onClick={handleCopyLink}
             >
               {copiedLink ? <Check className="h-3.5 w-3.5" /> : <Paperclip className="h-3.5 w-3.5" />}
@@ -2684,8 +2689,8 @@ function SystemNoticeCommentRow({
           <button
             type="button"
             className="inline-flex h-6 w-6 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
-            title="Copy notice text"
-            aria-label="Copy system notice"
+            title={translate("ui.issueChat.copyNoticeText")}
+            aria-label={translate("ui.issueChat.copySystemNotice")}
             onClick={handleCopy}
           >
             {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
@@ -3540,6 +3545,7 @@ const IssueChatComposer = forwardRef<IssueChatComposerHandle, IssueChatComposerP
   issueWorkMode,
   onWorkModeChange,
 }, forwardedRef) {
+  const { t } = useTranslation();
   const api = useAui();
   const [body, setBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -3926,7 +3932,7 @@ const IssueChatComposer = forwardRef<IssueChatComposerHandle, IssueChatComposerP
         ref={editorRef}
         value={body}
         onChange={setBody}
-        placeholder="Reply"
+        placeholder={t("ui.issueChat.reply")}
         mentions={mentions}
         onSubmit={handleSubmit}
         imageUploadHandler={onImageUpload}
@@ -4018,7 +4024,7 @@ const IssueChatComposer = forwardRef<IssueChatComposerHandle, IssueChatComposerP
                 size="icon-sm"
                 onClick={() => attachInputRef.current?.click()}
                 disabled={attaching}
-                title="Attach file"
+                title={t("ui.issueChat.attachFile")}
               >
                 <Paperclip className="h-4 w-4" />
               </Button>
@@ -4091,14 +4097,14 @@ const IssueChatComposer = forwardRef<IssueChatComposerHandle, IssueChatComposerP
             ref={reassignTriggerRef}
             value={reassignTarget}
             options={reassignOptions}
-            placeholder="Responsible"
-            noneLabel="No responsible"
-            searchPlaceholder="Search responsible..."
-            emptyMessage="No responsible found."
+            placeholder={t("ui.commentThread.responsible")}
+            noneLabel={t("ui.commentThread.noResponsible")}
+            searchPlaceholder={t("ui.commentThread.searchResponsible")}
+            emptyMessage={t("ui.commentThread.noResponsibleFound")}
             onChange={setReassignTarget}
             className="h-8 text-xs"
             renderTriggerValue={(option) => {
-              if (!option) return <span className="text-muted-foreground">Responsible</span>;
+              if (!option) return <span className="text-muted-foreground">{t("ui.commentThread.responsible")}</span>;
               const agentId = option.id.startsWith("agent:") ? option.id.slice("agent:".length) : null;
               const agent = agentId ? agentMap?.get(agentId) : null;
               return (
@@ -4127,7 +4133,7 @@ const IssueChatComposer = forwardRef<IssueChatComposerHandle, IssueChatComposerP
         ) : null}
 
         <Button size="sm" disabled={!canSubmit} onClick={() => void handleSubmit()}>
-          {submitting ? "Posting..." : "Send"}
+          {submitting ? t("ui.commentThread.posting") : t("ui.commentThread.send")}
         </Button>
       </div>
 
@@ -4143,10 +4149,9 @@ const IssueChatComposer = forwardRef<IssueChatComposerHandle, IssueChatComposerP
           }}
         >
           <AlertDialogHeader>
-            <AlertDialogTitle>No responsible selected</AlertDialogTitle>
+            <AlertDialogTitle>{t("ui.commentThread.noResponsibleSelected")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This comment will be posted without an assignee, so no agent will be woken
-              to act on it. Go back to pick a responsible, or send anyway.
+              {t("ui.commentThread.noResponsibleSelectedDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -4154,9 +4159,10 @@ const IssueChatComposer = forwardRef<IssueChatComposerHandle, IssueChatComposerP
               data-testid="issue-chat-no-assignee-go-back"
               onClick={() => {
                 focusAssigneeOnDialogCloseRef.current = true;
+                setNoAssigneeDialogOpen(false);
               }}
             >
-              Go back
+              {t("ui.commentThread.goBack")}
             </AlertDialogCancel>
             <AlertDialogAction
               data-testid="issue-chat-no-assignee-send-anyway"
@@ -4164,7 +4170,7 @@ const IssueChatComposer = forwardRef<IssueChatComposerHandle, IssueChatComposerP
                 void submitComment();
               }}
             >
-              Send anyway
+              {t("ui.commentThread.sendAnyway")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -4348,6 +4354,7 @@ export function IssueChatThread({
   });
   const resolvedTranscriptByRun = transcriptsByRunId ?? transcriptByRun;
   const resolvedHasOutputForRun = hasOutputForRunOverride ?? hasOutputForRun;
+  const { t } = useTranslation();
   const rawMessages = useMemo(
     () =>
       buildIssueChatMessages({
@@ -4365,6 +4372,7 @@ export function IssueChatThread({
         agentMap,
         currentUserId,
         userLabelMap,
+        translate: t,
       }),
     [
       comments,
@@ -4381,6 +4389,7 @@ export function IssueChatThread({
       agentMap,
       currentUserId,
       userLabelMap,
+      t,
     ],
   );
   const stableMessagesRef = useRef<readonly ThreadMessage[]>([]);
