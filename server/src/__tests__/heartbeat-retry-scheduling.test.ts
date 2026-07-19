@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import fs from "node:fs/promises";
+import path from "node:path";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -17,6 +19,7 @@ import {
   issueRelations,
   issues,
   projects,
+  projectWorkspaces,
 } from "@paperclipai/db";
 import {
   getEmbeddedPostgresTestSupport,
@@ -60,6 +63,7 @@ describeEmbeddedPostgres("heartbeat bounded retry scheduling", () => {
   let db!: ReturnType<typeof createDb>;
   let heartbeat!: ReturnType<typeof heartbeatService>;
   let tempDb: Awaited<ReturnType<typeof startEmbeddedPostgresTestDatabase>> | null = null;
+  let quotaWorkspaceCwd: string | null = null;
 
   beforeAll(async () => {
     tempDb = await startEmbeddedPostgresTestDatabase("paperclip-heartbeat-retry-scheduling-");
@@ -92,6 +96,10 @@ describeEmbeddedPostgres("heartbeat bounded retry scheduling", () => {
 
   afterEach(async () => {
     await cleanupRetryFixture();
+    if (quotaWorkspaceCwd) {
+      await fs.rm(quotaWorkspaceCwd, { recursive: true, force: true });
+      quotaWorkspaceCwd = null;
+    }
   });
 
   afterAll(async () => {
@@ -188,6 +196,11 @@ describeEmbeddedPostgres("heartbeat bounded retry scheduling", () => {
   it("records provider quota failures, schedules the reset-time retry, and leaves the agent idle", async () => {
     const companyId = randomUUID();
     const agentId = randomUUID();
+    const projectId = randomUUID();
+    const workspaceId = randomUUID();
+    const issueId = randomUUID();
+    const workspaceCwd = path.join("/tmp", `paperclip-provider-quota-${companyId}`);
+    quotaWorkspaceCwd = workspaceCwd;
 
     await db.insert(companies).values({
       id: companyId,
@@ -195,6 +208,23 @@ describeEmbeddedPostgres("heartbeat bounded retry scheduling", () => {
       issuePrefix: `T${companyId.replace(/-/g, "").slice(0, 6).toUpperCase()}`,
       requireBoardApprovalForNewAgents: false,
       defaultResponsibleUserId: "responsible-user",
+    });
+
+    await fs.mkdir(workspaceCwd, { recursive: true });
+    await db.insert(projects).values({
+      id: projectId,
+      companyId,
+      name: "Quota Test Project",
+      status: "in_progress",
+    });
+    await db.insert(projectWorkspaces).values({
+      id: workspaceId,
+      companyId,
+      projectId,
+      name: "Primary",
+      sourceType: "local_path",
+      cwd: workspaceCwd,
+      isPrimary: true,
     });
 
     await db.insert(agents).values({
@@ -214,7 +244,19 @@ describeEmbeddedPostgres("heartbeat bounded retry scheduling", () => {
       permissions: {},
     });
 
-    const run = await heartbeat.invoke(agentId, "on_demand", {}, "manual");
+    await db.insert(issues).values({
+      id: issueId,
+      companyId,
+      projectId,
+      projectWorkspaceId: workspaceId,
+      title: "Quota test issue",
+      status: "todo",
+      assigneeAgentId: agentId,
+      issueNumber: 1,
+      identifier: "QUOTA-1",
+    });
+
+    const run = await heartbeat.invoke(agentId, "on_demand", { issueId }, "manual");
     expect(run).not.toBeNull();
 
     const failedRun = await waitForRunToFinish(heartbeat, run!.id);

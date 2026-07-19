@@ -367,7 +367,7 @@ describe("claude execute", () => {
             promptTemplate: "Do work.",
           },
           runtimeMcp: { getServers: () => servers },
-          context: {},
+          context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" as const } },
           authToken: "tok",
           onLog: async () => {},
         });
@@ -428,7 +428,7 @@ describe("claude execute", () => {
           promptTemplate: "Do work.",
           instructionsFilePath: instructionsFile,
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" as const } },
         authToken: "tok",
         onLog: async () => {},
         onMeta: async () => {},
@@ -459,7 +459,7 @@ describe("claude execute", () => {
           promptTemplate: "Do work.",
           instructionsFilePath: instructionsFile,
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" as const } },
         authToken: "tok",
         onLog: async () => {},
         onMeta: async () => {},
@@ -498,7 +498,7 @@ describe("claude execute", () => {
           promptTemplate: "Do work.",
           instructionsFilePath: instructionsFile,
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" as const } },
         authToken: "tok",
         onLog: async () => {},
         onMeta: async (meta) => { capturedNotes = (meta.commandNotes as string[]) ?? []; },
@@ -529,7 +529,7 @@ describe("claude execute", () => {
           promptTemplate: "Do work.",
           instructionsFilePath: instructionsFile,
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" as const } },
         authToken: "tok",
         onLog: async () => {},
         onMeta: async (meta) => { capturedNotes = (meta.commandNotes as string[]) ?? []; },
@@ -565,7 +565,7 @@ describe("claude execute", () => {
           promptTemplate: "Do work.",
           instructionsFilePath: instructionsFile,
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" as const } },
         authToken: "tok",
         onLog: async () => {},
         onMeta: async (meta) => {
@@ -630,7 +630,7 @@ describe("claude execute", () => {
           cwd: workspace,
           promptTemplate: "Do work.",
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" as const } },
         authToken: "tok",
         onLog: async () => {},
       });
@@ -670,7 +670,7 @@ describe("claude execute", () => {
           cwd: workspace,
           promptTemplate: "Do work.",
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" as const } },
         authToken: "tok",
         onLog: async () => {},
       });
@@ -706,7 +706,7 @@ describe("claude execute", () => {
           cwd: workspace,
           promptTemplate: "Do work.",
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" as const } },
         authToken: "tok",
         onLog: async () => {},
       });
@@ -767,7 +767,7 @@ describe("claude execute", () => {
           },
           promptTemplate: "Follow the paperclip heartbeat.",
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" as const } },
         authToken: "run-jwt-token",
         onLog: async () => {},
         onMeta: async (meta) => {
@@ -842,7 +842,7 @@ describe("claude execute", () => {
           },
           promptTemplate: "Follow the paperclip heartbeat.",
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: localWorkspace, source: "project_primary" as const } },
         executionTarget: {
           kind: "remote",
           transport: "sandbox",
@@ -922,7 +922,7 @@ describe("claude execute", () => {
           },
           promptTemplate: "Fallback cleanly if the sandbox CLI is old.",
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" as const } },
         executionTarget: {
           kind: "remote",
           transport: "sandbox",
@@ -980,7 +980,7 @@ describe("claude execute", () => {
         },
         promptTemplate: "Keep the requested effort when supported.",
       },
-      context: {},
+      context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" as const } },
       executionTarget: {
         kind: "remote" as const,
         transport: "sandbox" as const,
@@ -1124,7 +1124,7 @@ describe("claude execute", () => {
             desiredSkills: ["paperclip"],
           },
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" as const } },
         authToken: "run-jwt-token",
         onLog: async () => {},
       });
@@ -1166,6 +1166,7 @@ describe("claude execute", () => {
           },
         },
         context: {
+          paperclipWorkspace: { cwd: workspace, source: "project_primary" as const },
           issueId: "issue-1",
           taskId: "issue-1",
           wakeReason: "issue_commented",
@@ -1288,7 +1289,7 @@ describe("claude execute", () => {
           },
           promptTemplate: "Follow the paperclip heartbeat.",
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" as const } },
         authToken: "run-jwt-token",
         onLog: async () => {},
       });
@@ -1320,7 +1321,7 @@ describe("claude execute", () => {
           },
           promptTemplate: "Follow the paperclip heartbeat.",
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" as const } },
         authToken: "run-jwt-token",
         onLog: async (_stream, chunk) => {
           logs.push(chunk);
@@ -1392,7 +1393,7 @@ describe("claude execute", () => {
           cwd: workspace,
           promptTemplate: "Follow the paperclip heartbeat.",
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" as const } },
         authToken: "run-jwt-token",
         onLog: async () => {},
       });
@@ -1458,7 +1459,7 @@ describe("claude execute", () => {
           cwd: workspace,
           promptTemplate: "Follow the paperclip heartbeat.",
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" as const } },
         authToken: "run-jwt-token",
         onLog: async () => {},
       });
@@ -1515,7 +1516,7 @@ describe("claude execute", () => {
           cwd: workspace,
           promptTemplate: "Follow the paperclip heartbeat.",
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" as const } },
         authToken: "run-jwt-token",
         onLog: async () => {},
       });
@@ -1573,7 +1574,7 @@ describe("claude execute", () => {
           cwd: workspace,
           promptTemplate: "Follow the paperclip heartbeat.",
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" as const } },
         authToken: "run-jwt-token",
         onLog: async () => {},
       });
@@ -1608,7 +1609,7 @@ describe("claude execute", () => {
           },
           promptTemplate: "Do work.",
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" as const } },
         authToken: "tok",
         onLog: async (_stream, chunk) => { logs.push(chunk); },
       });
@@ -1652,7 +1653,7 @@ describe("claude execute", () => {
           env: { PAPERCLIP_TEST_CAPTURE_PATH: capturePath },
           promptTemplate: "Do work.",
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" as const } },
         authToken: "tok",
         onLog: async () => {},
       });
@@ -1701,7 +1702,7 @@ describe("claude execute", () => {
           env: { PAPERCLIP_TEST_CAPTURE_PATH: capturePath },
           promptTemplate: "Do work.",
         },
-        context: {},
+      context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" as const } },
         authToken: "tok",
         onLog: async () => {},
       });
