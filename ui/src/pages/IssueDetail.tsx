@@ -4026,10 +4026,10 @@ export function IssueDetail() {
         )}
       >
         <Paperclip className="h-3.5 w-3.5 mr-1.5" />
-        {uploadAttachment.isPending || importMarkdownDocument.isPending ? "Uploading..." : (
+        {uploadAttachment.isPending || importMarkdownDocument.isPending ? t("ui.issueDetail.actions.uploading") : (
           <>
-            <span className="hidden sm:inline">Upload attachment</span>
-            <span className="sm:hidden">Upload</span>
+            <span className="hidden sm:inline">{t("ui.issueDetail.actions.uploadAttachment")}</span>
+            <span className="sm:hidden">{t("ui.issueDetail.actions.upload")}</span>
           </>
         )}
       </Button>
@@ -4210,13 +4210,14 @@ export function IssueDetail() {
           {issue.workMode === "ask" || issue.workMode === "planning" ? (() => {
             const workModeMeta = workModeMetaFor(issue.workMode);
             const WorkModeIcon = workModeMeta.icon;
+            const workModeLabel = t(`ui.workModes.${issue.workMode}.label`);
             return (
               <Badge variant="outline"
                 className={cn("text-(length:--text-nano)", workModeMeta.classes.badge)}
-                title={`This task is in ${workModeMeta.label.toLowerCase()}.`}
+                title={t("ui.workModes.taskInMode", { mode: workModeLabel })}
               >
                 <WorkModeIcon className="h-3 w-3" aria-hidden />
-                {workModeMeta.label}
+                {workModeLabel}
               </Badge>
             );
           })() : null}
@@ -4563,7 +4564,7 @@ export function IssueDetail() {
         <div className="flex flex-wrap items-center justify-end gap-2 min-w-0">
           <Button variant="outline" size="sm" onClick={openNewSubIssue} className="shrink-0 shadow-none">
             <Plus className="mr-1.5 h-3.5 w-3.5" />
-            New Sub-task
+            {t("ui.issueDetail.actions.newSubtask")}
           </Button>
         </div>
       )}
@@ -4696,15 +4697,15 @@ export function IssueDetail() {
         <TabsList variant="line" className="w-full justify-start gap-1">
           <TabsTrigger value="chat" className="gap-1.5">
             <MessageSquare className="h-3.5 w-3.5" />
-            Chat
+            {t("ui.issueDetail.tabs.chat")}
           </TabsTrigger>
           <TabsTrigger value="activity" className="gap-1.5">
             <ActivityIcon className="h-3.5 w-3.5" />
-            Activity
+            {t("ui.issueDetail.tabs.activity")}
           </TabsTrigger>
           <TabsTrigger value="related-work" className="gap-1.5">
             <ListTree className="h-3.5 w-3.5" />
-            Related work
+            {t("ui.issueDetail.tabs.relatedWork")}
           </TabsTrigger>
           {issuePluginTabItems.map((item) => (
             <TabsTrigger key={item.value} value={item.value}>

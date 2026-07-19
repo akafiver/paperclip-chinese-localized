@@ -39,6 +39,7 @@ import { DocumentDiffModal } from "./DocumentDiffModal";
 import { DocumentFrameHeader, type DocumentFrameHeaderRevisionActor } from "./DocumentFrameHeader";
 import { SourceTrustBadge } from "./SourceTrustBadge";
 import { Badge } from "@/components/ui/badge";
+import { useTranslation } from "@/i18n";
 
 type DraftState = {
   key: string;
@@ -287,6 +288,7 @@ export function IssueDocumentsSection({
   forceEditDocumentKey?: string | null;
   externalReferences?: MarkdownExternalReferenceMap;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const location = useLocation();
   const documentSubject = useMemo(() => {
@@ -894,19 +896,21 @@ export function IssueDocumentsSection({
           {extraActions}
           <Button variant="outline" size="sm" onClick={beginNewDocument} className="shrink-0">
             <Plus className="mr-1.5 h-3.5 w-3.5" />
-            <span className="hidden sm:inline">New document</span>
-            <span className="sm:hidden">New</span>
+            <span className="hidden sm:inline">{t("ui.issueDocuments.actions.newDocument")}</span>
+            <span className="sm:hidden">{t("ui.issueDocuments.actions.new")}</span>
           </Button>
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-2 min-w-0">
-          <h3 className="w-full text-sm font-medium text-muted-foreground shrink-0 sm:w-auto">Documents</h3>
+          <h3 className="w-full text-sm font-medium text-muted-foreground shrink-0 sm:w-auto">
+            {t("ui.issueDocuments.title")}
+          </h3>
           <div className="flex flex-wrap items-center gap-2 min-w-0 sm:ml-auto">
             {extraActions}
             <Button variant="outline" size="sm" onClick={beginNewDocument} className="shrink-0">
               <Plus className="mr-1.5 h-3.5 w-3.5" />
-              <span className="hidden sm:inline">New document</span>
-              <span className="sm:hidden">New</span>
+              <span className="hidden sm:inline">{t("ui.issueDocuments.actions.newDocument")}</span>
+              <span className="sm:hidden">{t("ui.issueDocuments.actions.new")}</span>
             </Button>
           </div>
         </div>

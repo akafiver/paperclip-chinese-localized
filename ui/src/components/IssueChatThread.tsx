@@ -168,7 +168,7 @@ import {
 import { buildAgentMentionHref } from "@paperclipai/shared";
 import { cn, formatDateTime, formatShortDate } from "../lib/utils";
 import { liveBlueBadge } from "../lib/status-colors";
-import { nextWorkMode, titleForPendingWorkMode, workModeMetaFor, workModeMetaList } from "../lib/work-mode-meta";
+import { nextWorkMode, workModeMetaFor, workModeMetaList } from "../lib/work-mode-meta";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
@@ -618,9 +618,9 @@ function fallbackAuthorLabel(message: ThreadMessage) {
   const custom = message.metadata?.custom as Record<string, unknown> | undefined;
   if (typeof custom?.["authorName"] === "string") return custom["authorName"];
   if (typeof custom?.["runAgentName"] === "string") return custom["runAgentName"];
-  if (message.role === "assistant") return "Agent";
-  if (message.role === "user") return "You";
-  return "System";
+  if (message.role === "assistant") return translate("ui.common.agent");
+  if (message.role === "user") return translate("ui.common.you");
+  return translate("ui.common.system");
 }
 
 function fallbackTextParts(message: ThreadMessage) {
@@ -856,9 +856,20 @@ export function SuccessfulRunHandoffCommentCallout({
   );
 }
 
-function humanizeValue(value: string | null) {
-  if (!value) return "None";
+function humanizeValue(value: string | null, t: ReturnType<typeof useTranslation>["t"]) {
+  if (!value) return t("ui.issueChat.timeline.none");
+  const statusKey = `ui.issuesList.status.${value}`;
+  const translatedStatus = t(statusKey);
+  if (translatedStatus !== statusKey) return translatedStatus;
   return value.replace(/_/g, " ");
+}
+
+function workModeLabel(mode: IssueWorkMode, t: ReturnType<typeof useTranslation>["t"]) {
+  return t(`ui.workModes.${mode}.label`);
+}
+
+function workModeTitle(mode: IssueWorkMode, t: ReturnType<typeof useTranslation>["t"]) {
+  return t(`ui.workModes.${mode}.title`);
 }
 
 function initialsForName(name: string) {
@@ -881,9 +892,9 @@ function formatInteractionActorLabel(args: {
   if (userId) {
     return userLabelMap?.get(userId)
       ?? formatAssigneeUserLabel(userId, currentUserId, userLabelMap)
-      ?? "Board";
+      ?? translate("ui.common.board");
   }
-  return "System";
+  return translate("ui.common.system");
 }
 
 export function resolveIssueChatHumanAuthor(args: {
@@ -897,7 +908,9 @@ export function resolveIssueChatHumanAuthor(args: {
   const isCurrentUser = Boolean(authorUserId && currentUserId && authorUserId === currentUserId);
   const resolvedAuthorName = profile?.label?.trim()
     || authorName?.trim()
-    || (authorUserId === "local-board" ? "Board" : (isCurrentUser ? "You" : "User"));
+    || (authorUserId === "local-board"
+      ? translate("ui.common.board")
+      : (isCurrentUser ? translate("ui.common.you") : translate("ui.common.user")));
 
   return {
     isCurrentUser,
@@ -2380,6 +2393,41 @@ function isStaleSuccessfulRunHandoffNotice(input: {
   return false;
 }
 
+function localizeKnownSystemNoticeBody(text: string, t: ReturnType<typeof useTranslation>["t"]) {
+  let next = text;
+  next = next.replace(
+    /Paperclip automatically retried continuation for this assigned `in_progress` issue during terminal run recovery, but it still has no live execution path\./g,
+    t("ui.issueChat.systemNotice.retriedContinuationNoLivePath"),
+  );
+  next = next.replace(
+    /Paperclip automatically retried continuation for this assigned `in_progress` issue after its live execution path disappeared, but it still has no live execution path\./g,
+    t("ui.issueChat.systemNotice.retriedContinuationNoLivePath"),
+  );
+  next = next.replace(
+    /Paperclip automatically retried dispatch for this assigned `todo` issue during terminal run recovery, but it still has no live execution path\./g,
+    t("ui.issueChat.systemNotice.retriedDispatchNoLivePath"),
+  );
+  next = next.replace(
+    /Paperclip stopped before launching the local adapter because the issue workspace failed validation\. This prevents git-sensitive adapters from running in an unrelated fallback cwd\./g,
+    t("ui.issueChat.systemNotice.workspaceValidationStoppedAdapter"),
+  );
+  next = next.replace(
+    /Latest retry failure: ([\s\S]*)\. Moving it to `blocked` with a source-scoped recovery action so the workspace link, cwd, or git checkout can be repaired before resuming\./g,
+    (_match, failure: string) => t("ui.issueChat.systemNotice.workspaceValidationFailureMovedBlocked", { failure }),
+  );
+  next = next.replace(
+    /Latest retry failure: ([\s\S]*?)\. Moving it to `blocked` so it is visible for intervention\./g,
+    (_match, failure: string) => t("ui.issueChat.systemNotice.latestRetryFailureMovedBlocked", { failure }),
+  );
+  next = next.replace(/- Recovery action:/g, `- ${t("ui.issueChat.systemNotice.recoveryAction")}`);
+  next = next.replace(/- Recovery owner:/g, `- ${t("ui.issueChat.systemNotice.recoveryOwner")}`);
+  next = next.replace(
+    /- Next action: the recovery owner should either restore a live execution path or record the manual resolution on the source issue\./g,
+    `- ${t("ui.issueChat.systemNotice.nextActionRestoreOrRecord")}`,
+  );
+  return next;
+}
+
 function StaleDispositionWarningMetadataRow({ row }: { row: SystemNoticeMetadataRow }) {
   const label = (
     <span className="text-(length:--text-nano) font-semibold uppercase tracking-(--tracking-eyebrow) text-muted-foreground">
@@ -2568,6 +2616,7 @@ function SystemNoticeCommentRow({
   message: ThreadMessage;
   anchorId?: string;
 }) {
+  const { t } = useTranslation();
   const { onImageClick, agentMap, issueStatus, successfulRunHandoff } = useContext(IssueChatCtx);
   const toastActions = useOptionalToastActions();
   const custom = message.metadata.custom as Record<string, unknown>;
@@ -2581,6 +2630,7 @@ function SystemNoticeCommentRow({
     .filter((p): p is { type: "text"; text: string } => p.type === "text")
     .map((p) => p.text)
     .join("\n\n");
+  const displayBodyText = localizeKnownSystemNoticeBody(bodyText, t);
   const staleSuccessfulRunHandoffNotice = isStaleSuccessfulRunHandoffNotice({
     bodyText,
     issueStatus,
@@ -2610,13 +2660,19 @@ function SystemNoticeCommentRow({
     metadata: commentMetadata,
     body: (
       <MarkdownBody className="text-sm leading-6" softBreaks onImageClick={onImageClick}>
-        {bodyText}
+        {displayBodyText}
       </MarkdownBody>
     ),
     timestamp: message.createdAt ? new Date(message.createdAt).toISOString() : undefined,
     source,
     runAgentId,
   });
+  const localizedNoticeLabel =
+    props.tone === "danger"
+      ? t("ui.systemNotice.alert")
+      : props.tone === "warning"
+        ? t("ui.systemNotice.warning")
+        : t("ui.systemNotice.notice");
 
   const handleCopy = () => {
     void copyTextToClipboard(bodyText).then(() => {
@@ -2660,7 +2716,7 @@ function SystemNoticeCommentRow({
   return (
     <div id={anchorId} className="group">
       <div className="py-1">
-        <SystemNotice {...props} />
+        <SystemNotice {...props} label={localizedNoticeLabel} />
         <div className="mt-1 flex items-center justify-end gap-1.5 px-1 opacity-0 transition-opacity group-hover:opacity-100">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -2730,6 +2786,7 @@ function IssueChatMetadataRow({
 }
 
 function IssueChatSystemMessage({ message }: { message: ThreadMessage }) {
+  const { t } = useTranslation();
   const {
     agentMap,
     currentUserId,
@@ -2810,6 +2867,12 @@ function IssueChatSystemMessage({ message }: { message: ThreadMessage }) {
     const isAgent = actorType === "agent";
     const agentIcon = isAgent && actorId ? agentMap?.get(actorId)?.icon : undefined;
     const isCurrentUser = actorType === "user" && !!currentUserId && actorId === currentUserId;
+    const displayActorName =
+      actorName === "System"
+        ? t("ui.common.system")
+        : actorName === "You" || isCurrentUser
+          ? t("ui.common.you")
+          : actorName;
     const rowIcon = agentIcon
       ? <AgentIcon icon={agentIcon} className="h-3 w-3" />
       : <ClipboardList className="h-3 w-3" />;
@@ -2822,9 +2885,11 @@ function IssueChatSystemMessage({ message }: { message: ThreadMessage }) {
     return (
       <IssueChatMetadataRow anchorId={anchorId} icon={rowIcon}>
         <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-xs">
-          <span className="font-medium text-foreground">{actorName}</span>
+          <span className="font-medium text-foreground">{displayActorName}</span>
           <span className="text-muted-foreground">
-            {custom.followUpRequested === true ? "requested follow-up" : "updated this task"}
+            {custom.followUpRequested === true
+              ? t("ui.issueChat.timeline.requestedFollowUp")
+              : t("ui.issueChat.timeline.updatedThisTask")}
           </span>
           <a
             href={anchorId ? `#${anchorId}` : undefined}
@@ -2837,11 +2902,11 @@ function IssueChatSystemMessage({ message }: { message: ThreadMessage }) {
         {statusChange ? (
           <div className="flex flex-wrap items-center gap-1.5 text-xs">
             <span className="text-(length:--text-nano) font-medium uppercase tracking-wider text-muted-foreground/70">
-              Status
+              {t("ui.issueChat.timeline.status")}
             </span>
-            <span className="text-muted-foreground">{humanizeValue(statusChange.from)}</span>
+            <span className="text-muted-foreground">{humanizeValue(statusChange.from, t)}</span>
             <ArrowRight className="h-3 w-3 text-muted-foreground/70" />
-            <span className="font-medium text-foreground">{humanizeValue(statusChange.to)}</span>
+            <span className="font-medium text-foreground">{humanizeValue(statusChange.to, t)}</span>
           </div>
         ) : null}
 
@@ -2849,7 +2914,7 @@ function IssueChatSystemMessage({ message }: { message: ThreadMessage }) {
           <div className="space-y-1">
             <div className={cn("flex flex-wrap items-center gap-1.5 text-xs", isCurrentUser && "justify-end")}>
               <span className="text-(length:--text-nano) font-medium uppercase tracking-wider text-muted-foreground/70">
-                Assignee
+                {t("ui.issueChat.timeline.assignee")}
               </span>
               <AssigneeChip assignee={assigneeChange.from} resolvers={handoffResolvers} />
               <ArrowRight className="h-3 w-3 text-muted-foreground/70" />
@@ -2868,7 +2933,7 @@ function IssueChatSystemMessage({ message }: { message: ThreadMessage }) {
         {workspaceChange ? (
           <div className="flex flex-wrap items-center gap-1.5 text-xs">
             <span className="text-(length:--text-nano) font-medium uppercase tracking-wider text-muted-foreground/70">
-              Workspace
+              {t("ui.issueChat.timeline.workspace")}
             </span>
             <span className="text-muted-foreground">
               {formatTimelineWorkspaceLabel(workspaceChange.from)}
@@ -3879,6 +3944,7 @@ const IssueChatComposer = forwardRef<IssueChatComposerHandle, IssueChatComposerP
 
   const workModeOptions = workModeMetaList();
   const pendingWorkModeMeta = workModeMetaFor(pendingWorkMode);
+  const pendingWorkModeLabel = workModeLabel(pendingWorkMode, t);
   const PendingWorkModeIcon = pendingWorkModeMeta.icon;
 
   function handleComposerKeyDown(evt: ReactKeyboardEvent<HTMLDivElement>) {
@@ -4043,14 +4109,14 @@ const IssueChatComposer = forwardRef<IssueChatComposerHandle, IssueChatComposerP
                   aria-expanded={workModeMenuOpen}
                   aria-pressed={pendingWorkMode !== "standard"}
                   aria-keyshortcuts="Meta+Period Control+Period"
-                  title={titleForPendingWorkMode(pendingWorkMode)}
+                  title={workModeTitle(pendingWorkMode, t)}
                   className={cn(
                     "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-(length:--text-micro) font-semibold transition-colors",
                     pendingWorkModeMeta.classes.chip,
                   )}
                 >
                   <PendingWorkModeIcon className="h-3.5 w-3.5" aria-hidden />
-                  <span>{pendingWorkModeMeta.label}</span>
+                  <span>{pendingWorkModeLabel}</span>
                   <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
                 </button>
               </PopoverTrigger>
@@ -4079,13 +4145,13 @@ const IssueChatComposer = forwardRef<IssueChatComposerHandle, IssueChatComposerP
                       }}
                     >
                       <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                      <span>{option.label}</span>
+                      <span>{workModeLabel(option.value, t)}</span>
                       {active ? <Check className="h-3.5 w-3.5 shrink-0" aria-hidden /> : null}
                     </button>
                   );
                 })}
                 <div className="mt-1 border-t px-2 py-1.5 text-(length:--text-nano) text-muted-foreground">
-                  Cmd/Ctrl+. cycles modes
+                  {t("ui.workModes.cycleHint")}
                 </div>
               </PopoverContent>
             </Popover>
@@ -4873,9 +4939,10 @@ export function IssueChatThread({
             <button
               type="button"
               onClick={handleJumpToLatest}
+              aria-label={t("ui.issueChat.jumpToLatest")}
               className="text-xs text-muted-foreground transition-colors hover:text-foreground"
             >
-              Jump to latest
+              {t("ui.issueChat.jumpToLatest")}
             </button>
           </div>
         ) : null}
@@ -4954,13 +5021,13 @@ export function IssueChatThread({
                   {legacyRecoverySourceIssue ? (
                     <SystemNotice
                       tone="info"
-                      label="Legacy recovery task"
+                      label={t("ui.issueChat.legacyRecovery.label")}
                       body={
                         <span>
-                          Legacy recovery task. Newer recovery actions live on the source task
+                          {t("ui.issueChat.legacyRecovery.bodyPrefix")}
                           {legacyRecoverySourceIssue.identifier ? (
                             <>
-                              {" — "}
+                              {" "}
                               <Link
                                 to={legacyRecoverySourceIssue.href}
                                 className="underline-offset-2 hover:underline"
