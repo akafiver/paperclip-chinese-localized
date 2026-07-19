@@ -343,7 +343,7 @@ function IssueChatLiveRunStatusLine({
   const lastAssistantSnippet = readCustomString(custom, "lastAssistantSnippet");
   const lastEventAt = readCustomString(custom, "lastEventAt");
   const lastEventAtMs = toTimestampOrNull(lastEventAt);
-  const lastActivityElapsed = useLiveElapsed(lastEventAtMs, active);
+  const lastActivityElapsed = useLiveElapsed(lastEventAtMs, active, translate);
   const lastActivityAgeMs = lastEventAtMs ? Date.now() - lastEventAtMs : null;
 
   if (!active) return null;

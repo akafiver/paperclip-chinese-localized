@@ -78,6 +78,7 @@ export function ReviewQueueCard({
 }
 
 function ReviewRow({ companyId, item }: { companyId: string; item: ToolActionRequestListItem }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { pushToast } = useToast();
   const [resolving, setResolving] = useState<null | "allow" | "always" | "decline">(null);
