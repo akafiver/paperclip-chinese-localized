@@ -37,6 +37,7 @@ import {
   renderPaperclipWakePrompt,
   stringifyPaperclipWakePayload,
   isPaperclipRecoveryWakePayload,
+  resolveRequiredAdapterWorkspaceCwd,
 } from "@paperclipai/adapter-utils/server-utils";
 
 import {
@@ -480,13 +481,8 @@ export async function execute(
   if (wakePayloadJson) env.PAPERCLIP_WAKE_PAYLOAD_JSON = wakePayloadJson;
 
   // ── Resolve working directory ──────────────────────────────────────────
-  const cwd =
-    cfgString(config.cwd) || cfgString(ctx.config?.workspaceDir) || ".";
-  try {
-    await ensureAbsoluteDirectory(cwd);
-  } catch {
-    // Non-fatal
-  }
+  const cwd = await resolveRequiredAdapterWorkspaceCwd(ctx.context, config);
+  await ensureAbsoluteDirectory(cwd);
 
   // ── Log start ──────────────────────────────────────────────────────────
   await ctx.onLog(

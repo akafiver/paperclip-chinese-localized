@@ -154,6 +154,21 @@ export function createServerAdapter(): ServerAdapterModule {
 
 The core execution function. Receives an `AdapterExecutionContext` and returns an `AdapterExecutionResult`.
 
+### Execution boundary and workspace contract
+
+External server adapters execute in a Paperclip-managed child process. The child
+process is started with the resolved project execution workspace as its `cwd`;
+it must never rely on the Paperclip server's `process.cwd()`.
+
+Before dispatch, Paperclip requires a project-backed workspace. A missing,
+relative, agent-home, or Paperclip-source-tree workspace blocks the run. If a
+project has no usable workspace path, Paperclip creates or reuses its managed
+project workspace first.
+
+Adapter code should use `resolveRequiredAdapterWorkspaceCwd` and
+`runChildProcess` for any further child process. Direct `spawn()` calls are not
+part of the adapter execution contract.
+
 ```ts
 import type {
   AdapterExecutionContext,

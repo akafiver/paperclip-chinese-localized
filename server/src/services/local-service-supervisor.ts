@@ -328,6 +328,10 @@ async function adoptLocalServiceFromPortOwner(input: {
     }
   }
 
+  if (!input.cwd || !path.isAbsolute(input.cwd)) {
+    return null;
+  }
+
   const processGroupId = await readProcessGroupId(ownerPid);
   const pid = processGroupId && isPidAlive(processGroupId) ? processGroupId : ownerPid;
   const now = new Date().toISOString();
@@ -337,7 +341,7 @@ async function adoptLocalServiceFromPortOwner(input: {
     profileKind: input.profileKind ?? "workspace-runtime",
     serviceName: input.serviceName ?? "service",
     command: input.command ?? input.serviceName ?? "service",
-    cwd: input.cwd ?? process.cwd(),
+    cwd: input.cwd,
     envFingerprint: input.envFingerprint ?? "",
     port: input.port,
     url: input.url ?? null,

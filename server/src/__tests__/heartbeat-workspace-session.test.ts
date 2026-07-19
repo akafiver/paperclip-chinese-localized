@@ -9,7 +9,7 @@ import { sessionCodec as codexSessionCodec } from "@paperclipai/adapter-codex-lo
 import { resolveDefaultAgentWorkspaceDir } from "../home-paths.js";
 import {
   applyPersistedExecutionWorkspaceConfig,
-  assertGitSensitiveAdapterWorkspaceValid,
+  assertExecutionWorkspaceValid,
   assertGitWorktreeBaseWorkspaceReady,
   assertPushCapabilityCheckoutValid,
   buildExplicitResumeSessionOverride,
@@ -61,7 +61,7 @@ function buildResolvedWorkspace(overrides: Partial<ResolvedWorkspaceForRun> = {}
   };
 }
 
-type WorkspaceValidationInput = Parameters<typeof assertGitSensitiveAdapterWorkspaceValid>[0];
+type WorkspaceValidationInput = Parameters<typeof assertExecutionWorkspaceValid>[0];
 
 function buildWorkspaceValidationInput(
   overrides: Partial<WorkspaceValidationInput> = {},
@@ -141,7 +141,7 @@ async function expectWorkspaceValidationFailure(
   reason: string,
   message: string,
 ) {
-  await expect(assertGitSensitiveAdapterWorkspaceValid(input)).rejects.toMatchObject({
+  await expect(assertExecutionWorkspaceValid(input)).rejects.toMatchObject({
     code: "workspace_validation_failed",
     message: expect.stringContaining(message),
     resultJson: {
@@ -241,7 +241,7 @@ function buildIssueAncestryDb(rows: Array<{ id: string; companyId: string; paren
   };
 }
 
-describe("assertGitSensitiveAdapterWorkspaceValid", () => {
+describe("assertExecutionWorkspaceValid", () => {
   it("rejects a project-workspace-linked issue that is missing its project id before adapter launch", async () => {
     await expectWorkspaceValidationFailure(
       buildWorkspaceValidationInput({
@@ -257,7 +257,7 @@ describe("assertGitSensitiveAdapterWorkspaceValid", () => {
     );
   });
 
-  it("rejects a git-sensitive local adapter when effective cwd differs from the persisted workspace cwd", async () => {
+  it("rejects a workspace when effective cwd differs from the persisted workspace cwd", async () => {
     const input = buildWorkspaceValidationInput();
 
     await expectWorkspaceValidationFailure(
@@ -414,25 +414,30 @@ describe("assertGitSensitiveAdapterWorkspaceValid", () => {
     }
   });
 
-  it("rejects a workspace-linked issue when adapter cwd has no git metadata", async () => {
+  it("allows a non-Git project workspace for a non-versioned task", async () => {
+    const input = buildWorkspaceValidationInput();
+    const cwd = "/tmp/paperclip-workspace-without-git-metadata";
+
+    await expect(assertExecutionWorkspaceValid(buildWorkspaceValidationInput({
+      resolvedWorkspace: buildResolvedWorkspace({ cwd }),
+      executionWorkspace: { ...input.executionWorkspace, baseCwd: cwd, cwd },
+      persistedExecutionWorkspace: { ...input.persistedExecutionWorkspace!, cwd },
+    }))).resolves.toBeUndefined();
+  });
+
+  it("requires Git only when the task explicitly requests versioned work", async () => {
     const input = buildWorkspaceValidationInput();
     const cwd = "/tmp/paperclip-workspace-without-git-metadata";
 
     await expectWorkspaceValidationFailure(
       buildWorkspaceValidationInput({
         resolvedWorkspace: buildResolvedWorkspace({ cwd }),
-        executionWorkspace: {
-          ...input.executionWorkspace,
-          baseCwd: cwd,
-          cwd,
-        },
-        persistedExecutionWorkspace: {
-          ...input.persistedExecutionWorkspace!,
-          cwd,
-        },
+        executionWorkspace: { ...input.executionWorkspace, baseCwd: cwd, cwd },
+        persistedExecutionWorkspace: { ...input.persistedExecutionWorkspace!, cwd },
+        requiresGit: true,
       }),
       "missing_git_metadata",
-      "has no .git metadata",
+      "requires a git workspace",
     );
   });
 
@@ -440,7 +445,7 @@ describe("assertGitSensitiveAdapterWorkspaceValid", () => {
     const input = buildWorkspaceValidationInput();
 
     await expect(
-      assertGitSensitiveAdapterWorkspaceValid(
+      assertExecutionWorkspaceValid(
         buildWorkspaceValidationInput({
           executionTarget: { kind: "cloud" },
           executionWorkspace: {

@@ -26,6 +26,11 @@ import type { AdapterPluginRecord } from "../services/adapter-plugin-store.js";
 // ---------------------------------------------------------------------------
 
 const uiParserCache = new Map<string, string>();
+const externalAdapterModulePaths = new WeakMap<ServerAdapterModule, string>();
+
+export function getExternalAdapterModulePath(adapter: ServerAdapterModule): string | null {
+  return externalAdapterModulePaths.get(adapter) ?? null;
+}
 
 export function getUiParserSource(adapterType: string): string | undefined {
   return uiParserCache.get(adapterType);
@@ -179,6 +184,7 @@ export async function loadExternalAdapterPackage(
 
   const mod = await import(modulePath);
   const adapterModule = validateAdapterModule(mod, packageName);
+  externalAdapterModulePaths.set(adapterModule, modulePath);
 
   if (uiParserSource) {
     uiParserCache.set(adapterModule.type, uiParserSource);
@@ -237,6 +243,7 @@ export async function reloadExternalAdapter(
 
   const mod = await import(cacheBustUrl);
   const adapterModule = validateAdapterModule(mod, record.packageName);
+  externalAdapterModulePaths.set(adapterModule, modulePath);
 
   uiParserCache.delete(type);
   const uiParserSource = extractUiParserSource(packageDir, record.packageName);

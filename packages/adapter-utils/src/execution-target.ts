@@ -1584,7 +1584,12 @@ function writeEvent(event) {
 }
 
 const child = spawn(config.command, Array.isArray(config.args) ? config.args : [], {
-  cwd: config.cwd || process.cwd(),
+  cwd: (() => {
+    if (typeof config.cwd !== "string" || config.cwd.trim().length === 0) {
+      throw new Error("process_session_workspace_required: child process cwd is required");
+    }
+    return config.cwd;
+  })(),
   env: { ...process.env, ...(config.env || {}) },
   stdio: ["pipe", "pipe", "pipe"],
 });

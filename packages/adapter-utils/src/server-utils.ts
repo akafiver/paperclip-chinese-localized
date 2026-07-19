@@ -2278,16 +2278,26 @@ export async function resolveRequiredAdapterWorkspaceCwd(
   const workspaceCwd = typeof workspaceRecord?.cwd === "string"
     ? workspaceRecord.cwd.trim()
     : "";
-  const configuredCwd = typeof config.cwd === "string" ? config.cwd.trim() : "";
-  const cwd = workspaceSource === "agent_home" && configuredCwd
-    ? configuredCwd
-    : workspaceCwd || configuredCwd;
-
-  if (!cwd) {
+  const workspaceProjectId = typeof workspaceRecord?.projectId === "string"
+    ? workspaceRecord.projectId.trim()
+    : "";
+  if (workspaceSource === "agent_home") {
     throw new Error(
-      "workspace_validation_failed: no resolved workspace cwd was provided; configure a project workspace before starting the agent",
+      "workspace_validation_failed: agent-home workspaces are not valid agent execution workspaces; resolve a project workspace first",
     );
   }
+  if (workspaceSource === "task_session" && !workspaceProjectId) {
+    throw new Error(
+      "workspace_validation_failed: task-session workspaces must be backed by a project workspace",
+    );
+  }
+
+  if (!workspaceRecord || !workspaceCwd) {
+    throw new Error(
+      "workspace_validation_failed: no system workspace was resolved; configure a project workspace before starting the agent",
+    );
+  }
+  const cwd = workspaceCwd;
   if (!path.isAbsolute(cwd)) {
     throw new Error(`workspace_validation_failed: workspace cwd must be absolute: "${cwd}"`);
   }

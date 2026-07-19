@@ -47,7 +47,7 @@ Valid status values: `planned`, `active`, `achieved`, `cancelled`.
 
 ## Projects
 
-Projects group related issues toward a deliverable. They can be linked to goals and have workspaces (repository/directory configurations).
+Projects group related issues toward a deliverable. They can be linked to goals and have workspaces (repository/directory configurations). A workspace is a system boundary, not necessarily a Git repository: non-code projects can use an ordinary directory, while Git is enabled only when a project or issue explicitly requires it.
 
 ### List Projects
 

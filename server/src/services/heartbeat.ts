@@ -85,6 +85,7 @@ import type {
 } from "../adapters/index.js";
 import { createLocalAgentJwt } from "../agent-auth-jwt.js";
 import { parseObject, asBoolean, asNumber, appendWithByteCap, MAX_EXCERPT_BYTES } from "../adapters/utils.js";
+import { resolveRequiredAdapterWorkspaceCwd } from "@paperclipai/adapter-utils/server-utils";
 import { costService } from "./costs.js";
 import { trackAgentFirstHeartbeat } from "@paperclipai/shared/telemetry";
 import { getTelemetryClient } from "../telemetry.js";
@@ -92,6 +93,7 @@ import { companySkillService } from "./company-skills.js";
 import { budgetService, type BudgetEnforcementScope } from "./budgets.js";
 import { secretService, type MissingRuntimeBinding } from "./secrets.js";
 import { resolveDefaultAgentWorkspaceDir, resolveManagedProjectWorkspaceDir } from "../home-paths.js";
+import { ensureProjectWorkspaceLayout } from "./project-workspace-layout.js";
 import {
   buildHeartbeatRunIssueComment,
   HEARTBEAT_RUN_RESULT_OUTPUT_MAX_CHARS,
@@ -355,7 +357,7 @@ const EXECUTION_REVIEW_PARTICIPANT_RECOVERY_CAUSE = "execution_review_participan
 const GITHUB_PR_WORKFLOW_SKILL_KEY = "paperclipai/bundled/software-development/github-pr-workflow";
 const GITHUB_PR_WORKFLOW_SKILL_SLUG = "github-pr-workflow";
 const PUSH_CAPABILITY_ENV_KEYS = ["GH_TOKEN", "GITHUB_TOKEN"] as const;
-// Keep this in sync with local adapters that require a git workspace before launch.
+// These adapters expose GitHub PR capabilities that need a repository checkout.
 const GIT_SENSITIVE_LOCAL_ADAPTER_TYPES = new Set([
   "claude_local",
   "codex_local",
@@ -1313,10 +1315,12 @@ function deriveRepoNameFromRepoUrl(repoUrl: string | null): string | null {
 }
 
 async function ensureManagedProjectWorkspace(input: {
+  db?: Db;
   companyId: string;
   projectId: string;
   repoUrl: string | null;
-}): Promise<{ cwd: string; warning: string | null }> {
+  persistProjectWorkspace?: boolean;
+}): Promise<{ cwd: string; warning: string | null; workspaceId: string | null }> {
   const cwd = resolveManagedProjectWorkspaceDir({
     companyId: input.companyId,
     projectId: input.projectId,
@@ -1325,42 +1329,92 @@ async function ensureManagedProjectWorkspace(input: {
   await fs.mkdir(path.dirname(cwd), { recursive: true });
   const stats = await fs.stat(cwd).catch(() => null);
 
+  let warning: string | null = null;
+  let workspaceId: string | null = null;
   if (!input.repoUrl) {
     if (!stats) {
       await fs.mkdir(cwd, { recursive: true });
     }
-    return { cwd, warning: null };
-  }
+  } else {
+    const gitDirExists = await fs
+      .stat(path.resolve(cwd, ".git"))
+      .then((entry) => entry.isDirectory())
+      .catch(() => false);
+    if (gitDirExists) {
+      // Reuse the existing managed checkout.
+    } else {
+      if (stats) {
+        const entries = await fs.readdir(cwd).catch(() => []);
+        if (entries.length > 0) {
+          warning = `Managed workspace path "${cwd}" already exists but is not a git checkout. Using it as-is.`;
+        } else {
+          await fs.rm(cwd, { recursive: true, force: true });
+        }
+      }
 
-  const gitDirExists = await fs
-    .stat(path.resolve(cwd, ".git"))
-    .then((entry) => entry.isDirectory())
-    .catch(() => false);
-  if (gitDirExists) {
-    return { cwd, warning: null };
-  }
-
-  if (stats) {
-    const entries = await fs.readdir(cwd).catch(() => []);
-    if (entries.length > 0) {
-      return {
-        cwd,
-        warning: `Managed workspace path "${cwd}" already exists but is not a git checkout. Using it as-is.`,
-      };
+      if (!warning) {
+        try {
+          await execFile("git", ["clone", input.repoUrl, cwd], {
+            env: sanitizeRuntimeServiceBaseEnv(process.env),
+            timeout: MANAGED_WORKSPACE_GIT_CLONE_TIMEOUT_MS,
+          });
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error);
+          throw new Error(`Failed to prepare managed checkout for "${input.repoUrl}" at "${cwd}": ${reason}`);
+        }
+      }
     }
-    await fs.rm(cwd, { recursive: true, force: true });
   }
 
-  try {
-    await execFile("git", ["clone", input.repoUrl, cwd], {
-      env: sanitizeRuntimeServiceBaseEnv(process.env),
-      timeout: MANAGED_WORKSPACE_GIT_CLONE_TIMEOUT_MS,
+  if (input.persistProjectWorkspace) {
+    if (!input.db) {
+      throw new Error("workspace_validation_failed: database is required to persist the managed project workspace");
+    }
+    workspaceId = await input.db.transaction(async (tx) => {
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${`paperclip:managed-project-workspace:${input.companyId}:${input.projectId}`}))`,
+      );
+      const existing = await tx
+        .select({ id: projectWorkspaces.id })
+        .from(projectWorkspaces)
+        .where(
+          and(
+            eq(projectWorkspaces.companyId, input.companyId),
+            eq(projectWorkspaces.projectId, input.projectId),
+            eq(projectWorkspaces.cwd, cwd),
+          ),
+        )
+        .then((rows) => rows[0] ?? null);
+      if (existing) return existing.id;
+
+      const [created] = await tx.insert(projectWorkspaces).values({
+          companyId: input.companyId,
+          projectId: input.projectId,
+          name: "Managed project workspace",
+          sourceType: input.repoUrl ? "git_repo" : "local_path",
+          cwd,
+          repoUrl: input.repoUrl,
+          repoRef: null,
+          defaultRef: null,
+          visibility: "default",
+          setupCommand: null,
+          cleanupCommand: null,
+          remoteProvider: null,
+          remoteWorkspaceRef: null,
+          sharedWorkspaceKey: null,
+          metadata: { managedByPaperclip: true },
+          isPrimary: true,
+        }).returning({ id: projectWorkspaces.id });
+      return created?.id ?? null;
     });
-    return { cwd, warning: null };
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to prepare managed checkout for "${input.repoUrl}" at "${cwd}": ${reason}`);
   }
+
+  await ensureProjectWorkspaceLayout({
+    cwd,
+    sourceType: input.repoUrl ? "git_repo" : "local_path",
+  });
+
+  return { cwd, warning, workspaceId };
 }
 
 type WorkspaceValidationFailureLike = WorkspaceValidationFailure | {
@@ -1570,7 +1624,7 @@ export async function assertPushCapabilityCheckoutValid(input: {
   );
 }
 
-export async function assertGitSensitiveAdapterWorkspaceValid(input: {
+export async function assertExecutionWorkspaceValid(input: {
   adapterType: string;
   agentId: string;
   issue: {
@@ -1583,11 +1637,10 @@ export async function assertGitSensitiveAdapterWorkspaceValid(input: {
   executionWorkspace: RealizedExecutionWorkspace;
   persistedExecutionWorkspace: ExecutionWorkspace | null;
   executionTarget: unknown;
+  requiresGit?: boolean;
   environmentDriver?: string | null;
   leaseMetadata?: unknown;
 }) {
-  if (!GIT_SENSITIVE_LOCAL_ADAPTER_TYPES.has(input.adapterType)) return;
-
   const executionTargetKind = readNonEmptyString((input.executionTarget as { kind?: unknown } | null)?.kind) ?? "local";
   if (executionTargetKind !== "local") return;
 
@@ -1714,10 +1767,17 @@ export async function assertGitSensitiveAdapterWorkspaceValid(input: {
     );
   }
 
-  if (workspaceExpectation && effectiveCwd && !await hasGitMetadata(effectiveCwd)) {
+  const gitWorkspaceRequired =
+    input.requiresGit === true ||
+    input.executionWorkspace.strategy === "git_worktree" ||
+    input.persistedExecutionWorkspace?.strategyType === "git_worktree" ||
+    Boolean(input.executionWorkspace.repoUrl) ||
+    Boolean(input.persistedExecutionWorkspace?.repoUrl);
+
+  if (workspaceExpectation && gitWorkspaceRequired && effectiveCwd && !await hasGitMetadata(effectiveCwd)) {
     fail(
       "missing_git_metadata",
-      `Issue ${issue.identifier ?? issue.id} expected a git workspace for ${input.adapterType}, but "${effectiveCwd}" has no .git metadata.`,
+      `Issue ${issue.identifier ?? issue.id} requires a git workspace, but "${effectiveCwd}" has no .git metadata.`,
     );
   }
 
@@ -7350,6 +7410,10 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
           .then((stats) => stats.isDirectory())
           .catch(() => false);
         if (projectCwdExists) {
+          await ensureProjectWorkspaceLayout({
+            cwd: projectCwd,
+            sourceType: workspace.sourceType,
+          });
           return {
             cwd: projectCwd,
             source: "project_primary" as const,
@@ -7370,48 +7434,58 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         missingProjectCwds.push(projectCwd);
       }
 
-      const fallbackCwd = resolveDefaultAgentWorkspaceDir(agent.id);
-      await fs.mkdir(fallbackCwd, { recursive: true });
-      const warnings: string[] = [];
-      if (preferredWorkspaceWarning) {
-        warnings.push(preferredWorkspaceWarning);
-      }
-      if (missingProjectCwds.length > 0) {
-        const firstMissing = missingProjectCwds[0];
-        const extraMissingCount = Math.max(0, missingProjectCwds.length - 1);
-        warnings.push(
-          extraMissingCount > 0
-            ? `Project workspace path "${firstMissing}" and ${extraMissingCount} other configured path(s) are not available yet. Using fallback workspace "${fallbackCwd}" for this run.`
-            : `Project workspace path "${firstMissing}" is not available yet. Using fallback workspace "${fallbackCwd}" for this run.`,
-        );
-      } else if (!hasConfiguredProjectCwd) {
-        warnings.push(
-          `Project workspace has no local cwd configured. Using fallback workspace "${fallbackCwd}" for this run.`,
+      if (!resolvedProjectId) {
+        throw new WorkspaceValidationFailure(
+          "workspace_validation_failed: no project workspace is available for this task",
+          {
+            workspaceValidation: {
+              reason: "project_workspace_required",
+              resolvedProjectId: null,
+              resolvedProjectWorkspaceId: null,
+              workspaceIds: projectWorkspaceRows.map((workspace) => workspace.id),
+            },
+          },
         );
       }
-      return {
-        cwd: fallbackCwd,
-        source: "project_primary" as const,
-        projectId: resolvedProjectId,
-        workspaceId: projectWorkspaceRows[0]?.id ?? null,
-        repoUrl: projectWorkspaceRows[0]?.repoUrl ?? null,
-        repoRef: projectWorkspaceRows[0]?.repoRef ?? null,
-        workspaceHints,
-        warnings,
-      };
-    }
 
-    if (workspaceProjectId) {
+      // A project workspace row may exist while its local path has been
+      // removed or never materialized. Reconcile that project to its managed
+      // workspace instead of falling back to an agent home directory.
       const managedWorkspace = await ensureManagedProjectWorkspace({
         companyId: agent.companyId,
-        projectId: workspaceProjectId,
-        repoUrl: null,
+        projectId: resolvedProjectId,
+        repoUrl: preferredWorkspace?.repoUrl ?? projectWorkspaceRows[0]?.repoUrl ?? null,
       });
       return {
         cwd: managedWorkspace.cwd,
         source: "project_primary" as const,
         projectId: resolvedProjectId,
-        workspaceId: null,
+        workspaceId: preferredWorkspace?.id ?? projectWorkspaceRows[0]?.id ?? null,
+        repoUrl: preferredWorkspace?.repoUrl ?? projectWorkspaceRows[0]?.repoUrl ?? null,
+        repoRef: preferredWorkspace?.repoRef ?? projectWorkspaceRows[0]?.repoRef ?? null,
+        workspaceHints,
+        warnings: [
+          preferredWorkspaceWarning,
+          ...missingProjectCwds.map((cwd) => `Project workspace path "${cwd}" was unavailable; reconciled to managed project workspace "${managedWorkspace.cwd}".`),
+          !hasConfiguredProjectCwd ? `Project workspace had no usable local cwd; created managed project workspace "${managedWorkspace.cwd}".` : null,
+          managedWorkspace.warning,
+        ].filter((value): value is string => Boolean(value)),
+      };
+    }
+
+    if (workspaceProjectId) {
+      const managedWorkspace = await ensureManagedProjectWorkspace({
+        db,
+        companyId: agent.companyId,
+        projectId: workspaceProjectId,
+        repoUrl: null,
+        persistProjectWorkspace: true,
+      });
+      return {
+        cwd: managedWorkspace.cwd,
+        source: "project_primary" as const,
+        projectId: resolvedProjectId,
+        workspaceId: managedWorkspace.workspaceId,
         repoUrl: null,
         repoRef: null,
         workspaceHints,
@@ -7419,57 +7493,18 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
       };
     }
 
-    const sessionCwd = readNonEmptyString(previousSessionParams?.cwd);
-    const sessionCwdLooksUnsafe = isUnsafeSessionWorkspaceCwd(sessionCwd);
-    if (sessionCwd && !sessionCwdLooksUnsafe) {
-      const sessionCwdExists = await fs
-        .stat(sessionCwd)
-        .then((stats) => stats.isDirectory())
-        .catch(() => false);
-      if (sessionCwdExists) {
-        return {
-          cwd: sessionCwd,
-          source: "task_session" as const,
-          projectId: resolvedProjectId,
-          workspaceId: readNonEmptyString(previousSessionParams?.workspaceId),
-          repoUrl: readNonEmptyString(previousSessionParams?.repoUrl),
-          repoRef: readNonEmptyString(previousSessionParams?.repoRef),
-          workspaceHints,
-          warnings: [],
-        };
-      }
-    }
-
-    const cwd = resolveDefaultAgentWorkspaceDir(agent.id);
-    await fs.mkdir(cwd, { recursive: true });
-    const warnings: string[] = [];
-    if (sessionCwd && sessionCwdLooksUnsafe) {
-      warnings.push(
-        `Saved session workspace "${sessionCwd}" points at a system temp root and was rejected as untrusted. Using fallback workspace "${cwd}" for this run.`,
-      );
-    } else if (sessionCwd) {
-      warnings.push(
-        `Saved session workspace "${sessionCwd}" is not available. Using fallback workspace "${cwd}" for this run.`,
-      );
-    } else if (resolvedProjectId) {
-      warnings.push(
-        `No project workspace directory is currently available for this issue. Using fallback workspace "${cwd}" for this run.`,
-      );
-    } else {
-      warnings.push(
-        `No project or prior session workspace was available. Using fallback workspace "${cwd}" for this run.`,
-      );
-    }
-    return {
-      cwd,
-      source: "agent_home" as const,
-      projectId: resolvedProjectId,
-      workspaceId: null,
-      repoUrl: null,
-      repoRef: null,
-      workspaceHints,
-      warnings,
-    };
+    throw new WorkspaceValidationFailure(
+      "workspace_validation_failed: a project workspace is required before an agent can run",
+      {
+        workspaceValidation: {
+          reason: "project_workspace_required",
+          resolvedProjectId,
+          resolvedProjectWorkspaceId: null,
+          workspaceIds: [],
+          previousSessionWorkspaceRejected: Boolean(previousSessionParams?.cwd),
+        },
+      },
+    );
   }
 
   async function upsertTaskSession(input: {
@@ -12495,7 +12530,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
           agent,
           context,
           previousSessionParams,
-          { useProjectWorkspace: requestedExecutionWorkspaceMode !== "agent_default" },
+          { useProjectWorkspace: true },
         ),
     });
     const hostExecutionWorkspaceConfig = stripHostWorkspaceProvisionForLowTrustSandbox({
@@ -13319,7 +13354,11 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         const logEntry = formatRuntimeWorkspaceWarningLog(warning);
         await onLog(logEntry.stream, logEntry.chunk);
       }
-      await assertGitSensitiveAdapterWorkspaceValid({
+      const gitWorkspaceRequired =
+        issueExecutionWorkspaceSettings?.requiresGit ??
+        projectExecutionWorkspacePolicy?.requiresGit ??
+        false;
+      await assertExecutionWorkspaceValid({
         adapterType: agent.adapterType,
         agentId: agent.id,
         issue: issueRef
@@ -13334,6 +13373,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         executionWorkspace,
         persistedExecutionWorkspace,
         executionTarget,
+        requiresGit: gitWorkspaceRequired,
         environmentDriver: selectedEnvironment.driver,
         leaseMetadata: activeEnvironmentLease.lease.metadata,
       });
@@ -13652,6 +13692,19 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         if (managedMcpConfig) {
           adapterContext.paperclipManagedMcp = managedMcpConfig;
         }
+        // Workspace ownership is decided by Heartbeat, not by an adapter.
+        // Validate it once at the execution boundary and pass the canonical
+        // value through adapterConfig for adapters that read their own cwd.
+        const adapterWorkspaceCwd = await resolveRequiredAdapterWorkspaceCwd(
+          adapterContext,
+          runtimeConfig,
+        );
+        if (path.resolve(adapterWorkspaceCwd) !== path.resolve(executionWorkspace.cwd)) {
+          throw new Error(
+            `workspace_validation_failed: adapter cwd "${adapterWorkspaceCwd}" does not match the resolved execution workspace "${executionWorkspace.cwd}"`,
+          );
+        }
+        runtimeConfig = { ...runtimeConfig, cwd: adapterWorkspaceCwd };
         adapterResult = await adapter.execute({
           runId: run.id,
           signal: cancellationController.signal,

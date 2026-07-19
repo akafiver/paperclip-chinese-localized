@@ -5,6 +5,24 @@ summary: How project runtime configuration, execution workspaces, and issue runs
 
 This guide documents the intended runtime model for projects, execution workspaces, and issue runs in Paperclip.
 
+## Workspace boundary and Git capability
+
+The project workspace is the system boundary for every local agent run. All local
+adapters must receive the Paperclip-resolved workspace as their working directory;
+adapter configuration cannot replace it with an arbitrary `cwd`, and an agent home
+or the Paperclip source tree is never a valid execution directory.
+
+Git is an optional capability, not a universal workspace requirement. News,
+media, research, email, data, and ordinary script work can use a non-Git project
+workspace. Set `requiresGit: true` on the project execution workspace policy or
+the issue execution workspace settings when a task needs versioned source control.
+The `git_worktree` strategy also requires Git by definition.
+
+For non-Git managed workspaces, Paperclip creates a small organization under the
+workspace root (`projects/`, `media/`, `documents/`, `datasets/`, `scripts/`, and
+`outputs/`) and records it in `.paperclip-workspace.json`. Agents may create
+logical subprojects inside that root, but must remain inside the project workspace.
+
 Paperclip now presents this as a workspace-command model:
 
 - `Services` are long-running commands that stay supervised.

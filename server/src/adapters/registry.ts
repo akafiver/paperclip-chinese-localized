@@ -122,7 +122,9 @@ import {
   modelProfiles as piModelProfiles,
 } from "@paperclipai/adapter-pi-local";
 import { BUILTIN_ADAPTER_TYPES } from "./builtin-adapter-types.js";
-import { buildExternalAdapters } from "./plugin-loader.js";
+import { buildExternalAdapters, getExternalAdapterModulePath } from "./plugin-loader.js";
+import { executeExternalAdapterInProcessBoundary } from "./external-adapter-process.js";
+import { resolveRequiredAdapterWorkspaceCwd } from "@paperclipai/adapter-utils/server-utils";
 import { getDisabledAdapterTypes } from "../services/adapter-plugin-store.js";
 import { processAdapter } from "./process/index.js";
 import { httpAdapter } from "./http/index.js";
@@ -489,8 +491,17 @@ function getDisabledAdapterTypesFromStore(): string[] {
 export function resolveExternalAdapterRegistration(
   externalAdapter: ServerAdapterModule,
 ): ServerAdapterModule {
+  const modulePath = getExternalAdapterModulePath(externalAdapter);
   return {
     ...externalAdapter,
+    ...(modulePath
+      ? {
+          execute: async (ctx) => {
+            const workspaceCwd = await resolveRequiredAdapterWorkspaceCwd(ctx.context, ctx.config);
+            return executeExternalAdapterInProcessBoundary(modulePath, ctx, workspaceCwd);
+          },
+        }
+      : {}),
     sessionManagement:
       externalAdapter.sessionManagement
         ?? getAdapterSessionManagement(externalAdapter.type)

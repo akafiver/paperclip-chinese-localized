@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import os from "node:os";
+import path from "node:path";
 import type { AdapterModel } from "@paperclipai/adapter-utils";
 import {
   asString,
@@ -115,7 +116,10 @@ export async function discoverOpenCodeModels(input: {
   env?: unknown;
 } = {}): Promise<AdapterModel[]> {
   const command = resolveOpenCodeCommand(input.command);
-  const cwd = asString(input.cwd, process.cwd());
+  const cwd = asString(input.cwd, "");
+  if (!path.isAbsolute(cwd)) {
+    throw new Error("workspace_validation_failed: OpenCode model discovery requires an absolute cwd");
+  }
   const env = normalizeEnv(input.env);
   // Ensure HOME points to the actual running user's home directory.
   // When the server is started via `runuser -u <user>`, HOME may still
@@ -162,7 +166,10 @@ export async function discoverOpenCodeModelsCached(input: {
   env?: unknown;
 } = {}): Promise<AdapterModel[]> {
   const command = resolveOpenCodeCommand(input.command);
-  const cwd = asString(input.cwd, process.cwd());
+  const cwd = asString(input.cwd, "");
+  if (!path.isAbsolute(cwd)) {
+    throw new Error("workspace_validation_failed: OpenCode model discovery requires an absolute cwd");
+  }
   const env = normalizeEnv(input.env);
   const key = discoveryCacheKey(command, cwd, env);
   const now = Date.now();

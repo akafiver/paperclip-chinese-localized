@@ -2793,7 +2793,7 @@ export function recoveryService(db: Db, deps: { enqueueWakeup: RecoveryWakeup })
         : recoveryCause === "workspace_validation_failed"
           ? readWorkspaceValidationPayload(input.latestRun)?.reason === "git_worktree_branch_incoherence"
             ? "Repair the source issue git worktree branch incoherence, or choose a new execution workspace, before resuming adapter execution."
-            : "Repair the source issue workspace link, project workspace cwd, or git checkout before resuming adapter execution."
+            : "Repair the source issue workspace link or project workspace before resuming adapter execution. If the task requires Git, also provide a Git checkout."
         : recoveryCause === "configuration_incomplete"
           ? "Bind the missing secret(s) named in the run failure to the agent/project/routine env before resuming adapter execution."
         : recoveryCause === "execution_review_participant_recovery"

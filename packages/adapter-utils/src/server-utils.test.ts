@@ -28,8 +28,8 @@ import {
 } from "./server-utils.js";
 
 describe("resolveRequiredAdapterWorkspaceCwd", () => {
-  it("requires a workspace or explicit advanced cwd", async () => {
-    await expect(resolveRequiredAdapterWorkspaceCwd({}, {})).rejects.toThrow(
+  it("requires a system workspace and ignores adapter-configured cwd", async () => {
+    await expect(resolveRequiredAdapterWorkspaceCwd({}, { cwd: "/tmp/advanced-cwd" })).rejects.toThrow(
       "workspace_validation_failed",
     );
   });
@@ -52,6 +52,34 @@ describe("resolveRequiredAdapterWorkspaceCwd", () => {
         {},
       ),
     ).rejects.toThrow("Paperclip source tree");
+  });
+
+  it("rejects agent-home workspaces even when adapter config supplies a cwd", async () => {
+    await expect(
+      resolveRequiredAdapterWorkspaceCwd(
+        {
+          paperclipWorkspace: {
+            cwd: "/Users/leon/.paperclip/instances/default/agents/agent-1",
+            source: "agent_home",
+          },
+        },
+        { cwd: "/tmp/advanced-cwd" },
+      ),
+    ).rejects.toThrow("agent-home workspaces are not valid");
+  });
+
+  it("rejects task-session workspaces without a project binding", async () => {
+    await expect(
+      resolveRequiredAdapterWorkspaceCwd(
+        {
+          paperclipWorkspace: {
+            cwd: "/tmp/task-session",
+            source: "task_session",
+          },
+        },
+        {},
+      ),
+    ).rejects.toThrow("task-session workspaces must be backed by a project workspace");
   });
 });
 

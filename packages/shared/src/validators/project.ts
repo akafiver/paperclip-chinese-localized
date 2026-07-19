@@ -17,6 +17,7 @@ const executionWorkspaceStrategySchema = z
 export const projectExecutionWorkspacePolicySchema = z
   .object({
     enabled: z.boolean(),
+    requiresGit: z.boolean().optional(),
     defaultMode: z.enum(["shared_workspace", "isolated_workspace", "operator_branch", "adapter_default"]).optional(),
     allowIssueOverride: z.boolean().optional(),
     defaultProjectWorkspaceId: z.string().uuid().optional().nullable(),

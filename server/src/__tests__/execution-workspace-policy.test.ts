@@ -222,6 +222,12 @@ describe("execution workspace policy helpers", () => {
     });
   });
 
+  it("keeps Git as an explicit capability instead of a universal workspace requirement", () => {
+    expect(parseProjectExecutionWorkspacePolicy({ enabled: true, requiresGit: true })?.requiresGit).toBe(true);
+    expect(parseProjectExecutionWorkspacePolicy({ enabled: true })?.requiresGit).toBeUndefined();
+    expect(parseIssueExecutionWorkspaceSettings({ mode: "shared_workspace", requiresGit: true })?.requiresGit).toBe(true);
+  });
+
   it("clears managed workspace strategy when issue opts out to project primary or agent default", () => {
     const baseConfig = {
       workspaceStrategy: { type: "git_worktree", branchTemplate: "{{issue.identifier}}" },

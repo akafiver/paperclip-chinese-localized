@@ -122,6 +122,7 @@ export function parseProjectExecutionWorkspacePolicy(raw: unknown): ProjectExecu
   })();
   return {
     enabled,
+    ...(typeof parsed.requiresGit === "boolean" ? { requiresGit: parsed.requiresGit } : {}),
     ...(normalizedDefaultMode ? { defaultMode: normalizedDefaultMode } : {}),
     ...(allowIssueOverride !== undefined ? { allowIssueOverride } : {}),
     ...(defaultProjectWorkspaceId ? { defaultProjectWorkspaceId } : {}),
@@ -186,6 +187,7 @@ export function parseIssueExecutionWorkspaceSettings(
     ...(normalizedMode
       ? { mode: normalizedMode as IssueExecutionWorkspaceSettings["mode"] }
       : {}),
+    ...(typeof parsed.requiresGit === "boolean" ? { requiresGit: parsed.requiresGit } : {}),
     ...(options.includeEnvironmentId && (typeof parsed.environmentId === "string" || parsed.environmentId === null)
       ? { environmentId: parsed.environmentId }
       : {}),

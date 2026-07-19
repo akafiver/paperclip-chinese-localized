@@ -3179,6 +3179,12 @@ export async function cleanupExecutionWorkspaceArtifacts(input: {
 
   for (const command of cleanupCommands) {
     try {
+      const cleanupCwd = workspacePath ?? input.projectWorkspace?.cwd ?? null;
+      if (!cleanupCwd || !path.isAbsolute(cleanupCwd)) {
+        throw new Error(
+          `workspace_validation_failed: cleanup command "${command}" requires an absolute workspace cwd`,
+        );
+      }
       const resolvedCommand = repoRoot
         ? resolveRepoManagedWorkspaceCommand(command, repoRoot)
         : command;
@@ -3186,7 +3192,7 @@ export async function cleanupExecutionWorkspaceArtifacts(input: {
         phase: "workspace_teardown",
         command,
         resolvedCommand,
-        cwd: workspacePath ?? input.projectWorkspace?.cwd ?? process.cwd(),
+        cwd: cleanupCwd,
         env: cleanupEnv,
         label: `Execution workspace cleanup command "${command}"`,
         metadata: {
@@ -3268,7 +3274,7 @@ export async function cleanupExecutionWorkspaceArtifacts(input: {
       if (input.recorder) {
         await input.recorder.recordOperation({
           phase: "workspace_teardown",
-          cwd: projectWorkspaceCwd ?? process.cwd(),
+          cwd: projectWorkspaceCwd ?? resolvedWorkspacePath,
           metadata: {
             workspaceId: input.workspace.id,
             workspacePath: resolvedWorkspacePath,

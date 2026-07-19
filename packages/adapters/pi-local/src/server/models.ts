@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import path from "node:path";
 import type { AdapterModel } from "@paperclipai/adapter-utils";
 import { asString, runChildProcess } from "@paperclipai/adapter-utils/server-utils";
 
@@ -106,7 +107,10 @@ export async function discoverPiModels(input: {
   env?: unknown;
 } = {}): Promise<AdapterModel[]> {
   const command = resolvePiCommand(input.command);
-  const cwd = asString(input.cwd, process.cwd());
+  const cwd = asString(input.cwd, "");
+  if (!path.isAbsolute(cwd)) {
+    throw new Error("workspace_validation_failed: Pi model discovery requires an absolute cwd");
+  }
   const env = normalizeEnv(input.env);
   const runtimeEnv = normalizeEnv({ ...process.env, ...env });
 
@@ -153,7 +157,10 @@ export async function discoverPiModelsCached(input: {
   env?: unknown;
 } = {}): Promise<AdapterModel[]> {
   const command = resolvePiCommand(input.command);
-  const cwd = asString(input.cwd, process.cwd());
+  const cwd = asString(input.cwd, "");
+  if (!path.isAbsolute(cwd)) {
+    throw new Error("workspace_validation_failed: Pi model discovery requires an absolute cwd");
+  }
   const env = normalizeEnv(input.env);
   const key = discoveryCacheKey(command, cwd, env);
   const now = Date.now();
