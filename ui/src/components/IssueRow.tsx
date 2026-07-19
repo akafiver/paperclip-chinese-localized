@@ -292,9 +292,16 @@ export function IssueRow({
               </span>
               {parkedBlockerIndicator}
               {recoveryIndicator}
-              {blockedReasonIndicator}
             </>
           )}
+          {blockedReasonIndicator ? (
+            <span className="hidden shrink-0 items-center sm:inline-flex">
+              {blockedReasonIndicator}
+            </span>
+          ) : null}
+          {blockedReasonIndicator ? (
+            <span className="sm:hidden">{blockedReasonIndicator}</span>
+          ) : null}
           {mobileMeta ? (
             <>
               <span className="text-xs text-muted-foreground sm:hidden" aria-hidden="true">
