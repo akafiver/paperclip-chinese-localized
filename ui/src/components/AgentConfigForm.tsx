@@ -37,7 +37,6 @@ import {
   DraftInput,
   DraftNumberInput,
   help,
-  adapterLabels,
 } from "./agent-config-primitives";
 import { ToggleSwitch } from "@/components/ui/toggle-switch";
 import { defaultCreateValues } from "./agent-config-defaults";
@@ -52,7 +51,10 @@ import {
   type EnvironmentVariablesEditorHandle,
 } from "./environment-variables-editor";
 import { listAdapterOptions, listVisibleAdapterTypes } from "../adapters/metadata";
-import { getAdapterDisplay, getAdapterLabel } from "../adapters/adapter-display-registry";
+import {
+  getAdapterDisplayWithTranslations,
+  getAdapterLabelWithTranslations,
+} from "../adapters/adapter-display-registry";
 import { useDisabledAdaptersSync } from "../adapters/use-disabled-adapters";
 import { buildAgentUpdatePatch, omitUndefinedEntries, type AgentConfigOverlay } from "../lib/agent-config-patch";
 import { useAdapterCapabilities } from "../adapters/use-adapter-capabilities";
@@ -1594,13 +1596,14 @@ export function AdapterTypeDropdown({
   disabledTypes: Set<string>;
 }) {
   const [open, setOpen] = useState(false);
-  const selectedDisplay = getAdapterDisplay(value);
+  const { t } = useTranslation();
+  const selectedDisplay = getAdapterDisplayWithTranslations(value, t);
   const adapterList = useMemo(
     () =>
-      listAdapterOptions((type) => adapterLabels[type] ?? getAdapterLabel(type)).filter(
+      listAdapterOptions((type) => getAdapterLabelWithTranslations(type, t)).filter(
         (item) => !disabledTypes.has(item.value),
       ),
-    [disabledTypes],
+    [disabledTypes, t],
   );
 
   return (
@@ -1609,7 +1612,7 @@ export function AdapterTypeDropdown({
         <button className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-sm hover:bg-accent/50 transition-colors w-full justify-between">
           <span className="inline-flex min-w-0 items-center gap-1.5">
             {value === "opencode_local" ? <OpenCodeLogoIcon className="h-3.5 w-3.5" /> : null}
-            <span className="truncate">{adapterLabels[value] ?? getAdapterLabel(value)}</span>
+            <span className="truncate">{getAdapterLabelWithTranslations(value, t)}</span>
             {selectedDisplay.experimental && <ExperimentalBadge />}
           </span>
           <ChevronDown className="h-3 w-3 text-muted-foreground" />

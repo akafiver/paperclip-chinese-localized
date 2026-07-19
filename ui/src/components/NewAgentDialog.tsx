@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 import { buildAgentOnboardingPrompt } from "@/lib/agent-onboarding-prompt";
 import { listUIAdapters } from "../adapters";
 import { isVisualAdapterChoice } from "../adapters/metadata";
-import { getAdapterDisplay } from "../adapters/adapter-display-registry";
+import { getAdapterDisplayWithTranslations } from "../adapters/adapter-display-registry";
 import { useDisabledAdaptersSync } from "../adapters/use-disabled-adapters";
 import { useToast } from "../context/ToastContext";
 import { Badge } from "@/components/ui/badge";
@@ -100,7 +100,7 @@ export function NewAgentDialog() {
     // Sort: recommended first, then alphabetical
     return registered
       .map((a) => {
-        const display = getAdapterDisplay(a.type);
+        const display = getAdapterDisplayWithTranslations(a.type, t);
         return {
           value: a.type,
           label: display.label,
@@ -116,7 +116,7 @@ export function NewAgentDialog() {
         if (!a.recommended && b.recommended) return 1;
         return a.label.localeCompare(b.label);
       });
-  }, [disabledTypes, serverAdapters]);
+  }, [disabledTypes, serverAdapters, t]);
 
   function handleAskCeo() {
     closeNewAgent();

@@ -4674,6 +4674,7 @@ export function issueRoutes(
     const view = req.query.view as string | undefined;
     const compactView = view === "compact";
     const hasPlanDocument = parseOptionalBooleanQuery(req.query.hasPlanDocument);
+    const hidden = parseOptionalBooleanQuery(req.query.hidden);
     const includeLiveDescendantSummary = parseOptionalBooleanQuery(req.query.includeLiveDescendantSummary);
     const assigneeAgentFilterRaw = req.query.assigneeAgentId;
     let assigneeAgentId: string | null | undefined;
@@ -4722,6 +4723,10 @@ export function issueRoutes(
       res.status(400).json({ error: "hasPlanDocument must be true or false when provided" });
       return;
     }
+    if (hidden === null) {
+      res.status(400).json({ error: "hidden must be true or false when provided" });
+      return;
+    }
     if (includeLiveDescendantSummary === null) {
       res.status(400).json({ error: "includeLiveDescendantSummary must be true or false when provided" });
       return;
@@ -4747,6 +4752,7 @@ export function issueRoutes(
 
     const listFilters: IssueFilters = {
       attention: attention === "blocked" ? "blocked" : undefined,
+      hidden: hidden === true,
       status: req.query.status as string | string[] | undefined,
       assigneeAgentId,
       participantAgentId: req.query.participantAgentId as string | undefined,

@@ -2395,6 +2395,17 @@ function isStaleSuccessfulRunHandoffNotice(input: {
 
 function localizeKnownSystemNoticeBody(text: string, t: ReturnType<typeof useTranslation>["t"]) {
   let next = text;
+  if (
+    next.trim().startsWith("Paperclip needs a disposition")
+    && next.trim().endsWith("before this issue can continue.")
+  ) {
+    next = t("ui.issueChat.systemNotice.successfulRunHandoffRequired");
+  } else if (
+    next.trim().startsWith("Paperclip could not resolve this issue's missing disposition")
+    && next.trim().endsWith("The issue is blocked on a recovery owner.")
+  ) {
+    next = t("ui.issueChat.systemNotice.successfulRunHandoffExhausted");
+  }
   next = next.replace(
     /Paperclip automatically retried continuation for this assigned `in_progress` issue during terminal run recovery, but it still has no live execution path\./g,
     t("ui.issueChat.systemNotice.retriedContinuationNoLivePath"),

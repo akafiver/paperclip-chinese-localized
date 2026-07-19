@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { ExternalObjectSummary, Issue, IssueRecoveryAction } from "@paperclipai/shared";
 import { Link } from "@/lib/router";
-import { Archive, Eye, Flag } from "lucide-react";
+import { Archive, Eye, Flag, RotateCcw } from "lucide-react";
 import {
   createIssueDetailPath,
   rememberIssueDetailLocationState,
@@ -17,6 +17,7 @@ import { StatusIcon } from "./StatusIcon";
 import { hasAssignedBacklogBlocker } from "../lib/issue-blockers";
 import { ExternalObjectStatusSummary } from "./ExternalObjectStatusSummary";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/i18n";
 
 type UnreadState = "hidden" | "visible" | "fading";
@@ -29,6 +30,7 @@ interface IssueRowProps {
   desktopMetaLeading?: ReactNode;
   desktopLeadingSpacer?: boolean;
   mobileMeta?: ReactNode;
+  mobileTrailing?: ReactNode;
   desktopTrailing?: ReactNode;
   /**
    * Optional pre-fetched external-object summary. Renders a compact severity
@@ -46,6 +48,8 @@ interface IssueRowProps {
   onMarkRead?: () => void;
   onArchive?: () => void;
   archiveDisabled?: boolean;
+  onRestore?: () => void;
+  restoreDisabled?: boolean;
   className?: string;
   /** Pointer entered the row (used by list keyboard nav to track hover). */
   onMouseEnter?: () => void;
@@ -69,6 +73,7 @@ export function IssueRow({
   desktopMetaLeading,
   desktopLeadingSpacer = false,
   mobileMeta,
+  mobileTrailing,
   desktopTrailing,
   externalObjectSummary,
   trailingMeta,
@@ -82,6 +87,8 @@ export function IssueRow({
   onMarkRead,
   onArchive,
   archiveDisabled,
+  onRestore,
+  restoreDisabled,
   className,
   onMouseEnter,
   treeGuides = 0,
@@ -277,7 +284,10 @@ export function IssueRow({
           ) : null}
         </span>
       </span>
-      {(onArchive || desktopTrailing || trailingMeta || externalObjectSummary) ? (
+      {mobileTrailing ? (
+        <span className="ml-auto shrink-0 sm:hidden">{mobileTrailing}</span>
+      ) : null}
+      {(onArchive || onRestore || desktopTrailing || trailingMeta || externalObjectSummary) ? (
         <span className="ml-auto hidden shrink-0 items-center gap-2 sm:order-3 sm:flex sm:gap-3">
           {onArchive ? (
             <button
@@ -301,6 +311,25 @@ export function IssueRow({
               <Archive className="h-3.5 w-3.5" />
               {t("ui.common.archive")}
             </button>
+          ) : null}
+          {onRestore ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onRestore();
+              }}
+              disabled={restoreDisabled}
+              className="text-amber-700 opacity-0 transition-opacity hover:bg-amber-500/10 hover:text-amber-800 group-hover:opacity-100 focus-visible:opacity-100 dark:text-amber-300 dark:hover:text-amber-200"
+              aria-label={t("ui.issuesList.restoreTask")}
+              title={t("ui.issuesList.restoreTask")}
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              {t("ui.issuesList.restoreTask")}
+            </Button>
           ) : null}
           {externalObjectSummary ? (
             <ExternalObjectStatusSummary summary={externalObjectSummary} compact />

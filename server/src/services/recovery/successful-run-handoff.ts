@@ -162,6 +162,7 @@ function systemNoticePresentation(input: {
 export function isSuccessfulRunHandoffRequiredNoticeBody(body: string) {
   const trimmed = body.trim();
   return trimmed === SUCCESSFUL_RUN_HANDOFF_REQUIRED_NOTICE_BODY ||
+    (trimmed.startsWith("Paperclip needs a disposition") && trimmed.endsWith("before this issue can continue.")) ||
     LEGACY_SUCCESSFUL_RUN_HANDOFF_NOTICE_PREFIXES.some((prefix) => trimmed.startsWith(prefix));
 }
 

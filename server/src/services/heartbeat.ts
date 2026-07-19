@@ -7939,7 +7939,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
           eq(issueComments.companyId, input.run.companyId),
           eq(issueComments.issueId, input.issue.id),
           eq(issueComments.createdByRunId, input.run.id),
-          sql`(${issueComments.body} = ${SUCCESSFUL_RUN_HANDOFF_REQUIRED_NOTICE_BODY} or ${issueComments.body} like '## This issue still needs a next step%' or ${issueComments.body} like '## Successful run missing issue disposition%')`,
+          sql`(${issueComments.body} = ${SUCCESSFUL_RUN_HANDOFF_REQUIRED_NOTICE_BODY} or ${issueComments.body} like 'Paperclip needs a disposition%' or ${issueComments.body} like '## This issue still needs a next step%' or ${issueComments.body} like '## Successful run missing issue disposition%')`,
         ),
       )
       .limit(1)

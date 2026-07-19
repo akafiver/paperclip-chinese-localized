@@ -61,6 +61,7 @@ export function successfulRunHandoffFromActivity(event: ActivityEvent): Successf
 export function isSuccessfulRunHandoffComment(text: string) {
   const trimmed = text.trim();
   return trimmed === SUCCESSFUL_RUN_HANDOFF_REQUIRED_NOTICE_BODY
+    || (trimmed.startsWith("Paperclip needs a disposition") && trimmed.endsWith("before this issue can continue."))
     || /^##\s+(This issue still needs a next step|Run finished without a next step|Successful run missing issue disposition)/i.test(trimmed)
     || isSuccessfulRunHandoffEscalationComment(trimmed);
 }
@@ -68,6 +69,7 @@ export function isSuccessfulRunHandoffComment(text: string) {
 export function isSuccessfulRunHandoffEscalationComment(text: string) {
   const trimmed = text.trim();
   return trimmed === SUCCESSFUL_RUN_HANDOFF_EXHAUSTED_NOTICE_BODY
+    || (trimmed.startsWith("Paperclip could not resolve this issue's missing disposition") && trimmed.endsWith("The issue is blocked on a recovery owner."))
     || /^Paperclip exhausted the bounded successful-run handoff correction\b/i.test(trimmed);
 }
 

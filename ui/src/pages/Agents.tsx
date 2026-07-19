@@ -12,7 +12,7 @@ import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { useSidebar } from "../context/SidebarContext";
 import { queryKeys } from "../lib/queryKeys";
 import { AgentStatusBadge, AgentStatusCapsule } from "../components/StatusBadge";
-import { AgentActionButtons } from "../components/AgentActionButtons";
+import { AgentActionButtons, TerminatedAgentActions } from "../components/AgentActionButtons";
 import { MembershipAction } from "../components/MembershipAction";
 import { StarToggle } from "../components/StarToggle";
 import { EntityRow } from "../components/EntityRow";
@@ -33,7 +33,7 @@ import {
 } from "../hooks/useResourceMemberships";
 import { usePublishSharedQueryData, useSharedPollingQuery } from "../hooks/useSharedPolling";
 
-import { getAdapterLabel } from "../adapters/adapter-display-registry";
+import { getAdapterLabelWithTranslations } from "../adapters/adapter-display-registry";
 import { t as translate, useTranslation } from "@/i18n";
 
 const roleLabels = AGENT_ROLE_LABELS as Record<string, string>;
@@ -46,10 +46,10 @@ const ConfigureBuiltInAgentModal = lazy(() =>
   })),
 );
 
-export const AGENT_FILTER_TABS = ["all", "active", "paused", "error", "builtin"] as const;
+export const AGENT_FILTER_TABS = ["all", "active", "paused", "error", "terminated", "builtin"] as const;
 type FilterTab = (typeof AGENT_FILTER_TABS)[number];
 
-const AGENT_FILTER_TAB_VALUES: FilterTab[] = ["all", "active", "paused", "error", "builtin"];
+const AGENT_FILTER_TAB_VALUES: FilterTab[] = ["all", "active", "paused", "error", "terminated", "builtin"];
 
 function isFilterTab(value: string): value is FilterTab {
   return (AGENT_FILTER_TABS as readonly string[]).includes(value);
@@ -79,6 +79,7 @@ const HIDDEN_AGENT_STATUSES = new Set(["terminated", "pending_approval"]);
 
 function matchesFilter(status: string, tab: FilterTab): boolean {
   if (tab === "all") return true;
+  if (tab === "terminated") return status === "terminated";
   if (tab === "active") return status === "active" || status === "running" || status === "idle";
   if (tab === "paused") return status === "paused";
   if (tab === "error") return status === "error";
@@ -88,6 +89,7 @@ function matchesFilter(status: string, tab: FilterTab): boolean {
 function filterAgents(agents: Agent[], tab: FilterTab, builtInAgentIds: Set<string>): Agent[] {
   return agents
     .filter((a) => {
+      if (tab === "terminated") return a.status === "terminated";
       if (HIDDEN_AGENT_STATUSES.has(a.status)) return false;
       // The `builtin` filter keys on the built-in marker, not agent status.
       if (tab === "builtin") return builtInAgentIds.has(a.id);
@@ -192,7 +194,6 @@ export function Agents() {
   const requestedTab: FilterTab = isFilterTab(pathSegment) ? pathSegment : "all";
   const [view, setView] = useState<"list" | "org">("org");
   const forceListView = isMobile;
-  const effectiveView: "list" | "org" = forceListView ? "list" : view;
 
   const { data: instanceSettings } = useQuery({
     queryKey: queryKeys.instance.settings,
@@ -201,6 +202,7 @@ export function Agents() {
   });
   const builtInAgentsEnabled = instanceSettings?.experimental.enableBuiltInAgents === true;
   const tab: FilterTab = requestedTab === "builtin" && !builtInAgentsEnabled ? "all" : requestedTab;
+  const effectiveView: "list" | "org" = forceListView || tab === "terminated" ? "list" : view;
   const visibleTabItems = useMemo(
     () => AGENT_FILTER_TAB_VALUES
       .filter((value) => value !== "builtin" || builtInAgentsEnabled)
@@ -225,8 +227,8 @@ export function Agents() {
   const [configureState, setConfigureState] = useState<BuiltInAgentState | null>(null);
 
   const { data: agents, isLoading, error } = useQuery({
-    queryKey: queryKeys.agents.list(selectedCompanyId!),
-    queryFn: () => agentsApi.list(selectedCompanyId!),
+    queryKey: queryKeys.agents.listWithTerminated(selectedCompanyId!),
+    queryFn: () => agentsApi.list(selectedCompanyId!, { includeTerminated: true }),
     enabled: !!selectedCompanyId,
   });
 
@@ -426,7 +428,9 @@ export function Agents() {
         metaSpacerClassName="hidden xl:block"
         trailing={
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-3">
+            <div className={cn(
+              agent.status === "terminated" ? "flex items-center gap-3" : "hidden sm:flex items-center gap-3",
+            )}>
               {liveRunByAgent.has(agent.id) && (
                 <LiveRunIndicator
                   agentRef={agentRouteRef(agent)}
@@ -446,44 +450,52 @@ export function Agents() {
                   e.stopPropagation();
                 }}
               >
-                <AgentActionButtons
-                  agent={agent}
-                  companyId={selectedCompanyId}
-                  runLabel={t("ui.agents.runHeartbeat")}
-                  showStatus={false}
-                />
+                {agent.status === "terminated" ? (
+                  <TerminatedAgentActions agent={agent} companyId={selectedCompanyId} />
+                ) : (
+                  <AgentActionButtons
+                    agent={agent}
+                    companyId={selectedCompanyId}
+                    runLabel={t("ui.agents.runHeartbeat")}
+                    showStatus={false}
+                  />
+                )}
               </div>
-              <StarToggle
-                size="row"
-                starred={agentStarred}
-                pending={agentStarPending}
+              {tab !== "terminated" && (
+                <StarToggle
+                  size="row"
+                  starred={agentStarred}
+                  pending={agentStarPending}
+                  resourceName={agent.name}
+                  onToggle={(next) => membershipMutation.mutate({
+                    resourceType: "agent",
+                    resourceId: agent.id,
+                    resourceName: agent.name,
+                    starred: next,
+                  })}
+                />
+              )}
+            </div>
+            {tab !== "terminated" && (
+              <MembershipAction
+                state={resourceMembershipState(membershipsQuery.data, "agent", agent.id)}
+                pending={agentJoinLeavePending}
+                pendingState={agentJoinLeavePending ? membershipMutation.variables?.state ?? null : null}
                 resourceName={agent.name}
-                onToggle={(next) => membershipMutation.mutate({
+                onJoin={() => membershipMutation.mutate({
                   resourceType: "agent",
                   resourceId: agent.id,
                   resourceName: agent.name,
-                  starred: next,
+                  state: "joined",
+                })}
+                onLeave={() => membershipMutation.mutate({
+                  resourceType: "agent",
+                  resourceId: agent.id,
+                  resourceName: agent.name,
+                  state: "left",
                 })}
               />
-            </div>
-            <MembershipAction
-              state={resourceMembershipState(membershipsQuery.data, "agent", agent.id)}
-              pending={agentJoinLeavePending}
-              pendingState={agentJoinLeavePending ? membershipMutation.variables?.state ?? null : null}
-              resourceName={agent.name}
-              onJoin={() => membershipMutation.mutate({
-                resourceType: "agent",
-                resourceId: agent.id,
-                resourceName: agent.name,
-                state: "joined",
-              })}
-              onLeave={() => membershipMutation.mutate({
-                resourceType: "agent",
-                resourceId: agent.id,
-                resourceName: agent.name,
-                state: "left",
-              })}
-            />
+            )}
           </div>
         }
       />
@@ -502,7 +514,7 @@ export function Agents() {
         </Tabs>
         <div className="flex items-center gap-2">
           {/* View toggle */}
-          {!forceListView && (
+          {!forceListView && tab !== "terminated" && (
             <div className="flex items-center border border-border" role="group" aria-label={t("ui.agents.viewMode")}>
               <button
                 className={cn(
@@ -735,37 +747,41 @@ function OrgTreeNode({
               <AgentStatusBadge status={node.status} />
             </span>
           </div>
-          <MembershipAction
-            state={membershipState}
-            pending={joinLeavePending}
-            pendingState={joinLeavePending ? membershipMutation.variables?.state : null}
-            resourceName={node.name}
-            onJoin={() => membershipMutation.mutate({
-              resourceType: "agent",
-              resourceId: node.id,
-              resourceName: node.name,
-              state: "joined",
-            })}
-            onLeave={() => membershipMutation.mutate({
-              resourceType: "agent",
-              resourceId: node.id,
-              resourceName: node.name,
-              state: "left",
-            })}
-          />
-          <div className="hidden sm:flex items-center gap-3">
-            <StarToggle
-              size="row"
-              starred={starred}
-              pending={starPending}
+          {tab !== "terminated" && (
+            <MembershipAction
+              state={membershipState}
+              pending={joinLeavePending}
+              pendingState={joinLeavePending ? membershipMutation.variables?.state : null}
               resourceName={node.name}
-              onToggle={(next) => membershipMutation.mutate({
+              onJoin={() => membershipMutation.mutate({
                 resourceType: "agent",
                 resourceId: node.id,
                 resourceName: node.name,
-                starred: next,
+                state: "joined",
+              })}
+              onLeave={() => membershipMutation.mutate({
+                resourceType: "agent",
+                resourceId: node.id,
+                resourceName: node.name,
+                state: "left",
               })}
             />
+          )}
+          <div className="hidden sm:flex items-center gap-3">
+            {tab !== "terminated" && (
+              <StarToggle
+                size="row"
+                starred={starred}
+                pending={starPending}
+                resourceName={node.name}
+                onToggle={(next) => membershipMutation.mutate({
+                  resourceType: "agent",
+                  resourceId: node.id,
+                  resourceName: node.name,
+                  starred: next,
+                })}
+              />
+            )}
           </div>
         </div>
       </Link>
@@ -811,7 +827,8 @@ function AgentMetaColumns({
   showEnvironment: boolean;
 }) {
   const model = getConfiguredModel(agent);
-  const adapterLabel = getAdapterLabel(agent.adapterType);
+  const { t } = useTranslation();
+  const adapterLabel = getAdapterLabelWithTranslations(agent.adapterType, t);
   return (
     <>
       <div className="w-44 min-w-0 leading-tight">

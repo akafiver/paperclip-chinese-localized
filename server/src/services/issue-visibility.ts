@@ -1,8 +1,11 @@
-import { and, isNull, type SQL } from "drizzle-orm";
+import { and, isNotNull, isNull, type SQL } from "drizzle-orm";
 import { issues } from "@paperclipai/db";
 
-export function visibleIssueCondition(): SQL {
-  return and(isNull(issues.hiddenAt), isNull(issues.harnessKind))!;
+export function visibleIssueCondition(mode: "visible" | "hidden" = "visible"): SQL {
+  return and(
+    mode === "hidden" ? isNotNull(issues.hiddenAt) : isNull(issues.hiddenAt),
+    isNull(issues.harnessKind),
+  )!;
 }
 
 export function visibleIssueSql(alias = "issues") {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useCallback, useRef, useState } from "react";
-import { useLocation, useSearchParams } from "@/lib/router";
+import { useLocation, useNavigate, useSearchParams } from "@/lib/router";
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { issuesApi } from "../api/issues";
 import { agentsApi } from "../api/agents";
@@ -13,6 +13,8 @@ import { queryKeys } from "../lib/queryKeys";
 import { createIssueDetailLocationState } from "../lib/issueDetailBreadcrumb";
 import { EmptyState } from "../components/EmptyState";
 import { IssuesList } from "../components/IssuesList";
+import { PageTabBar } from "../components/PageTabBar";
+import { Tabs } from "../components/ui/tabs";
 import { CircleDot } from "lucide-react";
 import type { Issue } from "@paperclipai/shared";
 import { useTranslation } from "@/i18n";
@@ -62,6 +64,7 @@ export function Issues() {
   const { setBreadcrumbs } = useBreadcrumbs();
   const { t } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const fetchNextPageInFlightRef = useRef(false);
@@ -75,6 +78,7 @@ export function Issues() {
     return urlSearch;
   }, [searchOverride, urlSearch, location.search]);
   const participantAgentId = searchParams.get("participantAgentId") ?? undefined;
+  const hiddenOnly = searchParams.get("view") === "hidden";
   const initialWorkspaces = searchParams.getAll("workspace").filter((workspaceId) => workspaceId.length > 0);
   const workspaceIdFilter = initialWorkspaces.length === 1 ? initialWorkspaces[0] : undefined;
   const handleSearchChange = useCallback((search: string) => {
@@ -151,6 +155,8 @@ export function Issues() {
       workspaceIdFilter ?? "__all__",
       "compact",
       "with-routine-executions",
+      "hidden",
+      hiddenOnly ? "only" : "visible",
       "infinite",
       issuePageSize,
     ],
@@ -158,6 +164,7 @@ export function Issues() {
       participantAgentId,
       workspaceId: workspaceIdFilter,
       includeRoutineExecutions: true,
+      hidden: hiddenOnly,
       limit: issuePageSize,
       offset: pageParam,
       sortField: "updated",
@@ -188,31 +195,60 @@ export function Issues() {
       queryClient.invalidateQueries({ queryKey: queryKeys.issues.list(selectedCompanyId!) });
     },
   });
+  const restoreIssue = useMutation({
+    mutationFn: (id: string) => issuesApi.update(id, { hiddenAt: null }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.issues.list(selectedCompanyId!) });
+    },
+  });
+
+  const setTaskView = useCallback((value: string) => {
+    const nextUrl = new URL(window.location.href);
+    if (value === "hidden") nextUrl.searchParams.set("view", "hidden");
+    else nextUrl.searchParams.delete("view");
+    navigate(`${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+  }, [navigate]);
 
   if (!selectedCompanyId) {
     return <EmptyState icon={CircleDot} message={t("ui.selectCompany.tasks")} />;
   }
 
   return (
-    <IssuesList
-      issues={issues ?? []}
-      isLoading={isLoading}
-      isLoadingMoreIssues={isFetchingNextPage}
-      error={error as Error | null}
-      agents={agents}
-      projects={projects}
-      liveIssueIds={liveIssueIds}
-      viewStateKey="paperclip:issues-view"
-      issueLinkState={issueLinkState}
-      initialAssignees={searchParams.get("assignee") ? [searchParams.get("assignee")!] : undefined}
-      initialWorkspaces={initialWorkspaces.length > 0 ? initialWorkspaces : undefined}
-      initialSearch={syncedSearch}
-      onSearchChange={handleSearchChange}
-      enableRoutineVisibilityFilter
-      hasMoreIssues={hasMoreServerIssues}
-      onLoadMoreIssues={loadMoreServerIssues}
-      onUpdateIssue={(id, data) => updateIssue.mutate({ id, data })}
-      searchFilters={participantAgentId || workspaceIdFilter ? { participantAgentId, workspaceId: workspaceIdFilter } : undefined}
-    />
+    <div className="space-y-4">
+      <Tabs value={hiddenOnly ? "hidden" : "active"} onValueChange={setTaskView}>
+        <PageTabBar
+          align="start"
+          items={[
+            { value: "active", label: t("ui.issuesList.activeTasksTab") },
+            { value: "hidden", label: t("ui.issuesList.hiddenTasksTab") },
+          ]}
+          value={hiddenOnly ? "hidden" : "active"}
+          onValueChange={setTaskView}
+        />
+      </Tabs>
+      <IssuesList
+        issues={issues ?? []}
+        isLoading={isLoading}
+        isLoadingMoreIssues={isFetchingNextPage}
+        error={error as Error | null}
+        agents={agents}
+        projects={projects}
+        liveIssueIds={liveIssueIds}
+        viewStateKey="paperclip:issues-view"
+        issueLinkState={issueLinkState}
+        initialAssignees={searchParams.get("assignee") ? [searchParams.get("assignee")!] : undefined}
+        initialWorkspaces={initialWorkspaces.length > 0 ? initialWorkspaces : undefined}
+        initialSearch={syncedSearch}
+        onSearchChange={handleSearchChange}
+        enableRoutineVisibilityFilter
+        hasMoreIssues={hasMoreServerIssues}
+        onLoadMoreIssues={loadMoreServerIssues}
+        onUpdateIssue={(id, data) => updateIssue.mutate({ id, data })}
+        hiddenOnly={hiddenOnly}
+        onRestoreIssue={(id) => restoreIssue.mutate(id)}
+        restorePendingIssueId={restoreIssue.isPending ? restoreIssue.variables : null}
+        searchFilters={participantAgentId || workspaceIdFilter ? { participantAgentId, workspaceId: workspaceIdFilter } : undefined}
+      />
+    </div>
   );
 }

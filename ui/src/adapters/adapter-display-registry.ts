@@ -191,3 +191,49 @@ export function getAdapterDisplay(type: string): AdapterDisplayInfo {
 export function isKnownAdapterType(type: string): boolean {
   return type in adapterDisplayMap;
 }
+
+export function getAdapterLabelWithTranslations(
+  type: string,
+  translate: (key: string) => string,
+): string {
+  const known = adapterDisplayMap[type];
+  if (known) return translateAdapterField(type, "label", known.label, translate);
+  return getAdapterLabel(type);
+}
+
+export function getAdapterLabelsWithTranslations(
+  translate: (key: string) => string,
+): Record<string, string> {
+  const labels: Record<string, string> = {};
+  for (const [type, info] of Object.entries(adapterDisplayMap)) {
+    labels[type] = translateAdapterField(type, "label", info.label, translate);
+  }
+  return labels;
+}
+
+export function getAdapterDisplayWithTranslations(
+  type: string,
+  translate: (key: string) => string,
+): AdapterDisplayInfo {
+  const known = adapterDisplayMap[type];
+  if (!known) return getAdapterDisplay(type);
+  return {
+    ...known,
+    label: translateAdapterField(type, "label", known.label, translate),
+    description: translateAdapterField(type, "description", known.description, translate),
+    disabledLabel: known.disabledLabel
+      ? translateAdapterField(type, "disabledLabel", known.disabledLabel, translate)
+      : undefined,
+  };
+}
+
+function translateAdapterField(
+  type: string,
+  field: "label" | "description" | "disabledLabel",
+  fallback: string,
+  translate: (key: string) => string,
+): string {
+  const key = `ui.adapterDisplay.${type}.${field}`;
+  const translated = translate(key);
+  return translated === key ? fallback : translated;
+}

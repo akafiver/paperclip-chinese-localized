@@ -97,7 +97,10 @@ function agentPath(id: string, companyId?: string, suffix = "") {
 }
 
 export const agentsApi = {
-  list: (companyId: string) => api.get<Agent[]>(`/companies/${companyId}/agents`),
+  list: (companyId: string, options?: { includeTerminated?: boolean }) => {
+    const query = options?.includeTerminated ? "?includeTerminated=true" : "";
+    return api.get<Agent[]>(`/companies/${companyId}/agents${query}`);
+  },
   org: (companyId: string) => api.get<OrgNode[]>(`/companies/${companyId}/org`),
   listConfigurations: (companyId: string) =>
     api.get<Record<string, unknown>[]>(`/companies/${companyId}/agent-configurations`),
@@ -174,7 +177,10 @@ export const agentsApi = {
     api.post<ClearAgentErrorResponse>(agentPath(id, companyId, "/clear-error"), {}),
   approve: (id: string, companyId?: string) => api.post<Agent>(agentPath(id, companyId, "/approve"), {}),
   terminate: (id: string, companyId?: string) => api.post<Agent>(agentPath(id, companyId, "/terminate"), {}),
+  rehire: (id: string, companyId?: string) => api.post<Agent>(agentPath(id, companyId, "/rehire"), {}),
   remove: (id: string, companyId?: string) => api.delete<{ ok: true }>(agentPath(id, companyId)),
+  removeTerminated: (id: string, companyId?: string) =>
+    api.delete<{ ok: true }>(agentPath(id, companyId, "/permanent")),
   listKeys: (id: string, companyId?: string) => api.get<AgentKey[]>(agentPath(id, companyId, "/keys")),
   skills: (id: string, companyId?: string) =>
     api.get<AgentSkillSnapshot>(agentPath(id, companyId, "/skills")),

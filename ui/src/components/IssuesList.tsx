@@ -436,6 +436,9 @@ interface IssuesListProps {
   onLoadMoreIssues?: () => void;
   onSearchChange?: (search: string) => void;
   onUpdateIssue: (id: string, data: Record<string, unknown>) => void;
+  hiddenOnly?: boolean;
+  onRestoreIssue?: (id: string) => void;
+  restorePendingIssueId?: string | null;
 }
 
 function IssueSearchInput({
@@ -648,6 +651,9 @@ export function IssuesList({
   onLoadMoreIssues,
   onSearchChange,
   onUpdateIssue,
+  hiddenOnly = false,
+  onRestoreIssue,
+  restorePendingIssueId = null,
 }: IssuesListProps) {
   const { t } = useTranslation();
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -794,6 +800,7 @@ export function IssuesList({
         searchFilters ?? {},
         "compact",
         ISSUE_BOARD_COLUMN_RESULT_LIMIT,
+        hiddenOnly ? "hidden" : "visible",
         enableRoutineVisibilityFilter ? "with-routine-executions" : "without-routine-executions",
       ],
       queryFn: ({ signal }: { signal: AbortSignal }) =>
@@ -803,6 +810,7 @@ export function IssuesList({
           projectId,
           status,
           limit: ISSUE_BOARD_COLUMN_RESULT_LIMIT,
+          hidden: hiddenOnly,
           ...(enableRoutineVisibilityFilter ? { includeRoutineExecutions: true } : {}),
         }, { signal }).then((rows) => rows as Issue[]),
       enabled: !!selectedCompanyId && viewState.viewMode === "board" && !searchWithinLoadedIssues,
@@ -1867,6 +1875,9 @@ export function IssuesList({
           initialVisibleCount={viewState.boardColumnPageSize}
           revealIncrement={viewState.boardColumnPageSize}
           onUpdateIssue={onUpdateIssue}
+          onRestoreIssue={hiddenOnly ? onRestoreIssue : undefined}
+          restorePendingIssueId={restorePendingIssueId}
+          restoreTaskLabel={t("ui.issuesList.restoreTask")}
         />
       ) : (
         <>
@@ -2042,6 +2053,8 @@ export function IssuesList({
                         checklistRowId={checklistRowId}
                         titleClassName={doneRowTitleClass}
                         externalObjectSummary={externalObjectSummaryByIssueId.get(issue.id) ?? null}
+                        onRestore={hiddenOnly && onRestoreIssue ? () => onRestoreIssue(issue.id) : undefined}
+                        restoreDisabled={restorePendingIssueId === issue.id}
                         titleSuffix={(
                           <>
                             {hasChildren && !isExpanded ? (
@@ -2119,6 +2132,24 @@ export function IssuesList({
                           </>
                         )}
                         mobileMeta={issueActivityText(issue).toLowerCase()}
+                        mobileTrailing={hiddenOnly && onRestoreIssue ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            className="text-amber-700 hover:bg-amber-500/10 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              onRestoreIssue(issue.id);
+                            }}
+                            disabled={restorePendingIssueId === issue.id}
+                            aria-label={t("ui.issuesList.restoreTask")}
+                            title={t("ui.issuesList.restoreTask")}
+                          >
+                            <RotateCcw />
+                          </Button>
+                        ) : undefined}
                         desktopTrailing={(
                           visibleTrailingIssueColumns.length > 0 ? (
                             <InboxIssueTrailingColumns

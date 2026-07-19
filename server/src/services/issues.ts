@@ -10,6 +10,7 @@ import {
   approvals,
   assets,
   companies,
+  costEvents,
   companyMemberships,
   documentRevisions,
   documents,
@@ -17,6 +18,8 @@ import {
   heartbeatRuns,
   routineRuns,
   executionWorkspaces,
+  feedbackVotes,
+  financeEvents,
   issueApprovals,
   issueAttachments,
   issueCreateIdempotencyKeys,
@@ -455,6 +458,7 @@ export function parseStatusFilter(input: string | readonly string[] | undefined)
 
 export interface IssueFilters {
   attention?: "blocked";
+  hidden?: boolean;
   status?: string | readonly string[];
   /**
    * Filter by assignee agent ID.
@@ -4702,7 +4706,10 @@ export function issueService(db: Db) {
         });
       }
 
-      const conditions = [eq(issues.companyId, companyId), visibleIssueCondition()];
+      const conditions = [
+        eq(issues.companyId, companyId),
+        visibleIssueCondition(filters?.hidden === true ? "hidden" : "visible"),
+      ];
       const assigneeAgentFilter = parseIssueAssigneeAgentFilter(filters?.assigneeAgentId);
       assertValidAssigneeAgentFilter(assigneeAgentFilter);
       const limit = typeof filters?.limit === "number" && Number.isFinite(filters.limit)
@@ -4952,7 +4959,10 @@ export function issueService(db: Db) {
         return countBlockedInboxIssues(db, companyId, filters);
       }
 
-      const conditions = [eq(issues.companyId, companyId), visibleIssueCondition()];
+      const conditions = [
+        eq(issues.companyId, companyId),
+        visibleIssueCondition(filters?.hidden === true ? "hidden" : "visible"),
+      ];
       const statuses = parseStatusFilter(filters?.status);
       if (statuses.length === 1) conditions.push(eq(issues.status, statuses[0]!));
       else if (statuses.length > 1) conditions.push(inArray(issues.status, statuses));
@@ -6715,35 +6725,65 @@ export function issueService(db: Db) {
 
     remove: (id: string) =>
       db.transaction(async (tx) => {
+        const rootIssue = await tx
+          .select()
+          .from(issues)
+          .where(eq(issues.id, id))
+          .then((rows) => rows[0] ?? null);
+        if (!rootIssue) return null;
+
+        // Delete the complete subtree, not just the selected row. The parent
+        // foreign key intentionally stays non-cascading so accidental direct
+        // database deletes cannot silently erase a task tree; this service is
+        // the explicit, audited boundary for subtree deletion.
+        const issueIds = [id];
+        const seenIssueIds = new Set(issueIds);
+        for (let index = 0; index < issueIds.length; index += 1) {
+          const childRows = await tx
+            .select({ id: issues.id })
+            .from(issues)
+            .where(and(eq(issues.companyId, rootIssue.companyId), eq(issues.parentId, issueIds[index]!)));
+          for (const child of childRows) {
+            if (seenIssueIds.has(child.id)) continue;
+            seenIssueIds.add(child.id);
+            issueIds.push(child.id);
+          }
+        }
+
         const attachmentAssetIds = await tx
           .select({ assetId: issueAttachments.assetId })
           .from(issueAttachments)
-          .where(eq(issueAttachments.issueId, id));
+          .where(inArray(issueAttachments.issueId, issueIds));
         const issueDocumentIds = await tx
           .select({ documentId: issueDocuments.documentId })
           .from(issueDocuments)
-          .where(eq(issueDocuments.issueId, id));
+          .where(inArray(issueDocuments.issueId, issueIds));
 
-        const removedIssue = await tx
-          .delete(issues)
-          .where(eq(issues.id, id))
-          .returning()
-          .then((rows) => rows[0] ?? null);
+        // Several historical tables intentionally use RESTRICT/NO ACTION so
+        // ordinary issue deletion cannot orphan audit data. Remove or detach
+        // those records explicitly before deleting the issue rows.
+        await tx.delete(feedbackVotes).where(inArray(feedbackVotes.issueId, issueIds));
+        await tx.delete(issueInboxArchives).where(inArray(issueInboxArchives.issueId, issueIds));
+        await tx.delete(issueReadStates).where(inArray(issueReadStates.issueId, issueIds));
+        await tx.delete(issueThreadInteractions).where(inArray(issueThreadInteractions.issueId, issueIds));
+        await tx.delete(issueComments).where(inArray(issueComments.issueId, issueIds));
+        await tx.update(costEvents).set({ issueId: null }).where(inArray(costEvents.issueId, issueIds));
+        await tx.update(financeEvents).set({ issueId: null }).where(inArray(financeEvents.issueId, issueIds));
 
-        if (removedIssue && attachmentAssetIds.length > 0) {
-          await tx
-            .delete(assets)
-            .where(inArray(assets.id, attachmentAssetIds.map((row) => row.assetId)));
+        // Delete leaves first because issues.parent_id is deliberately not a
+        // database-level cascade.
+        for (const issueId of [...issueIds].reverse()) {
+          await tx.delete(issues).where(eq(issues.id, issueId));
         }
 
-        if (removedIssue && issueDocumentIds.length > 0) {
-          await tx
-            .delete(documents)
-            .where(inArray(documents.id, issueDocumentIds.map((row) => row.documentId)));
+        if (attachmentAssetIds.length > 0) {
+          await tx.delete(assets).where(inArray(assets.id, attachmentAssetIds.map((row) => row.assetId)));
+        }
+        if (issueDocumentIds.length > 0) {
+          await tx.delete(documents).where(inArray(documents.id, issueDocumentIds.map((row) => row.documentId)));
         }
 
-        if (!removedIssue) return null;
-        const [enriched] = await withIssueLabels(tx, [removedIssue]);
+        const [enriched] = await withIssueLabels(tx, [rootIssue]);
         return enriched;
       }),
 

@@ -39,6 +39,7 @@ export type ResolveRecoveryActionResponse = {
 
 export type IssueListFilters = {
   attention?: "blocked";
+  hidden?: boolean;
   status?: string;
   projectId?: string;
   parentId?: string;
@@ -70,6 +71,7 @@ export type IssueListFilters = {
 function issueListSearchParams(filters?: IssueListFilters) {
   const params = new URLSearchParams();
   if (filters?.attention) params.set("attention", filters.attention);
+  if (filters?.hidden !== undefined) params.set("hidden", filters.hidden ? "true" : "false");
   if (filters?.status) params.set("status", filters.status);
   if (filters?.projectId) params.set("projectId", filters.projectId);
   if (filters?.parentId) params.set("parentId", filters.parentId);

@@ -1967,14 +1967,22 @@ export function agentRoutes(
   router.get("/companies/:companyId/agents", async (req, res) => {
     const companyId = req.params.companyId as string;
     assertCompanyAccess(req, companyId);
-    const unsupportedQueryParams = Object.keys(req.query).sort();
+    const includeTerminatedValue = req.query.includeTerminated;
+    const includeTerminated = includeTerminatedValue === "true";
+    const unsupportedQueryParams = Object.keys(req.query)
+      .filter((key) => key !== "includeTerminated")
+      .sort();
     if (unsupportedQueryParams.length > 0) {
       res.status(400).json({
         error: `Unsupported query parameter${unsupportedQueryParams.length === 1 ? "" : "s"}: ${unsupportedQueryParams.join(", ")}`,
       });
       return;
     }
-    const result = await filterAgentsForActor(req, await svc.list(companyId));
+    if (includeTerminatedValue !== undefined && includeTerminatedValue !== "true" && includeTerminatedValue !== "false") {
+      res.status(400).json({ error: "includeTerminated must be true or false" });
+      return;
+    }
+    const result = await filterAgentsForActor(req, await svc.list(companyId, { includeTerminated }));
     const canReadConfigs = await actorCanReadConfigurationsForCompany(req, companyId);
     if (canReadConfigs) {
       res.json(result);
@@ -3294,6 +3302,54 @@ export function agentRoutes(
     });
 
     res.json(agent);
+  });
+
+  router.post("/agents/:id/rehire", async (req, res) => {
+    assertBoard(req);
+    const id = req.params.id as string;
+    const existing = await getAccessibleAgent(req, res, id);
+    if (!existing) return;
+
+    const agent = await svc.rehire(id);
+    if (!agent) {
+      res.status(404).json({ error: "Agent not found" });
+      return;
+    }
+
+    await logActivity(db, {
+      companyId: agent.companyId,
+      actorType: "user",
+      actorId: req.actor.userId ?? "board",
+      action: "agent.rehired",
+      entityType: "agent",
+      entityId: agent.id,
+    });
+
+    res.json(agent);
+  });
+
+  router.delete("/agents/:id/permanent", async (req, res) => {
+    assertBoard(req);
+    const id = req.params.id as string;
+    const existing = await getAccessibleAgent(req, res, id);
+    if (!existing) return;
+
+    const agent = await svc.remove(id, { requireTerminated: true });
+    if (!agent) {
+      res.status(404).json({ error: "Agent not found" });
+      return;
+    }
+
+    await logActivity(db, {
+      companyId: agent.companyId,
+      actorType: "user",
+      actorId: req.actor.userId ?? "board",
+      action: "agent.deleted",
+      entityType: "agent",
+      entityId: agent.id,
+    });
+
+    res.json({ ok: true });
   });
 
   router.delete("/agents/:id", async (req, res) => {

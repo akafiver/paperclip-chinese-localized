@@ -207,6 +207,24 @@ function MetadataRow({ row, tone }: { row: SystemNoticeMetadataRow; tone: ToneTo
   );
 }
 
+function localizeKnownBody(body: ReactNode, t: ReturnType<typeof useTranslation>["t"]) {
+  if (typeof body !== "string") return body;
+  const trimmed = body.trim();
+  if (
+    trimmed.startsWith("Paperclip needs a disposition")
+    && trimmed.endsWith("before this issue can continue.")
+  ) {
+    return t("ui.issueChat.systemNotice.successfulRunHandoffRequired");
+  }
+  if (
+    trimmed.startsWith("Paperclip could not resolve this issue's missing disposition")
+    && trimmed.endsWith("The issue is blocked on a recovery owner.")
+  ) {
+    return t("ui.issueChat.systemNotice.successfulRunHandoffExhausted");
+  }
+  return body;
+}
+
 export function SystemNotice({
   tone = "neutral",
   label,
@@ -223,15 +241,20 @@ export function SystemNotice({
   const [open, setOpen] = useState(detailsDefaultOpen);
   const detailsId = useId();
   const hasDetails = Boolean(metadata && metadata.length > 0);
-  const resolvedLabel =
-    label ??
-    {
-      neutral: t("ui.systemNotice.notice"),
-      info: t("ui.systemNotice.notice"),
-      success: t("ui.systemNotice.notice"),
-      warning: t("ui.systemNotice.warning"),
-      danger: t("ui.systemNotice.alert"),
-    }[tone];
+  const resolvedLabel = label === "System notice"
+    ? t("ui.systemNotice.notice")
+    : label === "System warning"
+      ? t("ui.systemNotice.warning")
+      : label === "System alert"
+        ? t("ui.systemNotice.alert")
+        : label ?? {
+          neutral: t("ui.systemNotice.notice"),
+          info: t("ui.systemNotice.notice"),
+          success: t("ui.systemNotice.notice"),
+          warning: t("ui.systemNotice.warning"),
+          danger: t("ui.systemNotice.alert"),
+        }[tone];
+  const resolvedBody = localizeKnownBody(body, t);
 
   return (
     <section
@@ -282,7 +305,7 @@ export function SystemNotice({
               </>
             ) : null}
           </div>
-          <div className="mt-1 break-words text-sm leading-6 text-foreground">{body}</div>
+          <div className="mt-1 break-words text-sm leading-6 text-foreground">{resolvedBody}</div>
         </div>
         {hasDetails ? (
           <button

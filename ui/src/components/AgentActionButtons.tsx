@@ -208,6 +208,7 @@ export function AgentActionButtons({
   const { pushToast } = useToastActions();
   const [moreOpen, setMoreOpen] = useState(false);
   const [pauseConfirmOpen, setPauseConfirmOpen] = useState(false);
+  const [terminateConfirmOpen, setTerminateConfirmOpen] = useState(false);
 
   const resolvedCompanyId = companyId ?? agent.companyId;
   const canonicalAgentRef = agentRouteRef(agent);
@@ -232,6 +233,7 @@ export function AgentActionButtons({
     queryClient.invalidateQueries({ queryKey: queryKeys.agents.taskSessions(agent.id) });
     if (resolvedCompanyId) {
       queryClient.invalidateQueries({ queryKey: queryKeys.agents.list(resolvedCompanyId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.agents.listWithTerminated(resolvedCompanyId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.liveRuns(resolvedCompanyId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.heartbeats(resolvedCompanyId, agent.id) });
     }
@@ -419,8 +421,8 @@ export function AgentActionButtons({
             <button
               className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent/50 text-destructive"
               onClick={() => {
-                agentAction.mutate("terminate");
                 setMoreOpen(false);
+                setTerminateConfirmOpen(true);
               }}
             >
               <Trash2 className="h-3 w-3" />
@@ -429,6 +431,138 @@ export function AgentActionButtons({
           )}
         </PopoverContent>
       </Popover>
+      <AlertDialog open={terminateConfirmOpen} onOpenChange={setTerminateConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("ui.agentActions.terminateConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>{t("ui.agentActions.terminateConfirmDescription", { name: agent.name })}</p>
+                <ul className="list-disc pl-5">
+                  <li>{t("ui.agentActions.terminateRiskStopWork")}</li>
+                  <li>{t("ui.agentActions.terminateRiskRevokeKeys")}</li>
+                  <li>{t("ui.agentActions.terminateRiskReports")}</li>
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("ui.agentActions.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => agentAction.mutate("terminate")}
+            >
+              {t("ui.agentActions.terminateConfirmAction")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+export function TerminatedAgentActions({
+  agent,
+  companyId,
+}: {
+  agent: Agent;
+  companyId?: string | null;
+}) {
+  const { t } = useTranslation();
+  const { pushToast } = useToastActions();
+  const queryClient = useQueryClient();
+  const [rehireConfirmOpen, setRehireConfirmOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const resolvedCompanyId = companyId ?? agent.companyId;
+
+  const invalidate = useCallback(() => {
+    if (resolvedCompanyId) {
+      queryClient.invalidateQueries({ queryKey: queryKeys.agents.list(resolvedCompanyId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.agents.listWithTerminated(resolvedCompanyId) });
+    }
+    queryClient.invalidateQueries({ queryKey: queryKeys.agents.detail(agent.id) });
+  }, [agent.id, queryClient, resolvedCompanyId]);
+
+  const rehire = useMutation({
+    mutationFn: () => agentsApi.rehire(agent.id, resolvedCompanyId ?? undefined),
+    onSuccess: () => {
+      invalidate();
+      pushToast({ title: t("ui.agentActions.rehired"), body: agent.name, tone: "success" });
+    },
+    onError: (error) => {
+      pushToast({
+        title: t("ui.agentActions.rehireFailed"),
+        body: error instanceof Error ? error.message : t("ui.agentActions.rehireFailed"),
+        tone: "error",
+      });
+    },
+  });
+
+  const permanentlyDelete = useMutation({
+    mutationFn: () => agentsApi.removeTerminated(agent.id, resolvedCompanyId ?? undefined),
+    onSuccess: () => {
+      invalidate();
+      pushToast({ title: t("ui.agentActions.deletedPermanently"), body: agent.name, tone: "success" });
+    },
+    onError: (error) => {
+      pushToast({
+        title: t("ui.agentActions.deletePermanentlyFailed"),
+        body: error instanceof Error ? error.message : t("ui.agentActions.deletePermanentlyFailed"),
+        tone: "error",
+      });
+    },
+  });
+
+  return (
+    <div className="flex items-center gap-2">
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={rehire.isPending || permanentlyDelete.isPending}
+        onClick={() => setRehireConfirmOpen(true)}
+      >
+        <RotateCcw className="h-3.5 w-3.5 mr-1" />
+        {t("ui.agentActions.rehire")}
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        className="text-destructive border-destructive/50 hover:bg-destructive/10"
+        disabled={rehire.isPending || permanentlyDelete.isPending}
+        onClick={() => setDeleteConfirmOpen(true)}
+      >
+        <Trash2 className="h-3.5 w-3.5 mr-1" />
+        {t("ui.agentActions.deletePermanently")}
+      </Button>
+      <AlertDialog open={rehireConfirmOpen} onOpenChange={setRehireConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("ui.agentActions.rehireConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("ui.agentActions.rehireConfirmDescription", { name: agent.name })}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("ui.agentActions.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => rehire.mutate()}>{t("ui.agentActions.rehire")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("ui.agentActions.deletePermanentlyConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("ui.agentActions.deletePermanentlyConfirmDescription", { name: agent.name })}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("ui.agentActions.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => permanentlyDelete.mutate()}
+            >
+              {t("ui.agentActions.deletePermanently")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

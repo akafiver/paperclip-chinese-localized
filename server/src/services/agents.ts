@@ -728,9 +728,35 @@ export function agentService(db: Db) {
       return getById(id);
     },
 
-    remove: async (id: string) => {
+    rehire: async (id: string) => {
       const existing = await getById(id);
       if (!existing) return null;
+      if (existing.status !== "terminated") {
+        throw conflict("Only terminated agents can be rehired");
+      }
+
+      await db
+        .update(agents)
+        .set({
+          status: "idle",
+          pauseReason: null,
+          pausedAt: null,
+          errorReason: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(agents.id, id));
+
+      // Termination revokes all credentials. Rehiring restores the role and
+      // configuration, but never silently reactivates an old credential.
+      return getById(id);
+    },
+
+    remove: async (id: string, options?: { requireTerminated?: boolean }) => {
+      const existing = await getById(id);
+      if (!existing) return null;
+      if (options?.requireTerminated && existing.status !== "terminated") {
+        throw conflict("Only terminated agents can be permanently deleted");
+      }
       const builtInMarker = readBuiltInAgentMarker(existing.metadata);
       if (builtInMarker) {
         throw conflict("Built-in agents cannot be deleted; pause them instead", {

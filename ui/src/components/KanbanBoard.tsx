@@ -21,12 +21,13 @@ import { StatusIcon } from "./StatusIcon";
 import { PriorityIcon } from "./PriorityIcon";
 import { Identity } from "./Identity";
 import type { Issue, IssueStatus } from "@paperclipai/shared";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, RotateCcw } from "lucide-react";
 import { isSuccessfulRunHandoffRequired } from "../lib/successful-run-handoff";
 import { collectSubtreeLiveCounts } from "../lib/liveIssueIds";
 import { cn } from "../lib/utils";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 export const KANBAN_BOARD_HIGH_VOLUME_THRESHOLD = 100;
 export const KANBAN_COLUMN_PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
@@ -154,6 +155,9 @@ interface KanbanBoardProps {
   initialVisibleCount?: number;
   revealIncrement?: number;
   onUpdateIssue: (id: string, data: Record<string, unknown>) => void;
+  onRestoreIssue?: (id: string) => void;
+  restorePendingIssueId?: string | null;
+  restoreTaskLabel?: string;
 }
 
 /* ── Droppable Column ── */
@@ -169,6 +173,9 @@ function KanbanColumn({
   visibleCount,
   revealIncrement,
   onShowMore,
+  onRestoreIssue,
+  restorePendingIssueId,
+  restoreTaskLabel = "Restore task",
 }: {
   status: IssueStatus;
   issues: Issue[];
@@ -180,6 +187,9 @@ function KanbanColumn({
   visibleCount: number;
   revealIncrement: number;
   onShowMore: () => void;
+  onRestoreIssue?: (id: string) => void;
+  restorePendingIssueId?: string | null;
+  restoreTaskLabel?: string;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
@@ -242,6 +252,9 @@ function KanbanColumn({
               isLive={liveIssueIds?.has(issue.id)}
               subtreeLiveCount={subtreeLiveCounts?.get(issue.id) ?? 0}
               compact={compactCards}
+              onRestoreIssue={onRestoreIssue}
+              restorePendingIssueId={restorePendingIssueId}
+              restoreTaskLabel={restoreTaskLabel}
               className={tone.card}
             />
           ))}
@@ -275,6 +288,9 @@ function KanbanCard({
   isOverlay,
   compact = false,
   className,
+  onRestoreIssue,
+  restorePendingIssueId,
+  restoreTaskLabel = "Restore task",
 }: {
   issue: Issue;
   agents?: Agent[];
@@ -283,6 +299,9 @@ function KanbanCard({
   isOverlay?: boolean;
   compact?: boolean;
   className?: string;
+  onRestoreIssue?: (id: string) => void;
+  restorePendingIssueId?: string | null;
+  restoreTaskLabel?: string;
 }) {
   const {
     attributes,
@@ -374,6 +393,25 @@ function KanbanCard({
           })()}
         </div>
       </Link>
+      {onRestoreIssue ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          className="mt-1 text-amber-700 hover:bg-amber-500/10 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onRestoreIssue(issue.id);
+          }}
+          disabled={restorePendingIssueId === issue.id}
+          aria-label={restoreTaskLabel}
+          title={restoreTaskLabel}
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          {restoreTaskLabel}
+        </Button>
+      ) : null}
     </Card>
   );
 }
@@ -389,6 +427,9 @@ export function KanbanBoard({
   initialVisibleCount = KANBAN_COLUMN_INITIAL_VISIBLE_LIMIT,
   revealIncrement = KANBAN_COLUMN_REVEAL_INCREMENT,
   onUpdateIssue,
+  onRestoreIssue,
+  restorePendingIssueId,
+  restoreTaskLabel,
 }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const paginationKey = `${initialVisibleCount}:${revealIncrement}`;
@@ -469,6 +510,9 @@ export function KanbanBoard({
             liveIssueIds={liveIssueIds}
             subtreeLiveCounts={subtreeLiveCounts}
             compactCards={compactCards}
+            onRestoreIssue={onRestoreIssue}
+            restorePendingIssueId={restorePendingIssueId}
+            restoreTaskLabel={restoreTaskLabel}
             // Compact mode (any lane explicitly collapsed) also collapses
             // empty lanes to the same labeled rail, so an empty In Progress
             // reads like the other rails instead of a lone expanded column.

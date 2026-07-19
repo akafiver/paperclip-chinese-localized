@@ -55,7 +55,12 @@ export const help: Record<string, string> = {
 
 import { getAdapterLabels } from "../adapters/adapter-display-registry";
 
-export const adapterLabels = getAdapterLabels();
+export const adapterLabels = new Proxy({} as Record<string, string>, {
+  get(_target, prop) {
+    if (typeof prop !== "string") return undefined;
+    return getAdapterLabels()[prop];
+  },
+});
 
 export const roleLabels = AGENT_ROLE_LABELS as Record<string, string>;
 
