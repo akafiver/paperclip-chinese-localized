@@ -19,6 +19,37 @@ function errorText(value: unknown): string {
   }
 }
 
+export function formatOpenCodeAdapterError(input: {
+  message: string;
+  model?: string | null;
+  provider?: string | null;
+  sessionId?: string | null;
+  inputTokens?: number;
+  outputTokens?: number;
+  toolErrors?: number;
+}): string {
+  const message = input.message.trim();
+  if (!/Expected 'function\.name' to be a string/i.test(message)) return message;
+
+  const provider = input.provider?.trim() || "unknown";
+  const model = input.model?.trim() || "unknown";
+  const session = input.sessionId?.trim() || "unknown";
+  const inputTokens = input.inputTokens ?? 0;
+  const outputTokens = input.outputTokens ?? 0;
+  const toolErrors = input.toolErrors ?? 0;
+  const stage = inputTokens > 0 || outputTokens > 0 || toolErrors > 0
+    ? "after the model/tool loop had started"
+    : "before a usable model response was received";
+
+  return [
+    "OpenCode rejected a malformed tool-call response: function.name must be a string.",
+    `The failure occurred ${stage}.`,
+    `Adapter: opencode_local; provider: ${provider}; model: ${model}; session: ${session}.`,
+    "This indicates a provider/model tool-calling compatibility or response-format problem; it is not a timeout.",
+    `Original error: ${message}`,
+  ].join(" ");
+}
+
 export function parseOpenCodeJsonl(stdout: string) {
   let sessionId: string | null = null;
   const messages: string[] = [];

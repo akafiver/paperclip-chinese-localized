@@ -46,7 +46,11 @@ import {
   resolvePaperclipDesiredSkillNames,
   resolveRequiredAdapterWorkspaceCwd,
 } from "@paperclipai/adapter-utils/server-utils";
-import { isOpenCodeUnknownSessionError, parseOpenCodeJsonl } from "./parse.js";
+import {
+  formatOpenCodeAdapterError,
+  isOpenCodeUnknownSessionError,
+  parseOpenCodeJsonl,
+} from "./parse.js";
 import {
   ensureOpenCodeModelConfiguredAndAvailable,
   isTruthyEnvFlag,
@@ -683,7 +687,17 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
           } as Record<string, unknown>)
         : null;
 
-      const parsedError = typeof attempt.parsed.errorMessage === "string" ? attempt.parsed.errorMessage.trim() : "";
+      const parsedError = typeof attempt.parsed.errorMessage === "string"
+        ? formatOpenCodeAdapterError({
+            message: attempt.parsed.errorMessage,
+            model: model || null,
+            provider: parseModelProvider(model || null),
+            sessionId: resolvedSessionId,
+            inputTokens: attempt.parsed.usage.inputTokens,
+            outputTokens: attempt.parsed.usage.outputTokens,
+            toolErrors: attempt.parsed.toolErrors.length,
+          })
+        : "";
       const stderrLine = firstNonEmptyLine(attempt.proc.stderr);
       const rawExitCode = attempt.proc.exitCode;
       const synthesizedExitCode = parsedError && (rawExitCode ?? 0) === 0 ? 1 : rawExitCode;
