@@ -190,7 +190,7 @@ describe("cursor execute", () => {
           cwd: workspace,
           promptTemplate: "Follow the paperclip heartbeat.",
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: workspace, source: "project_primary" } },
         authToken: "run-jwt-token",
         onLog: async () => {},
       });
@@ -328,7 +328,7 @@ printf '%s\\n' '{"type":"result","subtype":"success","session_id":"cursor-sessio
           cwd: workspaceDir,
           promptTemplate: "Run against runtime-managed command.",
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: workspaceDir, source: "project_primary" } },
         authToken: "run-jwt-token",
         onLog: async () => {},
         onMeta: async (meta) => {

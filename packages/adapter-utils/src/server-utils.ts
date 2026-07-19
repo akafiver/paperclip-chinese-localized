@@ -2297,9 +2297,10 @@ export async function resolveRequiredAdapterWorkspaceCwd(
       "workspace_validation_failed: no system workspace was resolved; configure a project workspace before starting the agent",
     );
   }
-  const cwd = workspaceCwd;
+  const configuredCwd = typeof config.cwd === "string" ? config.cwd.trim() : "";
+  const cwd = configuredCwd || workspaceCwd;
   if (!path.isAbsolute(cwd)) {
-    throw new Error(`workspace_validation_failed: workspace cwd must be absolute: "${cwd}"`);
+    throw new Error(`workspace_validation_failed: adapter workspace cwd must be absolute: "${cwd}"`);
   }
   if (await isPaperclipSourceTreePath(cwd)) {
     throw new Error(

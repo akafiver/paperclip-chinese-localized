@@ -179,6 +179,7 @@ import {
   runChildProcess,
   buildPaperclipEnv,
   renderTemplate,
+  resolveRequiredAdapterWorkspaceCwd,
 } from "@paperclipai/adapter-utils/server-utils";
 
 export async function execute(
@@ -186,8 +187,9 @@ export async function execute(
 ): Promise<AdapterExecutionResult> {
   const { config, agent, runtime, context, onLog, onMeta } = ctx;
 
-  // 1. Read config with safe helpers
-  const cwd = String(config.cwd ?? "/tmp");
+  // 1. Resolve the host-owned execution boundary. Never fall back to
+  // process.cwd() or an arbitrary temporary directory.
+  const cwd = await resolveRequiredAdapterWorkspaceCwd(context, config);
   const command = String(config.command ?? "my-agent");
   const timeoutSec = Number(config.timeoutSec ?? 300);
 
@@ -259,7 +261,7 @@ export async function testEnvironment(
   });
 
   // Example: check working directory
-  const cwd = String(ctx.config.cwd ?? "");
+  const cwd = await resolveRequiredAdapterWorkspaceCwd(ctx.context, ctx.config);
   if (!cwd.startsWith("/")) {
     checks.push({
       level: "error",

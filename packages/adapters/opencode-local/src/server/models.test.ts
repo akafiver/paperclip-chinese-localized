@@ -42,6 +42,7 @@ describe("openCode models", () => {
     await expect(
       ensureOpenCodeModelConfiguredAndAvailable({
         model: "openai/gpt-5",
+        cwd: "/tmp/paperclip-opencode-model-test",
       }),
     ).rejects.toThrow("Failed to start command");
   });

@@ -36,7 +36,7 @@ Adapter: claude_local
 
 Core fields:
 - engine (string, optional): execution engine. Leave unset/auto to use ACP when prerequisites pass and fall back to the Claude Code CLI with diagnostics. Use "cli" to pin the CLI lane or "acp" to require ACP.
-- cwd (string, optional): default absolute working directory fallback for the agent process (created if missing when possible)
+- cwd (string, optional): explicit absolute working-directory override; when omitted, Paperclip uses the resolved project workspace
 - instructionsFilePath (string, optional): absolute path to a markdown instructions file injected at runtime
 - model (string, optional): Claude model id
 - effort (string, optional): reasoning effort passed via --effort (low|medium|high)

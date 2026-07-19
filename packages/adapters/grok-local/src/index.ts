@@ -22,7 +22,7 @@ Don't use when:
 - Grok CLI is not installed or authenticated on the machine that runs Paperclip
 
 Core fields:
-- cwd (string, optional): default absolute working directory fallback for the agent process (created if missing when possible)
+- cwd (string, optional): explicit absolute working-directory override; when omitted, Paperclip uses the resolved project workspace
 - instructionsFilePath (string, optional): absolute path to a markdown instructions file. Paperclip stages it into the execution workspace as \`Agents.md\` when safe, otherwise falls back to \`--rules @file\`
 - promptTemplate (string, optional): run prompt template
 - model (string, optional): Grok model id. Defaults to grok-build.

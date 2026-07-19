@@ -262,6 +262,8 @@ describe("codex remote execution", () => {
     expect(call?.[2]).toEqual([
       "exec",
       "--json",
+      "--cd",
+      "/remote/workspace/.paperclip-runtime/runs/run-ssh-no-resume/workspace",
       "-",
     ]);
   });
@@ -333,6 +335,8 @@ describe("codex remote execution", () => {
     expect(call?.[2]).toEqual([
       "exec",
       "--json",
+      "--cd",
+      "/remote/workspace/.paperclip-runtime/runs/run-ssh-resume/workspace",
       "resume",
       "session-123",
       "-",
@@ -412,6 +416,8 @@ describe("codex remote execution", () => {
     expect(call?.[2]).toEqual([
       "exec",
       "--json",
+      "--cd",
+      "/remote/workspace/.paperclip-runtime/runs/run-target/workspace",
       "resume",
       "session-123",
       "-",

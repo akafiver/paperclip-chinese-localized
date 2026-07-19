@@ -117,7 +117,7 @@ describe("grok_local execute", () => {
         }],
         paperclipSkillSync: { desiredSkills: ["paperclip"] },
       },
-      context: {},
+      context: { paperclipWorkspace: { cwd: root, source: "project_primary" } },
       authToken: "run-token",
       onLog: async (stream: "stdout" | "stderr", chunk: string) => {
         logs.push({ stream, chunk });
@@ -174,7 +174,7 @@ describe("grok_local execute", () => {
         }],
         paperclipSkillSync: { desiredSkills: ["paperclip"] },
       },
-      context: {},
+      context: { paperclipWorkspace: { cwd: root, source: "project_primary" } },
       authToken: "run-token",
       onLog: async () => {},
     };

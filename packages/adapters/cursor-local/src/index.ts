@@ -85,7 +85,7 @@ Don't use when:
 - Cursor Agent CLI is not installed on the machine
 
 Core fields:
-- cwd (string, optional): default absolute working directory fallback for the agent process (created if missing when possible)
+- cwd (string, optional): explicit absolute working-directory override; when omitted, Paperclip uses the resolved project workspace
 - instructionsFilePath (string, optional): absolute path to a markdown instructions file prepended to the run prompt
 - promptTemplate (string, optional): run prompt template
 - model (string, optional): Cursor model id (for example auto or gpt-5.3-codex)

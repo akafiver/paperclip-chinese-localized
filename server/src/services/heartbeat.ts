@@ -13693,18 +13693,27 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
           adapterContext.paperclipManagedMcp = managedMcpConfig;
         }
         // Workspace ownership is decided by Heartbeat, not by an adapter.
-        // Validate it once at the execution boundary and pass the canonical
-        // value through adapterConfig for adapters that read their own cwd.
+        // The project workspace is the default execution boundary. An explicit
+        // adapterConfig.cwd is an operator-selected override, but it still
+        // goes through the same absolute-path and Paperclip-source-tree guards.
         const adapterWorkspaceCwd = await resolveRequiredAdapterWorkspaceCwd(
           adapterContext,
           runtimeConfig,
         );
-        if (path.resolve(adapterWorkspaceCwd) !== path.resolve(executionWorkspace.cwd)) {
+        const resolvedPaperclipWorkspace = parseObject(adapterContext.paperclipWorkspace);
+        const explicitAdapterWorkspaceCwd =
+          typeof runtimeConfig.cwd === "string" && runtimeConfig.cwd.trim().length > 0;
+        if (!explicitAdapterWorkspaceCwd && path.resolve(adapterWorkspaceCwd) !== path.resolve(executionWorkspace.cwd)) {
           throw new Error(
             `workspace_validation_failed: adapter cwd "${adapterWorkspaceCwd}" does not match the resolved execution workspace "${executionWorkspace.cwd}"`,
           );
         }
         runtimeConfig = { ...runtimeConfig, cwd: adapterWorkspaceCwd };
+        adapterContext.paperclipWorkspace = {
+          ...resolvedPaperclipWorkspace,
+          cwd: adapterWorkspaceCwd,
+          source: explicitAdapterWorkspaceCwd ? "agent_configured" : resolvedPaperclipWorkspace.source,
+        };
         adapterResult = await adapter.execute({
           runId: run.id,
           signal: cancellationController.signal,

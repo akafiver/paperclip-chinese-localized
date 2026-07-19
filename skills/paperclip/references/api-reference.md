@@ -722,7 +722,7 @@ Authorization:
 
 Adapter behavior:
 - `codex_local` and `claude_local` default to `adapterConfig.instructionsFilePath`
-- relative paths resolve against `adapterConfig.cwd`
+- relative paths resolve against the explicitly configured absolute `adapterConfig.cwd`; when it is omitted, agent execution uses the Paperclip-resolved project workspace and does not fall back to the server process directory
 - absolute paths are stored as-is
 - clear by sending `{ "path": null }`
 

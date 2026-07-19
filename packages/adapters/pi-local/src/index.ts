@@ -25,7 +25,7 @@ Don't use when:
 - Pi CLI is not installed on the machine
 
 Core fields:
-- cwd (string, optional): default absolute working directory fallback for the agent process (created if missing when possible)
+- cwd (string, optional): explicit absolute working-directory override; when omitted, Paperclip uses the resolved project workspace
 - instructionsFilePath (string, optional): absolute path to a markdown instructions file appended to system prompt via --append-system-prompt
 - promptTemplate (string, optional): user prompt template passed via -p flag
 - model (string, required): Pi model id in provider/model format (for example xai/grok-4)

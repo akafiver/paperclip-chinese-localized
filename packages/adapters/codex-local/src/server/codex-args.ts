@@ -33,6 +33,7 @@ export function buildCodexExecArgs(
   options: {
     resumeSessionId?: string | null;
     skipGitRepoCheck?: boolean;
+    cwd?: string;
   } = {},
 ): BuildCodexExecArgsResult {
   const record = asRecord(config);
@@ -51,6 +52,7 @@ export function buildCodexExecArgs(
   const extraArgs = readExtraArgs(record);
 
   const args = ["exec", "--json"];
+  if (options.cwd) args.push("--cd", options.cwd);
   if (options.skipGitRepoCheck) args.push("--skip-git-repo-check");
   if (search) args.unshift("--search");
   if (bypass) args.push("--dangerously-bypass-approvals-and-sandbox");

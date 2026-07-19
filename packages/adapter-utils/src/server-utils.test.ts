@@ -28,7 +28,7 @@ import {
 } from "./server-utils.js";
 
 describe("resolveRequiredAdapterWorkspaceCwd", () => {
-  it("requires a system workspace and ignores adapter-configured cwd", async () => {
+  it("requires a system workspace even when adapter config has an override", async () => {
     await expect(resolveRequiredAdapterWorkspaceCwd({}, { cwd: "/tmp/advanced-cwd" })).rejects.toThrow(
       "workspace_validation_failed",
     );
@@ -45,6 +45,19 @@ describe("resolveRequiredAdapterWorkspaceCwd", () => {
     await fs.rm(workspace, { recursive: true, force: true });
   });
 
+  it("accepts an explicit absolute adapter cwd when a project workspace exists", async () => {
+    const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-workspace-"));
+    const override = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-agent-cwd-"));
+    await expect(
+      resolveRequiredAdapterWorkspaceCwd(
+        { paperclipWorkspace: { cwd: workspace, source: "project_primary" } },
+        { cwd: override },
+      ),
+    ).resolves.toBe(override);
+    await fs.rm(workspace, { recursive: true, force: true });
+    await fs.rm(override, { recursive: true, force: true });
+  });
+
   it("rejects the Paperclip source tree", async () => {
     await expect(
       resolveRequiredAdapterWorkspaceCwd(
@@ -52,6 +65,17 @@ describe("resolveRequiredAdapterWorkspaceCwd", () => {
         {},
       ),
     ).rejects.toThrow("Paperclip source tree");
+  });
+
+  it("does not let an explicit cwd override point an agent at the Paperclip source tree", async () => {
+    const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-workspace-"));
+    await expect(
+      resolveRequiredAdapterWorkspaceCwd(
+        { paperclipWorkspace: { cwd: workspace, source: "project_primary" } },
+        { cwd: process.cwd() },
+      ),
+    ).rejects.toThrow("Paperclip source tree");
+    await fs.rm(workspace, { recursive: true, force: true });
   });
 
   it("rejects agent-home workspaces even when adapter config supplies a cwd", async () => {

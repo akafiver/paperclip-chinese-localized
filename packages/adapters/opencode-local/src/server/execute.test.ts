@@ -1,6 +1,34 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { ensureRemoteOpenCodeModelConfiguredAndAvailable } from "./execute.js";
+import { buildOpenCodeRunArgs, ensureRemoteOpenCodeModelConfiguredAndAvailable } from "./execute.js";
+
+describe("buildOpenCodeRunArgs", () => {
+  it("pins OpenCode's project directory to the resolved execution cwd", () => {
+    expect(
+      buildOpenCodeRunArgs({
+        cwd: "/tmp/project-workspace",
+        model: "vllm//model",
+        variant: "",
+        extraArgs: [],
+        printLogs: false,
+        sessionId: null,
+      }),
+    ).toEqual(["run", "--format", "json", "--dir", "/tmp/project-workspace", "--model", "vllm//model"]);
+  });
+
+  it("does not allow extra args to override the managed project directory", () => {
+    expect(
+      buildOpenCodeRunArgs({
+        cwd: "/tmp/project-workspace",
+        model: "vllm//model",
+        variant: "",
+        extraArgs: ["--dir", "/Users/leon/Documents/CodeProjects/paperclip/server", "--verbose"],
+        printLogs: false,
+        sessionId: null,
+      }),
+    ).toEqual(["run", "--format", "json", "--dir", "/tmp/project-workspace", "--model", "vllm//model", "--verbose"]);
+  });
+});
 
 describe("ensureRemoteOpenCodeModelConfiguredAndAvailable", () => {
   afterEach(() => {

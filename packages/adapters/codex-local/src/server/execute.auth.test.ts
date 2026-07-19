@@ -67,7 +67,7 @@ describe("codex managed-home auth fail-fast", () => {
             OPENAI_API_KEY: "",
           },
         },
-        context: {},
+        context: { paperclipWorkspace: { cwd: workspaceDir, source: "project_primary" } },
         onLog: async () => {},
       }),
     ).rejects.toThrow(/no Codex credentials provisioned for managed home/);

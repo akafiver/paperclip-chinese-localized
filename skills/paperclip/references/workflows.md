@@ -62,7 +62,7 @@ Rules:
 
 - Allowed for: the target agent itself, or an ancestor manager in that agent's reporting chain.
 - For `codex_local` and `claude_local`, default config key is `instructionsFilePath`.
-- Relative paths are resolved against the target agent's `adapterConfig.cwd`; absolute paths are accepted as-is.
+- Relative paths are resolved against the target agent's explicitly configured absolute `adapterConfig.cwd`; when it is omitted, Paperclip uses the resolved project workspace and never the server process directory.
 - To clear the path, send `{ "path": null }`.
 - For adapters with a different key, provide it explicitly:
 

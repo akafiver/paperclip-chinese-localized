@@ -82,6 +82,35 @@ function resolveOpenCodeBiller(env: Record<string, string>, provider: string | n
 const REMOTE_OPENCODE_MODELS_PROBE_DEFAULT_TIMEOUT_SEC = 20;
 const REMOTE_OPENCODE_MODELS_PROBE_SANDBOX_TIMEOUT_SEC = 120;
 
+export function buildOpenCodeRunArgs(input: {
+  cwd: string;
+  model: string;
+  variant: string;
+  extraArgs: string[];
+  printLogs: boolean;
+  sessionId: string | null;
+}): string[] {
+  const args = ["run", "--format", "json", "--dir", input.cwd];
+  if (input.printLogs) args.push("--print-logs");
+  if (input.sessionId) args.push("--session", input.sessionId);
+  if (input.model) args.push("--model", input.model);
+  if (input.variant) args.push("--variant", input.variant);
+
+  // The execution boundary is owned by Paperclip. Do not allow adapter extra
+  // args to introduce a second --dir that would point OpenCode at the server
+  // source tree or another unrelated project.
+  for (let index = 0; index < input.extraArgs.length; index += 1) {
+    const arg = input.extraArgs[index];
+    if (arg === "--dir") {
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--dir=")) continue;
+    args.push(arg);
+  }
+  return args;
+}
+
 export async function ensureRemoteOpenCodeModelConfiguredAndAvailable(input: {
   runId: string;
   executionTarget: NonNullable<AdapterExecutionContext["executionTarget"]>;
@@ -573,15 +602,15 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     const printLogs = isTruthyEnvFlag(
       env.PAPERCLIP_OPENCODE_PRINT_LOGS ?? process.env.PAPERCLIP_OPENCODE_PRINT_LOGS,
     );
-    const buildArgs = (resumeSessionId: string | null) => {
-      const args = ["run", "--format", "json"];
-      if (printLogs) args.push("--print-logs");
-      if (resumeSessionId) args.push("--session", resumeSessionId);
-      if (model) args.push("--model", model);
-      if (variant) args.push("--variant", variant);
-      if (extraArgs.length > 0) args.push(...extraArgs);
-      return args;
-    };
+    const buildArgs = (resumeSessionId: string | null) =>
+      buildOpenCodeRunArgs({
+        cwd: effectiveExecutionCwd,
+        model,
+        variant,
+        extraArgs,
+        printLogs,
+        sessionId: resumeSessionId,
+      });
 
     const runAttempt = async (resumeSessionId: string | null) => {
       const args = buildArgs(resumeSessionId);

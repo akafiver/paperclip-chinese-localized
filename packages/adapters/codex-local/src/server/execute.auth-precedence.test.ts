@@ -115,7 +115,7 @@ describe("codex sandbox auth precedence warning", () => {
         cwd: workspaceDir,
         env: { CODEX_HOME: hostCodexHome },
       },
-      context: {},
+      context: { paperclipWorkspace: { cwd: workspaceDir, source: "project_primary" } },
       executionTarget: {
         kind: "remote",
         transport: "sandbox",

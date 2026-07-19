@@ -331,7 +331,7 @@ export async function testEnvironment(
       const variant = asString(config.variant, "").trim();
       const probeModel = configuredModel;
 
-      const args = ["run", "--format", "json"];
+      const args = ["run", "--format", "json", "--dir", runtimeCwd];
       args.push("--model", probeModel);
       if (variant) args.push("--variant", variant);
       if (extraArgs.length > 0) args.push(...extraArgs);

@@ -989,6 +989,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         {
           resumeSessionId,
           skipGitRepoCheck: executionTargetIsSandbox,
+          cwd: effectiveExecutionCwd,
         },
       );
       const args = execArgs.args;
