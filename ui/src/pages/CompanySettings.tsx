@@ -10,15 +10,23 @@ import { companiesApi } from "../api/companies";
 import { assetsApi } from "../api/assets";
 import { instanceSettingsApi } from "../api/instanceSettings";
 import { queryKeys } from "../lib/queryKeys";
-import { Link } from "@/lib/router";
+import { Link, useNavigate } from "@/lib/router";
 import { useTranslation } from "@/i18n";
 import { Button } from "@/components/ui/button";
-import { Settings, CloudUpload, Download, Upload } from "lucide-react";
+import { AlertTriangle, Archive, CloudUpload, Download, RotateCcw, Settings, Trash2, Upload } from "lucide-react";
 import { CompanyPatternIcon } from "../components/CompanyPatternIcon";
 import {
   Field,
   ToggleField,
 } from "../components/agent-config-primitives";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const BYTES_PER_MIB = 1024 * 1024;
 const DEFAULT_COMPANY_ATTACHMENT_MAX_MIB = DEFAULT_COMPANY_ATTACHMENT_MAX_BYTES / BYTES_PER_MIB;
@@ -32,6 +40,7 @@ export function CompanySettings() {
     setSelectedCompanyId
   } = useCompany();
   const { setBreadcrumbs } = useBreadcrumbs();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: experimentalSettings } = useQuery({
     queryKey: queryKeys.instance.experimentalSettings,
@@ -44,6 +53,7 @@ export function CompanySettings() {
   const [attachmentMaxMiB, setAttachmentMaxMiB] = useState(String(DEFAULT_COMPANY_ATTACHMENT_MAX_MIB));
   const [logoUrl, setLogoUrl] = useState("");
   const [logoUploadError, setLogoUploadError] = useState<string | null>(null);
+  const [confirmLifecycleAction, setConfirmLifecycleAction] = useState<"archive" | "delete" | null>(null);
 
   // Sync local state from selected company
   useEffect(() => {
@@ -147,6 +157,40 @@ export function CompanySettings() {
       });
     }
   });
+  const restoreMutation = useMutation({
+    mutationFn: (companyId: string) => companiesApi.update(companyId, { status: "active" }),
+    onSuccess: async (company) => {
+      setSelectedCompanyId(company.id);
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.companies.all
+      });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.companies.stats
+      });
+    }
+  });
+  const deleteMutation = useMutation({
+    mutationFn: ({
+      companyId,
+      nextCompanyId
+    }: {
+      companyId: string;
+      nextCompanyId: string | null;
+    }) => companiesApi.remove(companyId).then(() => ({ nextCompanyId })),
+    onSuccess: async ({ nextCompanyId }) => {
+      if (nextCompanyId) {
+        setSelectedCompanyId(nextCompanyId);
+      } else {
+        navigate("/companies");
+      }
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.companies.all
+      });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.companies.stats
+      });
+    }
+  });
 
   useEffect(() => {
     setBreadcrumbs([
@@ -170,6 +214,38 @@ export function CompanySettings() {
       brandColor: brandColor || null,
       attachmentMaxBytes
     });
+  }
+
+  function nextActiveCompanyId() {
+    if (!selectedCompanyId) return null;
+    return companies.find(
+      (company) =>
+        company.id !== selectedCompanyId &&
+        company.status !== "archived"
+    )?.id ?? null;
+  }
+
+  function confirmArchiveCompany() {
+    if (!selectedCompanyId) return;
+    archiveMutation.mutate({
+      companyId: selectedCompanyId,
+      nextCompanyId: nextActiveCompanyId()
+    });
+    setConfirmLifecycleAction(null);
+  }
+
+  function restoreCompany() {
+    if (!selectedCompanyId) return;
+    restoreMutation.mutate(selectedCompanyId);
+  }
+
+  function confirmDeleteCompany() {
+    if (!selectedCompanyId) return;
+    deleteMutation.mutate({
+      companyId: selectedCompanyId,
+      nextCompanyId: nextActiveCompanyId()
+    });
+    setConfirmLifecycleAction(null);
   }
 
   return (
@@ -360,7 +436,7 @@ export function CompanySettings() {
         </div>
         <div className="rounded-md border border-border px-4 py-3">
           <ToggleField
-            label="Require board approval for new hires"
+            label={t("ui.companySettings.requireBoardApprovalForNewHires")}
             hint={t("ui.companySettings.approvalHint")}
             checked={!!selectedCompany.requireBoardApprovalForNewAgents}
             onChange={(v) => settingsMutation.mutate(v)}
@@ -409,53 +485,167 @@ export function CompanySettings() {
         <div className="text-xs font-medium text-destructive uppercase tracking-wide">
           {t("ui.companySettings.dangerZone")}
         </div>
-        <div className="space-y-3 rounded-md border border-destructive/40 bg-destructive/5 px-4 py-4">
-          <p className="text-sm text-muted-foreground">
-            Archive this company to hide it from the sidebar. This persists in
-            the database.
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="destructive"
-              disabled={
-                archiveMutation.isPending ||
-                selectedCompany.status === "archived"
-              }
-              onClick={() => {
-                if (!selectedCompanyId) return;
-                const confirmed = window.confirm(
-                  t("ui.companySettings.archiveConfirm", { name: selectedCompany.name })
-                );
-                if (!confirmed) return;
-                const nextCompanyId =
-                  companies.find(
-                    (company) =>
-                      company.id !== selectedCompanyId &&
-                      company.status !== "archived"
-                  )?.id ?? null;
-                archiveMutation.mutate({
-                  companyId: selectedCompanyId,
-                  nextCompanyId
-                });
-              }}
-            >
-              {archiveMutation.isPending
-                ? t("ui.companySettings.archiving")
-                : selectedCompany.status === "archived"
-                ? t("ui.companySettings.alreadyArchived")
-                : t("ui.companySettings.archiveCompany")}
-            </Button>
-            {archiveMutation.isError && (
-              <span className="text-xs text-destructive">
+        <div className="space-y-3">
+          <div className="rounded-md border border-amber-500/35 bg-amber-500/10 px-4 py-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-sm font-medium text-amber-800 dark:text-amber-200">
+                  {selectedCompany.status === "archived" ? (
+                    <RotateCcw className="h-4 w-4" />
+                  ) : (
+                    <Archive className="h-4 w-4" />
+                  )}
+                  <span>
+                    {selectedCompany.status === "archived"
+                      ? t("ui.companySettings.restoreCompany")
+                      : t("ui.companySettings.archiveCompany")}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {selectedCompany.status === "archived"
+                    ? t("ui.companySettings.restoreCompanyDescription")
+                    : t("ui.companySettings.archiveCompanyDescription")}
+                </p>
+              </div>
+              {selectedCompany.status === "archived" ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={restoreMutation.isPending}
+                  onClick={restoreCompany}
+                >
+                  {restoreMutation.isPending
+                    ? t("ui.companySettings.restoring")
+                    : t("ui.companySettings.restoreCompany")}
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-amber-500/50 text-amber-700 hover:bg-amber-500/10 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200"
+                  disabled={archiveMutation.isPending}
+                  onClick={() => setConfirmLifecycleAction("archive")}
+                >
+                  {archiveMutation.isPending
+                    ? t("ui.companySettings.archiving")
+                    : t("ui.companySettings.archiveCompany")}
+                </Button>
+              )}
+            </div>
+            {(archiveMutation.isError || restoreMutation.isError) && (
+              <p className="mt-3 text-xs text-destructive">
                 {archiveMutation.error instanceof Error
                   ? archiveMutation.error.message
-                  : t("ui.companySettings.failedToArchive")}
-              </span>
+                  : restoreMutation.error instanceof Error
+                    ? restoreMutation.error.message
+                    : t("ui.companySettings.companyLifecycleActionFailed")}
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+                  <Trash2 className="h-4 w-4" />
+                  <span>{t("ui.companySettings.deleteCompany")}</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {t("ui.companySettings.deleteCompanyDescription")}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="destructive"
+                disabled={deleteMutation.isPending}
+                onClick={() => setConfirmLifecycleAction("delete")}
+              >
+                {deleteMutation.isPending
+                  ? t("ui.companySettings.deleting")
+                  : t("ui.companySettings.deleteCompany")}
+              </Button>
+            </div>
+            {deleteMutation.isError && (
+              <p className="mt-3 text-xs text-destructive">
+                {deleteMutation.error instanceof Error
+                  ? deleteMutation.error.message
+                  : t("ui.companySettings.failedToDelete")}
+              </p>
             )}
           </div>
         </div>
       </div>
+
+      <Dialog open={confirmLifecycleAction === "archive"} onOpenChange={(open) => !open && setConfirmLifecycleAction(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("ui.companySettings.archiveConfirmTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("ui.companySettings.archiveConfirmDescription", { name: selectedCompany.name })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-md border border-amber-500/35 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">
+            <div className="flex gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>{t("ui.companySettings.archiveConfirmImpact")}</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmLifecycleAction(null)}
+              disabled={archiveMutation.isPending}
+            >
+              {t("ui.companySettings.cancel")}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-amber-500/50 text-amber-700 hover:bg-amber-500/10 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200"
+              onClick={confirmArchiveCompany}
+              disabled={archiveMutation.isPending}
+            >
+              {archiveMutation.isPending ? t("ui.companySettings.archiving") : t("ui.companySettings.archiveCompany")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmLifecycleAction === "delete"} onOpenChange={(open) => !open && setConfirmLifecycleAction(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("ui.companySettings.deleteConfirmTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("ui.companySettings.deleteConfirmDescription", { name: selectedCompany.name })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            <div className="flex gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>{t("ui.companySettings.deleteConfirmImpact")}</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmLifecycleAction(null)}
+              disabled={deleteMutation.isPending}
+            >
+              {t("ui.companySettings.cancel")}
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={confirmDeleteCompany}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? t("ui.companySettings.deleting") : t("ui.companySettings.deleteCompany")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

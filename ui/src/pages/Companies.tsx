@@ -23,6 +23,7 @@ import {
   X,
   Plus,
   MoreHorizontal,
+  RotateCcw,
   Trash2,
   Users,
   CircleDot,
@@ -64,11 +65,23 @@ export function Companies() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => companiesApi.remove(id),
-    onSuccess: () => {
+    mutationFn: ({ id, nextCompanyId }: { id: string; nextCompanyId: string | null }) =>
+      companiesApi.remove(id).then(() => ({ id, nextCompanyId })),
+    onSuccess: ({ id, nextCompanyId }) => {
+      if (selectedCompanyId === id && nextCompanyId) {
+        setSelectedCompanyId(nextCompanyId);
+      }
       queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.companies.stats });
       setConfirmDeleteId(null);
+    },
+  });
+  const restoreMutation = useMutation({
+    mutationFn: (id: string) => companiesApi.update(id, { status: "active" }),
+    onSuccess: (company) => {
+      setSelectedCompanyId(company.id);
+      queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.companies.stats });
     },
   });
 
@@ -89,6 +102,14 @@ export function Companies() {
   function cancelEdit() {
     setEditingId(null);
     setEditName("");
+  }
+
+  function nextActiveCompanyId(deletedCompanyId: string) {
+    return companies.find(
+      (company) =>
+        company.id !== deletedCompanyId &&
+        company.status !== "archived"
+    )?.id ?? null;
   }
 
   return (
@@ -220,6 +241,15 @@ export function Companies() {
                         <Pencil className="h-3.5 w-3.5" />
                         {t("ui.companies.rename")}
                       </DropdownMenuItem>
+                      {company.status === "archived" ? (
+                        <DropdownMenuItem
+                          onClick={() => restoreMutation.mutate(company.id)}
+                          disabled={restoreMutation.isPending}
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          {restoreMutation.isPending ? t("ui.companies.restoring") : t("ui.companies.restoreCompany")}
+                        </DropdownMenuItem>
+                      ) : null}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         variant="destructive"
@@ -283,7 +313,10 @@ export function Companies() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => deleteMutation.mutate(company.id)}
+                      onClick={() => deleteMutation.mutate({
+                        id: company.id,
+                        nextCompanyId: nextActiveCompanyId(company.id),
+                      })}
                       disabled={deleteMutation.isPending}
                     >
                       {deleteMutation.isPending ? t("ui.companies.deleting") : t("ui.companies.delete")}
