@@ -192,15 +192,12 @@ import {
 } from "./execution-allowlist.js";
 import {
   RECOVERY_ORIGIN_KINDS,
-  FINISH_SUCCESSFUL_RUN_HANDOFF_REASON,
   SUCCESSFUL_RUN_MISSING_STATE_REASON,
   RUN_LIVENESS_CONTINUATION_REASON,
   buildRunLivenessContinuationIdempotencyKey,
-  buildFinishSuccessfulRunHandoffIdempotencyKey,
   buildSuccessfulRunHandoffRequiredNotice,
   decideRunLivenessContinuation,
   decideSuccessfulRunHandoff,
-  findExistingFinishSuccessfulRunHandoffWake,
   findExistingRunLivenessContinuationWake,
   isSuccessfulRunHandoffValidPathSkip,
   SUCCESSFUL_RUN_HANDOFF_REQUIRED_NOTICE_BODY,
@@ -7988,13 +7985,6 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
       .from(issues)
       .where(and(eq(issues.id, issueId), eq(issues.companyId, run.companyId)))
       .then((rows) => rows[0] ?? null);
-    const idempotencyKey = issue
-      ? buildFinishSuccessfulRunHandoffIdempotencyKey({
-        issueId: issue.id,
-        sourceRunId: run.id,
-      })
-      : null;
-    const taskKey = deriveTaskKeyWithHeartbeatFallback(context, null);
     const detectedProgressSummary = await buildDetectedSuccessfulRunProgressSummary(run);
 
     const [
@@ -8004,7 +7994,6 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
       pendingApproval,
       explicitBlocker,
       openRecoveryIssue,
-      existingWake,
       budgetBlock,
       pauseHold,
       activeRoutineContinuation,
@@ -8118,12 +8107,6 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
           .limit(1)
           .then((rows) => rows[0] ?? null)
         : Promise.resolve(null),
-      idempotencyKey
-        ? findExistingFinishSuccessfulRunHandoffWake(db, {
-          companyId: run.companyId,
-          idempotencyKey,
-        })
-        : Promise.resolve(null),
       issue
         ? budgets.getInvocationBlock(issue.companyId, run.agentId, {
           issueId: issue.id,
@@ -8155,7 +8138,6 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
       agent,
       livenessState: run.livenessState as RunLivenessState | null,
       detectedProgressSummary,
-      taskKey,
       hasActiveExecutionPath: Boolean(activeExecutionPath),
       hasQueuedWake: Boolean(queuedWake),
       hasPendingInteractionOrApproval: Boolean(pendingInteraction || pendingApproval),
@@ -8165,7 +8147,6 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
       hasPauseHold: Boolean(pauseHold),
       hasActiveRoutineContinuation: Boolean(activeRoutineContinuation),
       budgetBlocked: Boolean(budgetBlock),
-      idempotentWakeExists: Boolean(existingWake),
     });
 
     if (isSuccessfulRunHandoffValidPathSkip(decision) && issue) {
@@ -8179,7 +8160,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
       });
     }
 
-    if (decision.kind !== "enqueue" || !issue) return;
+    if (decision.kind !== "require_user_disposition" || !issue) return;
 
     if (hasUnmanagedBackgroundTaskEvidence(parseObject(run.resultJson))) {
       await db
@@ -8192,17 +8173,11 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         .where(eq(heartbeatRuns.id, run.id));
     }
 
-    const handoffRun = await enqueueWakeup(decision.targetAgentId, {
-      source: "automation",
-      triggerDetail: "system",
-      reason: FINISH_SUCCESSFUL_RUN_HANDOFF_REASON,
-      payload: decision.payload,
-      contextSnapshot: decision.contextSnapshot,
-      idempotencyKey: decision.idempotencyKey,
-      requestedByActorType: "system",
-      requestedByActorId: "heartbeat",
+    const blockedIssue = await issuesSvc.update(issue.id, {
+      status: "blocked",
+      actorAgentId: run.agentId,
     });
-    if (!handoffRun) return;
+    if (!blockedIssue) return;
 
     await addSuccessfulRunHandoffCommentOnce({
       issue,
@@ -8222,9 +8197,10 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
       details: {
         label: "Successful run missing issue disposition",
         sourceRunId: run.id,
-        correctiveRunId: handoffRun.id,
+        correctiveRunId: null,
         handoffReason: SUCCESSFUL_RUN_MISSING_STATE_REASON,
-        missingDisposition: "clear_next_step",
+        missingDisposition: decision.missingDisposition,
+        automaticRetry: "disabled_waiting_for_disposition",
         detectedProgressSummary,
         issue: issueUiLink(issue),
       },

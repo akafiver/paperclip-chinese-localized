@@ -1,26 +1,16 @@
-import { and, eq, inArray } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { agentWakeupRequests, agents, heartbeatRuns, issues } from "@paperclipai/db";
+import { agents, heartbeatRuns, issues } from "@paperclipai/db";
 import type { IssueCommentMetadata, IssueCommentPresentation, RunLivenessState } from "@paperclipai/shared";
-import { withRecoveryModelProfileHint } from "./model-profile-hint.js";
 
 export const FINISH_SUCCESSFUL_RUN_HANDOFF_REASON = "finish_successful_run_handoff";
 export const SUCCESSFUL_RUN_MISSING_STATE_REASON = "successful_run_missing_state";
 export const DEFAULT_MAX_SUCCESSFUL_RUN_HANDOFF_ATTEMPTS = 1;
 export const SUCCESSFUL_RUN_HANDOFF_REQUIRED_NOTICE_BODY =
-  "Paperclip needs a disposition before this issue can continue.";
+  "Paperclip 已暂停自动继续：任务可能已经完成，但还没有最终处置。请选择完成、继续、重试、阻塞或取消，避免重复执行外部动作。 / Paperclip paused automation because this task may be complete but still has no final outcome. Choose done, continue, retry, blocked, or cancelled before it can continue.";
 export const SUCCESSFUL_RUN_HANDOFF_EXHAUSTED_NOTICE_BODY =
-  "Paperclip tried one status-only follow-up, but the issue still has no recorded disposition. The issue is blocked until the recovery owner chooses the next step.";
+  "Paperclip 已停止自动继续：任务仍缺少最终处置。请由恢复负责人选择完成、继续、重试、阻塞或取消。 / Paperclip stopped automation because this task still has no final outcome. A recovery owner must choose the next step.";
 export const LEGACY_SUCCESSFUL_RUN_HANDOFF_NOTICE_PREFIXES = [
   "## This issue still needs a next step",
   "## Successful run missing issue disposition",
-] as const;
-
-export const SUCCESSFUL_RUN_HANDOFF_OPTIONS = [
-  "mark_done_or_cancelled",
-  "send_for_review_or_ask_for_input",
-  "mark_blocked",
-  "delegate_or_continue_from_checkpoint",
 ] as const;
 
 const PRODUCTIVE_SUCCESS_LIVENESS_STATES = new Set<RunLivenessState>([
@@ -29,18 +19,6 @@ const PRODUCTIVE_SUCCESS_LIVENESS_STATES = new Set<RunLivenessState>([
   "blocked",
   "needs_followup",
 ]);
-
-const IDEMPOTENT_HANDOFF_WAKE_STATUSES = [
-  "queued",
-  "deferred_issue_execution",
-  "claimed",
-  "completed",
-];
-const IDEMPOTENT_HANDOFF_WAKE_STATUS_SET = new Set<string>(IDEMPOTENT_HANDOFF_WAKE_STATUSES);
-
-export function isIdempotentFinishSuccessfulRunHandoffWakeStatus(status: string) {
-  return IDEMPOTENT_HANDOFF_WAKE_STATUS_SET.has(status);
-}
 
 type HeartbeatRunRow = typeof heartbeatRuns.$inferSelect;
 type IssueRow = Pick<
@@ -76,12 +54,8 @@ export function noticeMetadataReferencesRecoveryAction(
 
 export type SuccessfulRunHandoffDecision =
   | {
-      kind: "enqueue";
-      targetAgentId: string;
-      idempotencyKey: string;
-      payload: Record<string, unknown>;
-      contextSnapshot: Record<string, unknown>;
-      instruction: string;
+      kind: "require_user_disposition";
+      missingDisposition: "clear_next_step";
     }
   | {
       kind: "skip";
@@ -98,7 +72,6 @@ const SUCCESSFUL_RUN_HANDOFF_VALID_PATH_SKIP_REASONS = new Set([
   "explicit blocker path owns the next action",
   "open recovery issue owns the ambiguity",
   "issue is under an active pause hold",
-  "corrective handoff wake already exists for this source run",
 ]);
 
 export function isSuccessfulRunHandoffValidPathSkip(
@@ -176,32 +149,33 @@ export function buildSuccessfulRunHandoffRequiredNotice(input: {
     body: SUCCESSFUL_RUN_HANDOFF_REQUIRED_NOTICE_BODY,
     presentation: systemNoticePresentation({
       tone: "warning",
-      title: "Task needs an outcome decision",
+      title: "需要确认任务结果 / Outcome decision needed",
     }),
     metadata: {
       version: 1,
       sourceRunId: input.run.id,
       sections: [
         {
-          title: "Required action",
+          title: "需要你选择下一步",
           rows: [
-            issueLinkRow("Source issue", input.issue),
-            agentLinkRow("Assignee", input.agent),
-            keyValueRow("Missing disposition", "clear_next_step"),
+            issueLinkRow("任务", input.issue),
+            agentLinkRow("负责人", input.agent),
+            keyValueRow("为什么暂停", "Agent 运行成功，但没有把任务明确标记为完成、继续、阻塞、审核或取消。"),
+            keyValueRow("安全策略", "为避免重复发送邮件、重复调用 API 或重复执行外部动作，Paperclip 不会自动再运行 Agent。"),
             keyValueRow(
-              "Valid dispositions",
-              "done, cancelled, in_review with an owner, blocked with blockers, delegated follow-up, or explicit continuation",
+              "可选处理",
+              "标记完成、继续执行、重试、标记阻塞、取消，或交给明确负责人审核。",
             ),
           ],
         },
         {
-          title: "Run evidence",
+          title: "运行证据",
           rows: [
-            runLinkRow("Successful run", input.run),
-            keyValueRow("Run status", input.run.status),
-            keyValueRow("Normalized cause", SUCCESSFUL_RUN_MISSING_STATE_REASON),
-            keyValueRow("Detected progress", input.detectedProgressSummary),
-            keyValueRow("Automatic retry", "one corrective handoff wake queued"),
+            runLinkRow("成功运行", input.run),
+            keyValueRow("运行状态", input.run.status),
+            keyValueRow("标准原因", SUCCESSFUL_RUN_MISSING_STATE_REASON),
+            keyValueRow("检测到的进展", input.detectedProgressSummary),
+            keyValueRow("自动重试", "已禁用；等待用户或恢复负责人选择任务结果。"),
           ],
         },
       ],
@@ -247,50 +221,16 @@ export function buildSuccessfulRunHandoffExhaustedNotice(input: {
           title: "Run evidence",
           rows: [
             runLinkRow("Source run", input.sourceRun),
-            runLinkRow("Corrective handoff run", input.correctiveRun),
-            keyValueRow("Latest issue status", input.latestIssueStatus),
-            keyValueRow("Latest handoff run status", input.latestHandoffRunStatus),
-            keyValueRow("Normalized cause", SUCCESSFUL_RUN_MISSING_STATE_REASON),
-            keyValueRow("Missing disposition", input.missingDisposition),
+            runLinkRow("后续运行（如有）", input.correctiveRun),
+            keyValueRow("最新任务状态", input.latestIssueStatus),
+            keyValueRow("最新运行状态", input.latestHandoffRunStatus),
+            keyValueRow("标准原因", SUCCESSFUL_RUN_MISSING_STATE_REASON),
+            keyValueRow("缺少的处置", input.missingDisposition),
           ],
         },
       ],
     },
   };
-}
-
-export function buildFinishSuccessfulRunHandoffIdempotencyKey(input: {
-  issueId: string;
-  sourceRunId: string;
-  attempt?: number;
-}) {
-  return [
-    FINISH_SUCCESSFUL_RUN_HANDOFF_REASON,
-    input.issueId,
-    input.sourceRunId,
-    String(input.attempt ?? 1),
-  ].join(":");
-}
-
-export async function findExistingFinishSuccessfulRunHandoffWake(
-  db: Db,
-  input: {
-    companyId: string;
-    idempotencyKey: string;
-  },
-) {
-  return db
-    .select({ id: agentWakeupRequests.id, status: agentWakeupRequests.status })
-    .from(agentWakeupRequests)
-    .where(
-      and(
-        eq(agentWakeupRequests.companyId, input.companyId),
-        eq(agentWakeupRequests.idempotencyKey, input.idempotencyKey),
-        inArray(agentWakeupRequests.status, IDEMPOTENT_HANDOFF_WAKE_STATUSES),
-      ),
-    )
-    .limit(1)
-    .then((rows) => rows[0] ?? null);
 }
 
 function readRecord(value: unknown): Record<string, unknown> {
@@ -332,41 +272,12 @@ function isProductiveSuccessfulRun(input: {
   return Boolean(input.detectedProgressSummary);
 }
 
-export function buildSuccessfulRunHandoffInstruction(input: {
-  issueIdentifier: string | null;
-  sourceRunId: string;
-}) {
-  const issueLabel = input.issueIdentifier ?? "this issue";
-  return [
-    `Your previous run on ${issueLabel} succeeded, but the issue is still in \`in_progress\` and Paperclip cannot identify a valid issue disposition.`,
-    "",
-    "This is a status-only retry to the original agent. Record a disposition; do not start new work.",
-    "",
-    "Resolve the missing disposition before creating or revising any new artifacts. Choose **exactly one** outcome and perform the matching Paperclip action:",
-    "",
-    "**Is the issue finished?**",
-    "1. Mark it `done` (scope complete) or `cancelled` (intentionally stopped).",
-    "",
-    "**Does someone else need to look at it?**",
-    "2. Move it to `in_review` with a real reviewer path — `executionState.currentParticipant`, a human owner via `assigneeUserId`, a pending issue-thread interaction, or a linked pending approval.",
-    "",
-    "**Can it not continue right now?**",
-    "3. Mark it `blocked` with first-class blockers (`blockedByIssueIds`) or a clearly named unblock owner/action.",
-    "",
-    "**Is there more work to do?**",
-    `4. Either delegate follow-up work (create/link a follow-up issue and block this one on it, or close this issue if its scope is independently complete) or record an explicit continuation path with \`resumeIntent: true\`, \`resumeFromRunId: ${input.sourceRunId}\`, and a concrete next action. Do not perform the remaining source work in this recovery run; the follow-up/resume wake must use the normal model lane.`,
-    "",
-    "Comments, document revisions, work-product writes, and continuation summaries are supporting evidence only — they do not satisfy this handoff unless the issue state/path also records one valid disposition. If this wake is status-only recovery, document or plan updates are not allowed.",
-  ].join("\n");
-}
-
 export function decideSuccessfulRunHandoff(input: {
   run: HeartbeatRunRow;
   issue: IssueRow | null;
   agent: AgentRow | null;
   livenessState: RunLivenessState | null;
   detectedProgressSummary: string | null;
-  taskKey: string | null;
   hasActiveExecutionPath: boolean;
   hasQueuedWake: boolean;
   hasPendingInteractionOrApproval: boolean;
@@ -376,7 +287,6 @@ export function decideSuccessfulRunHandoff(input: {
   hasPauseHold: boolean;
   hasActiveRoutineContinuation: boolean;
   budgetBlocked: boolean;
-  idempotentWakeExists: boolean;
 }): SuccessfulRunHandoffDecision {
   const { run, issue, agent } = input;
 
@@ -417,43 +327,9 @@ export function decideSuccessfulRunHandoff(input: {
   if (input.hasOpenRecoveryIssue) return { kind: "skip", reason: "open recovery issue owns the ambiguity" };
   if (input.hasPauseHold) return { kind: "skip", reason: "issue is under an active pause hold" };
   if (input.budgetBlocked) return { kind: "skip", reason: "budget hard stop blocks corrective wake" };
-  if (input.idempotentWakeExists) {
-    return { kind: "skip", reason: "corrective handoff wake already exists for this source run" };
-  }
-
-  const instruction = buildSuccessfulRunHandoffInstruction({
-    issueIdentifier: issue.identifier,
-    sourceRunId: run.id,
-  });
-  const payload = withRecoveryModelProfileHint({
-    issueId: issue.id,
-    taskId: issue.id,
-    sourceIssueId: issue.id,
-    sourceRunId: run.id,
-    handoffRequired: true,
-    handoffReason: SUCCESSFUL_RUN_MISSING_STATE_REASON,
-    missingDisposition: "clear_next_step",
-    validDispositionOptions: [...SUCCESSFUL_RUN_HANDOFF_OPTIONS],
-    detectedProgressSummary: input.detectedProgressSummary,
-    handoffAttempt: 1,
-    maxHandoffAttempts: DEFAULT_MAX_SUCCESSFUL_RUN_HANDOFF_ATTEMPTS,
-    ...(input.taskKey ? { taskKey: input.taskKey } : {}),
-    instruction,
-  }, "status_only");
 
   return {
-    kind: "enqueue",
-    targetAgentId: run.agentId,
-    idempotencyKey: buildFinishSuccessfulRunHandoffIdempotencyKey({
-      issueId: issue.id,
-      sourceRunId: run.id,
-    }),
-    payload,
-    instruction,
-    contextSnapshot: withRecoveryModelProfileHint({
-      ...payload,
-      wakeReason: FINISH_SUCCESSFUL_RUN_HANDOFF_REASON,
-      livenessState: input.livenessState,
-    }, "status_only"),
+    kind: "require_user_disposition",
+    missingDisposition: "clear_next_step",
   };
 }

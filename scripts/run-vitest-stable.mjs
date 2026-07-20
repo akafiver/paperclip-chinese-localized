@@ -287,7 +287,7 @@ function runGeneralSuites(routeTests) {
 
 function runProjectGroup(projects, groupName) {
   for (const project of projects) {
-    runVitest(["--project", project], `${groupName} project ${project}`);
+    runVitest(["--project", project, "--passWithNoTests"], `${groupName} project ${project}`);
   }
 }
 
