@@ -672,8 +672,8 @@ export function CaseDetail() {
 
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList variant="line" className="w-full justify-start gap-1">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="properties">Properties</TabsTrigger>
+          <TabsTrigger value="overview">{t("ui.caseDetail.overview")}</TabsTrigger>
+          <TabsTrigger value="properties">{t("ui.caseDetail.propertiesTab")}</TabsTrigger>
           <TabsTrigger value="activity">
             Activity{events.length > 0 && <span className="ml-1 text-muted-foreground">{events.length}</span>}
           </TabsTrigger>

@@ -281,6 +281,7 @@ function CaseTrailingColumns({
   treeCollapsed?: boolean;
   onTreeToggle?: (caseId: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <span className="grid min-w-0 flex-1 items-center gap-2" style={{ gridTemplateColumns: caseTrailingGridTemplate(columns) }}>
       {columns.map((column) => {
@@ -289,7 +290,7 @@ function CaseTrailingColumns({
             <CaseCopyableToken
               key={column}
               value={row.identifier}
-              label="case ID"
+              label={t("ui.cases.caseId")}
               className="font-mono text-xs text-muted-foreground"
               containerClassName="shrink-0"
               stopPropagation
@@ -301,12 +302,12 @@ function CaseTrailingColumns({
             <CaseCopyableToken
               key={column}
               value={row.key}
-              label="case key"
+              label={t("ui.cases.caseKey")}
               className="font-mono text-xs text-muted-foreground"
               stopPropagation
             />
           ) : (
-            <span key={column} className="min-w-0 truncate text-xs text-muted-foreground">None</span>
+            <span key={column} className="min-w-0 truncate text-xs text-muted-foreground">{t("ui.cases.none")}</span>
           );
         }
         if (column === "title") {
@@ -1190,8 +1191,8 @@ export function Cases() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold">Cases</h1>
-          <Badge variant="secondary">Experimental</Badge>
+          <h1 className="text-xl font-bold">{t("ui.cases.pageTitle")}</h1>
+          <Badge variant="secondary">{t("ui.common.experimental")}</Badge>
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { History as HistoryIcon, RotateCcw, Search } from "lucide-react";
+import { useTranslation } from "@/i18n";
 import type {
   CompanySecret,
   EnvBinding,
@@ -76,6 +77,7 @@ export function RoutineHistoryTab({
     [secrets],
   );
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   const { pushToast } = useToastActions();
   const [selectedRevisionId, setSelectedRevisionId] = useState<string | null>(null);
   const [highlightedRevisionId, setHighlightedRevisionId] = useState<string | null>(null);
@@ -241,7 +243,7 @@ export function RoutineHistoryTab({
           <div className="space-y-2">
             <EmptyState
               icon={HistoryIcon}
-              message="No edits yet"
+              message={t("ui.routines.noEditsYet")}
             />
             <p className="text-center text-xs text-muted-foreground">
               Revision 1 is the only history this routine has. Saving an edit creates the first
@@ -711,59 +713,57 @@ function RestoreConfirmDialog({
   recreatedWebhookLabels: string[];
   envDiffCounts: EnvDiffCounts;
 }) {
+  const { t } = useTranslation();
   const newRevisionNumber = currentRevisionNumber + 1;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Restore revision {target.revisionNumber}?</DialogTitle>
+          <DialogTitle>{t("ui.routines.restoreRevision", { revision: target.revisionNumber })}</DialogTitle>
           <DialogDescription>
-            This creates a new revision {newRevisionNumber} with the same content as revision{" "}
-            {target.revisionNumber}. Revisions {target.revisionNumber}–{currentRevisionNumber} stay
-            in history and are not modified.
+            {t("ui.routines.restoreDescription", { revisionA: newRevisionNumber, revisionB: target.revisionNumber, revisionC: currentRevisionNumber })}
           </DialogDescription>
         </DialogHeader>
         <ul className="space-y-2 text-sm">
           <li className="flex items-start gap-2">
             <span className="mt-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            Routine field values, variables, and schedule cron will revert.
+            {t("ui.routines.restoreFieldRevert", { defaultValue: "Routine field values, variables, and schedule cron will revert." })}
           </li>
           {envDiffCounts.total > 0 && (
             <li className="flex items-start gap-2">
               <span className="mt-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              Routine secrets will revert: {formatEnvDiffCounts(envDiffCounts)}.
+              {t("ui.routines.secretsRevert", { count: formatEnvDiffCounts(envDiffCounts), defaultValue: `Routine secrets will revert: ${formatEnvDiffCounts(envDiffCounts)}.` })}
             </li>
           )}
           <li className="flex items-start gap-2">
             <span className="mt-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            Previous run history is preserved.
+            {t("ui.routines.runHistoryPreserved", { defaultValue: "Previous run history is preserved." })}
           </li>
           {recreatedWebhookLabels.map((label) => (
             <li key={label} className="flex items-start gap-2 text-amber-800 dark:text-amber-200">
               <span className="mt-1 inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />
-              The webhook trigger {label} will be recreated with a new URL and secret. Paperclip will
-              show the secret once after restore — copy it before closing.
+              {t("ui.routines.webhookRecreated", { label, defaultValue: `The webhook trigger ${label} will be recreated with a new URL and secret. Paperclip will show the secret once after restore — copy it before closing.` })}
             </li>
           ))}
         </ul>
         <div className="space-y-1.5">
           <Label htmlFor="restore-change-summary" className="text-xs">
-            Change summary (optional)
+            {t("ui.routines.changeSummary", { defaultValue: "Change summary (optional)" })}
           </Label>
           <Input
             id="restore-change-summary"
             value={changeSummary}
-            placeholder="Why are you restoring? Visible in history."
+            placeholder={t("ui.routines.restorePlaceholder", { defaultValue: "Why are you restoring? Visible in history." })}
             onChange={(event) => onChangeSummaryChange(event.target.value)}
           />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>
-            Cancel
+            {t("ui.common.cancel")}
           </Button>
           <Button onClick={onConfirm} disabled={pending}>
             <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-            {pending ? "Restoring…" : `Restore as revision ${newRevisionNumber}`}
+            {pending ? t("ui.common.restoring", { defaultValue: "Restoring…" }) : t("ui.routines.restoreAsRevision", { revision: newRevisionNumber, defaultValue: `Restore as revision ${newRevisionNumber}` })}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -792,6 +792,7 @@ function RoutineRevisionDiffModal({
   secrets: SecretLookup;
   onRestore: (revision: RoutineRevision) => void;
 }) {
+  const { t } = useTranslation();
   const [leftId, setLeftId] = useState<string>(initialOldRevisionId);
   const [rightId, setRightId] = useState<string>(initialNewRevisionId);
 
@@ -842,17 +843,17 @@ function RoutineRevisionDiffModal({
         <div className="overflow-auto flex-1 space-y-4">
           <section className="space-y-2">
             <p className="text-xs font-medium uppercase tracking-(--tracking-caps) text-muted-foreground">
-              Field changes
+              {t("ui.routines.fieldChanges")}
             </p>
             {fieldChanges.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No structural field changes.</p>
+              <p className="text-sm text-muted-foreground">{t("ui.routines.noFieldChanges", { defaultValue: "No structural field changes." })}</p>
             ) : (
               <table className="w-full text-sm border border-border rounded-md overflow-hidden">
                 <thead>
                   <tr className="text-xs uppercase tracking-wide bg-muted/30 text-muted-foreground">
-                    <th className="px-3 py-2 text-left">Field</th>
-                    <th className="px-3 py-2 text-left">Old value</th>
-                    <th className="px-3 py-2 text-left">New value</th>
+                    <th className="px-3 py-2 text-left">{t("ui.common.field")}</th>
+                    <th className="px-3 py-2 text-left">{t("ui.common.oldValue")}</th>
+                    <th className="px-3 py-2 text-left">{t("ui.common.newValue")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -934,11 +935,12 @@ function RevisionPicker({
 }
 
 function DiffTable({ rows }: { rows: DiffRow[] }) {
+  const { t } = useTranslation();
   if (rows.length === 0) {
-    return <p className="text-sm text-muted-foreground">No description on either revision.</p>;
+    return <p className="text-sm text-muted-foreground">{t("ui.routines.noDescription", { defaultValue: "No description on either revision." })}</p>;
   }
   if (rows.every((row) => row.kind === "context")) {
-    return <p className="text-sm text-muted-foreground">Descriptions are identical.</p>;
+    return <p className="text-sm text-muted-foreground">{t("ui.routines.identicalDescriptions", { defaultValue: "Descriptions are identical." })}</p>;
   }
   const lineClassesByKind: Record<DiffRow["kind"], string> = {
     context: "bg-transparent",
@@ -953,10 +955,10 @@ function DiffTable({ rows }: { rows: DiffRow[] }) {
   return (
     <div className="rounded-md border border-border text-xs font-mono leading-6 overflow-hidden">
       <div className="grid grid-cols-(--gtc-1) border-b border-border/60 bg-muted/30 px-3 py-2 text-(length:--text-micro) uppercase tracking-wide text-muted-foreground">
-        <span>Old</span>
-        <span>New</span>
+        <span>{t("ui.common.old")}</span>
+        <span>{t("ui.common.new")}</span>
         <span />
-        <span>Content</span>
+        <span>{t("ui.common.content")}</span>
       </div>
       {rows.map((row, index) => (
         <div

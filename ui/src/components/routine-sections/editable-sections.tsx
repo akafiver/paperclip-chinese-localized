@@ -391,6 +391,7 @@ function SummaryCard({
 
 export function TriggersSection() {
   const ctx = useRoutineDetail();
+  const { t } = useTranslation();
   const { routine, newTrigger, setNewTrigger, createTrigger, updateTrigger, deleteTrigger, rotateTrigger } = ctx;
   const [addOpen, setAddOpen] = useState(false);
   const [newScheduleEditorValid, setNewScheduleEditorValid] = useState(true);
@@ -412,8 +413,8 @@ export function TriggersSection() {
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-muted-foreground">
           {routine.triggers.length === 0
-            ? "No triggers yet"
-            : `${routine.triggers.length} trigger${routine.triggers.length === 1 ? "" : "s"}`}
+            ? t("ui.routines.noTriggersYet", { defaultValue: "No triggers yet" })
+            : `${routine.triggers.length} ${t("ui.routines.triggerCount", { count: routine.triggers.length, defaultValue: routine.triggers.length === 1 ? "trigger" : "triggers" })}`}
         </p>
         <Button
           size="sm"
@@ -424,12 +425,12 @@ export function TriggersSection() {
           {addOpen ? (
             <>
               <X className="mr-1.5 h-3.5 w-3.5" />
-              Cancel
+              {t("ui.common.cancel")}
             </>
           ) : (
             <>
               <Plus className="mr-1.5 h-3.5 w-3.5" />
-              New trigger
+              {t("ui.routines.newTrigger", { defaultValue: "New trigger" })}
             </>
           )}
         </Button>
@@ -438,10 +439,10 @@ export function TriggersSection() {
       {/* Add trigger form — expand-on-click drawer */}
       {addOpen ? (
       <div className="space-y-3 rounded-lg border border-border p-4">
-        <p className="text-sm font-medium">Add trigger</p>
+        <p className="text-sm font-medium">{t("ui.routines.addTrigger", { defaultValue: "Add trigger" })}</p>
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1.5">
-            <Label className="text-xs">Kind</Label>
+            <Label className="text-xs">{t("ui.routines.kind", { defaultValue: "Kind" })}</Label>
             <Select
               value={newTrigger.kind}
               onValueChange={(kind) => setNewTrigger((current) => ({ ...current, kind }))}
@@ -453,7 +454,7 @@ export function TriggersSection() {
                 {triggerKinds.map((kind) => (
                   <SelectItem key={kind} value={kind} disabled={kind === "webhook"}>
                     {kind}
-                    {kind === "webhook" ? " — COMING SOON" : ""}
+                    {kind === "webhook" ? ` — ${t("ui.common.comingSoon", { defaultValue: "COMING SOON" })}` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -461,7 +462,7 @@ export function TriggersSection() {
           </div>
           {newTrigger.kind === "schedule" && (
             <div className="space-y-1.5 md:col-span-2">
-              <Label className="text-xs">Schedule</Label>
+              <Label className="text-xs">{t("ui.routines.schedule", { defaultValue: "Schedule" })}</Label>
               <ScheduleEditor
                 value={newTrigger.cronExpression}
                 onChange={(cronExpression) =>
@@ -474,7 +475,7 @@ export function TriggersSection() {
           {newTrigger.kind === "webhook" && (
             <>
               <div className="space-y-1.5">
-                <Label className="text-xs">Signing mode</Label>
+                <Label className="text-xs">{t("ui.routines.signingMode", { defaultValue: "Signing mode" })}</Label>
                 <Select
                   value={newTrigger.signingMode}
                   onValueChange={(signingMode) =>
@@ -498,7 +499,7 @@ export function TriggersSection() {
               </div>
               {!SIGNING_MODES_WITHOUT_REPLAY_WINDOW.has(newTrigger.signingMode) && (
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Replay window (seconds)</Label>
+                  <Label className="text-xs">{t("ui.routines.replayWindowSec", { defaultValue: "Replay window (seconds)" })}</Label>
                   <Input
                     value={newTrigger.replayWindowSec}
                     onChange={(event) =>
@@ -512,7 +513,7 @@ export function TriggersSection() {
         </div>
         <div className="flex items-center justify-end gap-2">
           <Button size="sm" variant="ghost" onClick={() => setAddOpen(false)}>
-            Cancel
+            {t("ui.common.cancel")}
           </Button>
           <Button
             size="sm"
@@ -526,7 +527,7 @@ export function TriggersSection() {
             }
             disabled={addDisabled}
           >
-            {createTrigger.isPending ? "Adding..." : "Add trigger"}
+            {createTrigger.isPending ? t("ui.common.adding", { defaultValue: "Adding..." }) : t("ui.routines.addTrigger", { defaultValue: "Add trigger" })}
           </Button>
         </div>
       </div>
@@ -536,8 +537,8 @@ export function TriggersSection() {
       {routine.triggers.length === 0 ? (
         <EmptyState
           icon={Clock3}
-          message="No triggers yet."
-          action="Add a schedule"
+          message={t("ui.routines.noTriggersYet", { defaultValue: "No triggers yet." })}
+          action={t("ui.routines.addSchedule", { defaultValue: "Add a schedule" })}
           onAction={() => setAddOpen(true)}
         />
       ) : (
@@ -559,6 +560,7 @@ export function TriggersSection() {
 
 export function VariablesSection() {
   const ctx = useRoutineDetail();
+  const { t } = useTranslation();
   const { editDraft, setEditDraft, navigateToSection } = ctx;
   const hasVariables = editDraft.variables.length > 0;
 
@@ -566,13 +568,11 @@ export function VariablesSection() {
     <div className="space-y-4">
       <div className="flex items-center gap-3 rounded-md border border-border bg-muted/20 px-4 py-3 text-xs">
         <span className="flex-1 text-muted-foreground">
-          Variables are auto-detected from <code className="font-mono">{"{{placeholders}}"}</code> in
-          the title &amp; instructions. The variable name is read-only — rename by editing the
-          placeholder.
+          {t("ui.routines.variablesDescription", { defaultValue: "Variables are auto-detected from {{placeholders}} in the title & instructions. The variable name is read-only — rename by editing the placeholder.", placeholders: "{{placeholders}}" })}
         </span>
         <Button variant="secondary" size="sm" onClick={() => navigateToSection("overview")}>
           <Edit3 className="mr-1.5 h-3.5 w-3.5" />
-          Edit instructions
+          {t("ui.routines.editInstructions", { defaultValue: "Edit instructions" })}
         </Button>
       </div>
 
@@ -586,8 +586,8 @@ export function VariablesSection() {
       ) : (
         <EmptyState
           icon={Braces}
-          message="No variables yet. Add a {{placeholder}} in the title or instructions to create one."
-          action="Edit instructions"
+          message={t("ui.routines.noVariables", { defaultValue: "No variables yet. Add a {{placeholder}} in the title or instructions to create one." })}
+          action={t("ui.routines.editInstructions", { defaultValue: "Edit instructions" })}
           onAction={() => navigateToSection("overview")}
         />
       )}
@@ -596,6 +596,7 @@ export function VariablesSection() {
 }
 
 export function SecretsSection() {
+  const { t } = useTranslation();
   const ctx = useRoutineDetail();
   const { editDraft, setEditDraft, availableSecrets, createSecret, secretMessage, copySecretValue } = ctx;
 
@@ -617,8 +618,7 @@ export function SecretsSection() {
   return (
     <div className="space-y-4">
       <div className="rounded-md border border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
-        Routine secrets apply to every task this routine creates. They override matching keys in
-        project and agent env. <span className="font-mono">PAPERCLIP_*</span> names are reserved.
+        {t("ui.routines.secretsDescription", { defaultValue: "Routine secrets apply to every task this routine creates. They override matching keys in project and agent env. PAPERCLIP_* names are reserved." })}
       </div>
 
       {secretMessage ? (
@@ -626,7 +626,7 @@ export function SecretsSection() {
           <div>
             <p className="font-medium">{secretMessage.title}</p>
             <p className="text-xs text-muted-foreground">
-              Save this now. Paperclip will not show the secret value again.
+              {t("ui.routines.saveSecretNow", { defaultValue: "Save this now. Paperclip will not show the secret value again." })}
             </p>
           </div>
           <div className="space-y-3">
@@ -634,14 +634,14 @@ export function SecretsSection() {
               <div key={`${entry.webhookUrl}-${index}`} className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Input value={entry.webhookUrl} readOnly className="flex-1" />
-                  <Button variant="outline" size="sm" onClick={() => copySecretValue("Webhook URL", entry.webhookUrl)}>
-                    URL
+                  <Button variant="outline" size="sm" onClick={() => copySecretValue(t("ui.routines.webhookUrl", { defaultValue: "Webhook URL" }), entry.webhookUrl)}>
+                    {t("ui.routines.url", { defaultValue: "URL" })}
                   </Button>
                 </div>
                 <div className="flex items-center gap-2">
                   <Input value={entry.webhookSecret} readOnly className="flex-1" />
-                  <Button variant="outline" size="sm" onClick={() => copySecretValue("Webhook secret", entry.webhookSecret)}>
-                    Secret
+                  <Button variant="outline" size="sm" onClick={() => copySecretValue(t("ui.routines.webhookSecret", { defaultValue: "Webhook secret" }), entry.webhookSecret)}>
+                    {t("ui.routines.secret", { defaultValue: "Secret" })}
                   </Button>
                 </div>
               </div>
@@ -720,6 +720,7 @@ function NextFiresPreview({
   triggers: RoutineDetailType["triggers"];
   concurrencyPolicy: string;
 }) {
+  const { t } = useTranslation();
   const preview = useMemo(() => {
     const schedule = triggers
       .filter((trigger) => trigger.kind === "schedule" && trigger.enabled && trigger.cronExpression)
@@ -741,7 +742,7 @@ function NextFiresPreview({
   return (
     <div className="space-y-3">
       <p className="text-xs font-medium uppercase tracking-(--tracking-caps) text-muted-foreground">
-        Next 5 fires
+        {t("ui.routines.next5Fires", { defaultValue: "Next 5 fires" })}
       </p>
       {preview ? (
         <>
@@ -761,14 +762,15 @@ function NextFiresPreview({
             ))}
           </div>
           <p className="text-(length:--text-micro) text-muted-foreground/60">
-            Preview assumes the previous run is still in flight when the next fires. Times shown in{" "}
-            {preview.timeZone}.
+            {t("ui.routines.previewAssumesRunInFlight", {
+              defaultValue: "Preview assumes the previous run is still in flight when the next fires. Times shown in {{timeZone}}.",
+              timeZone: preview.timeZone,
+            })}
           </p>
         </>
       ) : (
         <p className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
-          No enabled schedule trigger to preview. Add a schedule in Triggers to see how this policy
-          treats upcoming fires.
+          {t("ui.routines.noScheduleToPreview", { defaultValue: "No enabled schedule trigger to preview. Add a schedule in Triggers to see how this policy treats upcoming fires." })}
         </p>
       )}
     </div>

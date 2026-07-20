@@ -509,21 +509,21 @@ export function StepName({
 
       <div className="space-y-3">
         <div className="space-y-1.5">
-          <Label htmlFor="profile-name">Name</Label>
+          <Label htmlFor="profile-name">{t("ui.toolsProfiles.profileName", { defaultValue: "Name" })}</Label>
           <Input
             id="profile-name"
             value={name}
             onChange={(e) => onName(e.target.value)}
-            placeholder="e.g. Everyday work"
+            placeholder={t("ui.toolsProfiles.profileNamePlaceholder", { defaultValue: "e.g. Everyday work" })}
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="profile-description">Description (optional)</Label>
+          <Label htmlFor="profile-description">{t("ui.toolsProfiles.editDescription", { defaultValue: "Description (optional)" })}</Label>
           <Textarea
             id="profile-description"
             value={description}
             onChange={(e) => onDescription(e.target.value)}
-            placeholder="What is this profile for?"
+            placeholder={t("ui.toolsProfiles.descriptionPlaceholder", { defaultValue: "What is this profile for?" })}
             rows={2}
           />
         </div>
@@ -532,11 +532,11 @@ export function StepName({
       <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
         <CollapsibleTrigger className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
           <ChevronDown className={cn("h-4 w-4 transition-transform", advancedOpen && "rotate-180")} />
-          Advanced
+          {t("ui.toolsProfiles.advanced", { defaultValue: "Advanced" })}
         </CollapsibleTrigger>
         <CollapsibleContent className="pt-2">
           <div className="space-y-1.5">
-            <Label htmlFor="profile-key">Identifier</Label>
+            <Label htmlFor="profile-key">{t("ui.toolsProfiles.identifier", { defaultValue: "Identifier" })}</Label>
             <Input
               id="profile-key"
               value={profileKey}

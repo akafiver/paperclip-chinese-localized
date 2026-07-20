@@ -70,6 +70,7 @@ function vaultRef(secret: CompanySecret | undefined, version: number | "latest" 
 }
 
 export function CatalogDialog({ connection, onClose }: { connection: ToolConnection; onClose: () => void }) {
+  const { t } = useTranslation();
   const catalog = useQuery({
     queryKey: queryKeys.tools.catalog(connection.id),
     queryFn: () => toolsApi.listCatalog(connection.id),
@@ -78,7 +79,7 @@ export function CatalogDialog({ connection, onClose }: { connection: ToolConnect
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Tool catalog — {connection.name}</DialogTitle>
+          <DialogTitle>{t("ui.toolsConnections.toolCatalogTitle", { name: connection.name })}</DialogTitle>
         </DialogHeader>
         {catalog.isLoading ? (
           <LoadingState />
@@ -86,7 +87,7 @@ export function CatalogDialog({ connection, onClose }: { connection: ToolConnect
           <ErrorState error={catalog.error} onRetry={() => catalog.refetch()} />
         ) : (catalog.data?.catalog ?? []).length === 0 ? (
           <p className="py-6 text-sm text-muted-foreground">
-            No tools discovered yet. Use “Refresh catalog” to discover tools from this connection.
+            {t("ui.toolsConnections.noToolsDiscovered", { defaultValue: 'No tools discovered yet. Use "Refresh catalog" to discover tools from this connection.' })}
           </p>
         ) : (
           <ul className="max-h-(--sz-60vh) divide-y divide-border overflow-y-auto">
@@ -228,7 +229,7 @@ export function AddConnectionDialog({
     },
     onError: (err) =>
       pushToast({
-        title: "Could not create connection",
+        title: t("ui.toolsConnections.couldNotCreateConnection"),
         body: err instanceof ApiError ? err.message : String(err),
         tone: "error",
       }),
@@ -242,7 +243,7 @@ export function AddConnectionDialog({
     },
     onError: (err) =>
       pushToast({
-        title: "Probe failed",
+        title: t("ui.toolsConnections.probeFailed"),
         body: err instanceof ApiError ? err.message : String(err),
         tone: "error",
       }),
@@ -253,12 +254,12 @@ export function AddConnectionDialog({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.tools.connections(companyId) });
       qc.invalidateQueries({ queryKey: queryKeys.tools.applications(companyId) });
-      pushToast({ title: "Connection activated", tone: "success" });
+      pushToast({ title: t("ui.toolsConnections.connectionActivated"), tone: "success" });
       onClose();
     },
     onError: (err) =>
       pushToast({
-        title: "Activation failed",
+        title: t("ui.toolsConnections.activationFailed"),
         body: err instanceof ApiError ? err.message : String(err),
         tone: "error",
       }),
@@ -304,17 +305,17 @@ export function AddConnectionDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="existing">{t("ui.toolsConnections.useExistingApplication")}</SelectItem>
-                    <SelectItem value="new">Create new application</SelectItem>
+                    <SelectItem value="new">{t("ui.toolsConnections.createNewApplication")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               {applicationMode === "existing" ? (
                 <div className="space-y-1.5">
-                  <Label>Existing application</Label>
+                  <Label>{t("ui.toolsConnections.existingApplication")}</Label>
                   <Select value={applicationId} onValueChange={setApplicationId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select an application" />
+                      <SelectValue placeholder={t("ui.toolsConnections.selectApp")} />
                     </SelectTrigger>
                     <SelectContent>
                       {(apps.data?.applications ?? []).map((a) => (
@@ -327,7 +328,7 @@ export function AddConnectionDialog({
                 </div>
               ) : (
                 <div className="space-y-1.5">
-                  <Label htmlFor="app-name">New application name</Label>
+                  <Label htmlFor="app-name">{t("ui.toolsConnections.newApplicationName")}</Label>
                   <Input
                     id="app-name"
                     value={applicationName}
@@ -352,7 +353,7 @@ export function AddConnectionDialog({
               ) : null}
 
               <div className="space-y-1.5">
-                <Label htmlFor="conn-name">Connection name</Label>
+                <Label htmlFor="conn-name">{t("ui.toolsConnections.name")}</Label>
                 <Input
                   id="conn-name"
                   value={name}
@@ -363,7 +364,7 @@ export function AddConnectionDialog({
               </div>
 
               <div className="space-y-1.5">
-                <Label>Transport</Label>
+                <Label>{t("ui.toolsConnections.transport")}</Label>
                 <Select
                   value={transport}
                   onValueChange={(v) => setTransport(v as "remote_http" | "local_stdio")}
@@ -373,8 +374,8 @@ export function AddConnectionDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="remote_http">Remote HTTP (no local process)</SelectItem>
-                    <SelectItem value="local_stdio">Local stdio (approved template)</SelectItem>
+                    <SelectItem value="remote_http">{t("ui.toolsConnections.transport.remoteHttp")}</SelectItem>
+                    <SelectItem value="local_stdio">{t("ui.toolsConnections.transport.localStdio")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -392,10 +393,10 @@ export function AddConnectionDialog({
                 </div>
               ) : (
                 <div className="space-y-1.5">
-                  <Label>Command template</Label>
+                  <Label>{t("ui.toolsConnections.commandTemplate")}</Label>
                   <Select value={templateId} onValueChange={setTemplateId} disabled={locked}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select an approved template" />
+                      <SelectValue placeholder={t("ui.toolsConnections.selectTemplate", { defaultValue: "Select an approved template" })} />
                     </SelectTrigger>
                     <SelectContent>
                       {(templates.data?.templates ?? []).map((t) => (
@@ -413,7 +414,7 @@ export function AddConnectionDialog({
 
               {/* Vault-reference credential picker — no free-text token field. */}
               <div className="space-y-1.5">
-                <Label>Credential references</Label>
+                <Label>{t("ui.toolsConnections.credentialReferences")}</Label>
                 {creds.length > 0 ? (
                   <ul className="space-y-1">
                     {creds.map((c, i) => (
@@ -446,7 +447,7 @@ export function AddConnectionDialog({
                       <div className="flex-1 space-y-1">
                         <Select value={pendingSecretId} onValueChange={setPendingSecretId}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select a vault secret" />
+                            <SelectValue placeholder={t("ui.toolsConnections.selectVaultSecret")} />
                           </SelectTrigger>
                           <SelectContent>
                             {(secrets.data ?? []).map((s) => (
@@ -460,12 +461,12 @@ export function AddConnectionDialog({
                       <Input
                         value={pendingHeader}
                         onChange={(e) => setPendingHeader(e.target.value)}
-                        placeholder="Header"
+                        placeholder={t("ui.common.header")}
                         className="w-32"
-                        aria-label="Header name"
+                        aria-label={t("ui.common.header")}
                       />
                       <Button type="button" size="sm" variant="outline" onClick={addCred} disabled={!pendingSecretId}>
-                        Add
+                        {t("ui.common.add")}
                       </Button>
                     </div>
                     {pendingSecretId ? (
@@ -488,7 +489,7 @@ export function AddConnectionDialog({
           {locked ? (
             probe.isPending ? (
               <div className="rounded-md border border-border bg-muted/40 p-3">
-                <LoadingState label="Probing connection…" />
+                <LoadingState label={t("ui.toolsConnections.probingConnection", { defaultValue: "Probing connection..." })} />
               </div>
             ) : probe.isError ? (
               <ErrorState error={probe.error} onRetry={() => draft && probe.mutate(draft.id)} />
@@ -535,29 +536,29 @@ export function AddConnectionDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            {t("ui.common.cancel")}
           </Button>
           {step === 1 && !locked ? (
             <Button disabled={!appChoiceValid} onClick={() => setStep(2)}>
-              Continue
+              {t("ui.common.continue")}
             </Button>
           ) : !locked ? (
             <>
               <Button variant="outline" onClick={() => setStep(1)}>
-                Back
+                {t("ui.common.back")}
               </Button>
               <Button disabled={!canCreate} onClick={() => create.mutate()}>
-                {create.isPending ? "Creating draft…" : "Create & probe"}
+                {create.isPending ? t("ui.toolsConnections.creatingDraft", { defaultValue: "Creating draft…" }) : t("ui.toolsConnections.createAndProbe", { defaultValue: "Create & probe" })}
               </Button>
             </>
           ) : (
             <>
               <Button variant="outline" disabled={probe.isPending} onClick={() => draft && probe.mutate(draft.id)}>
                 <Stethoscope className="mr-1 h-3.5 w-3.5" />
-                {probe.isPending ? "Probing…" : "Re-probe"}
+                {probe.isPending ? t("ui.toolsConnections.probing", { defaultValue: "Probing…" }) : t("ui.toolsConnections.reprobe", { defaultValue: "Re-probe" })}
               </Button>
               <Button disabled={activate.isPending || probe.isPending} onClick={() => draft && activate.mutate(draft.id)}>
-                {activate.isPending ? "Activating…" : "Activate"}
+                {activate.isPending ? t("ui.toolsConnections.activating", { defaultValue: "Activating…" }) : t("ui.toolsConnections.activate", { defaultValue: "Activate" })}
               </Button>
             </>
           )}

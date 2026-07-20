@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Plug, Plus, Search, X } from "lucide-react";
 import { Link } from "@/lib/router";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -52,6 +53,7 @@ export interface WizardToolsStepProps {
 }
 
 export function WizardToolsStep(props: WizardToolsStepProps) {
+  const { t } = useTranslation();
   const { appGroups, catalogLoading, selections, onSelectionsChange } = props;
   const [search, setSearch] = useState("");
   const [capabilityFilter, setCapabilityFilter] = useState<ToolCapability | null>(null);
@@ -89,7 +91,7 @@ export function WizardToolsStep(props: WizardToolsStepProps) {
           </p>
         </div>
         <Button asChild variant="outline">
-          <Link to="/apps/browse">Browse app connections</Link>
+          <Link to="/apps/browse">{t("ui.appsBrowse.browse")}</Link>
         </Button>
       </div>
     );
@@ -327,6 +329,7 @@ function AdvancedRules({
   rules: AdvancedRule[];
   onChange: (next: AdvancedRule[]) => void;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<AdvancedRuleKind>("tool_name");
   const [value, setValue] = useState("");
@@ -385,8 +388,8 @@ function AdvancedRules({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="include">Allow</SelectItem>
-              <SelectItem value="exclude">Block</SelectItem>
+              <SelectItem value="include">{t("ui.toolsProfiles.effect.include")}</SelectItem>
+              <SelectItem value="exclude">{t("ui.toolsProfiles.effect.exclude")}</SelectItem>
             </SelectContent>
           </Select>
           <Select value={kind} onValueChange={(v) => setKind(v as AdvancedRuleKind)}>
@@ -407,9 +410,9 @@ function AdvancedRules({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="read">Read-only</SelectItem>
-                <SelectItem value="write">Makes changes</SelectItem>
-                <SelectItem value="destructive">Destructive</SelectItem>
+                <SelectItem value="read">{t("ui.toolsProfiles.risk.read")}</SelectItem>
+                <SelectItem value="write">{t("ui.toolsProfiles.risk.write")}</SelectItem>
+                <SelectItem value="destructive">{t("ui.toolsProfiles.risk.destructive")}</SelectItem>
               </SelectContent>
             </Select>
           ) : (

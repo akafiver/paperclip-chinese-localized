@@ -405,6 +405,7 @@ function PolicySimulator({
   onEditPolicy: (policy: ToolPolicy) => void;
 }) {
   const { pushToast } = useToast();
+  const { t } = useTranslation();
   const [agentId, setAgentId] = useState<string>("");
   const [toolName, setToolName] = useState("");
   const [result, setResult] = useState<ToolAccessDecision | null>(null);
@@ -419,7 +420,7 @@ function PolicySimulator({
     onError: (err) => {
       setResult(null);
       pushToast({
-        title: "Rule test failed",
+        title: t("ui.toolsPolicies.ruleTestFailed"),
         body: err instanceof ApiError ? err.message : String(err),
         tone: "error",
       });
@@ -441,17 +442,17 @@ function PolicySimulator({
         <SheetHeader className="border-b border-border">
           <SheetTitle className="flex items-center gap-2 text-base">
             <FlaskConical className="h-4 w-4" />
-            Test a rule
+            {t("ui.toolsPolicies.testRule", { defaultValue: "Test a rule" })}
           </SheetTitle>
-          <SheetDescription>Pick an agent and an action to see what Paperclip would do.</SheetDescription>
+          <SheetDescription>{t("ui.toolsPolicies.testRuleDescription", { defaultValue: "Pick an agent and an action to see what Paperclip would do." })}</SheetDescription>
         </SheetHeader>
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>Agent</Label>
+              <Label>{t("ui.common.agent")}</Label>
               <Select value={agentId} onValueChange={setAgentId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select an agent" />
+                  <SelectValue placeholder={t("ui.toolsPolicies.selectAnAgent")} />
                 </SelectTrigger>
                 <SelectContent>
                   {agents.map((a) => (
@@ -463,7 +464,7 @@ function PolicySimulator({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="test-action">Action</Label>
+              <Label htmlFor="test-action">{t("ui.tools.testAction")}</Label>
               <Input
                 id="test-action"
                 value={toolName}
@@ -473,7 +474,7 @@ function PolicySimulator({
             </div>
           </div>
           <Button size="sm" disabled={!agentId || !toolName.trim() || test.isPending} onClick={() => test.mutate()}>
-            {test.isPending ? "Checking..." : "Check rule"}
+            {test.isPending ? t("ui.toolsPolicies.checking") : t("ui.toolsPolicies.checkRule")}
           </Button>
 
           {result ? (
@@ -493,7 +494,7 @@ function PolicySimulator({
                 )}
               </div>
               <details className="text-xs text-muted-foreground">
-                <summary className="cursor-pointer text-foreground">Details</summary>
+                <summary className="cursor-pointer text-foreground">{t("ui.common.details")}</summary>
                 <div className="mt-2 space-y-1 font-mono">
                   <div>reason: {result.reasonCode}</div>
                   <div>matched rule ids: {result.matchedPolicyIds.length ? result.matchedPolicyIds.join(", ") : "none"}</div>
@@ -504,7 +505,7 @@ function PolicySimulator({
           ) : null}
         </div>
         <SheetFooter className="border-t border-border">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("ui.common.close")}</Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>
@@ -893,9 +894,9 @@ export function PoliciesTab({ companyId }: { companyId: string }) {
     onSuccess: () => {
       invalidatePolicies();
       setForm(null);
-      pushToast({ title: "Rule created", tone: "success" });
+      pushToast({ title: t("ui.policies.ruleCreated"), tone: "success" });
     },
-    onError: (err) => pushToast({ title: "Could not save rule", body: err instanceof ApiError ? err.message : String(err), tone: "error" }),
+    onError: (err) => pushToast({ title: t("ui.policies.couldNotSaveRule"), body: err instanceof ApiError ? err.message : String(err), tone: "error" }),
   });
   const updatePolicy = useMutation({
     mutationFn: (input: { policyId: string; body: Partial<ReturnType<typeof buildPolicyPayload>> }) =>
@@ -903,43 +904,43 @@ export function PoliciesTab({ companyId }: { companyId: string }) {
     onSuccess: () => {
       invalidatePolicies();
       setForm(null);
-      pushToast({ title: "Rule updated", tone: "success" });
+      pushToast({ title: t("ui.policies.ruleUpdated"), tone: "success" });
     },
-    onError: (err) => pushToast({ title: "Could not save rule", body: err instanceof ApiError ? err.message : String(err), tone: "error" }),
+    onError: (err) => pushToast({ title: t("ui.policies.couldNotSaveRule"), body: err instanceof ApiError ? err.message : String(err), tone: "error" }),
   });
   const reorder = useMutation({
     mutationFn: (policyIds: string[]) => toolsApi.reorderPolicies(companyId, { policyIds }),
     onSuccess: () => {
       invalidatePolicies();
-      pushToast({ title: "Rules reordered", tone: "success" });
+      pushToast({ title: t("ui.policies.rulesReordered"), tone: "success" });
     },
-    onError: (err) => pushToast({ title: "Could not reorder rules", body: err instanceof ApiError ? err.message : String(err), tone: "error" }),
+    onError: (err) => pushToast({ title: t("ui.policies.couldNotReorderRules"), body: err instanceof ApiError ? err.message : String(err), tone: "error" }),
   });
   const duplicate = useMutation({
     mutationFn: (policy: ToolPolicy) => toolsApi.duplicatePolicy(companyId, policy.id),
     onSuccess: () => {
       invalidatePolicies();
-      pushToast({ title: "Rule duplicated", body: "The copy is off until you turn it on.", tone: "success" });
+      pushToast({ title: t("ui.policies.ruleDuplicated"), body: t("ui.policies.copyIsOff"), tone: "success" });
     },
-    onError: (err) => pushToast({ title: "Duplicate failed", body: err instanceof ApiError ? err.message : String(err), tone: "error" }),
+    onError: (err) => pushToast({ title: t("ui.policies.duplicateFailed"), body: err instanceof ApiError ? err.message : String(err), tone: "error" }),
   });
   const deletePolicy = useMutation({
     mutationFn: (policyId: string) => toolsApi.deletePolicy(companyId, policyId),
     onSuccess: () => {
       invalidatePolicies();
       setConfirm(null);
-      pushToast({ title: "Rule deleted", tone: "success" });
+      pushToast({ title: t("ui.policies.ruleDeleted"), tone: "success" });
     },
-    onError: (err) => pushToast({ title: "Delete failed", body: err instanceof ApiError ? err.message : String(err), tone: "error" }),
+    onError: (err) => pushToast({ title: t("ui.policies.deleteFailed"), body: err instanceof ApiError ? err.message : String(err), tone: "error" }),
   });
   const revoke = useMutation({
     mutationFn: (policyId: string) => toolsApi.revokeTrustRule(companyId, policyId),
     onSuccess: () => {
       invalidateTrustRules();
       setConfirm(null);
-      pushToast({ title: "Remembered approval forgotten", tone: "success" });
+      pushToast({ title: t("ui.policies.rememberedApprovalForgotten"), tone: "success" });
     },
-    onError: (err) => pushToast({ title: "Forget failed", body: err instanceof ApiError ? err.message : String(err), tone: "error" }),
+    onError: (err) => pushToast({ title: t("ui.policies.forgetFailed"), body: err instanceof ApiError ? err.message : String(err), tone: "error" }),
   });
 
   function submitPolicy() {
@@ -950,7 +951,7 @@ export function PoliciesTab({ companyId }: { companyId: string }) {
       if (form.id) updatePolicy.mutate({ policyId: form.id, body });
       else createPolicy.mutate(body);
     } catch (err) {
-      pushToast({ title: "Invalid rule", body: err instanceof Error ? err.message : String(err), tone: "error" });
+      pushToast({ title: t("ui.policies.invalidRule"), body: err instanceof Error ? err.message : String(err), tone: "error" });
     }
   }
 
@@ -1033,10 +1034,10 @@ export function PoliciesTab({ companyId }: { companyId: string }) {
                 <thead>
                   <tr className="border-b border-border text-left text-xs text-muted-foreground">
                     <th className="w-8 px-2 py-2.5 font-medium" />
-                    <th className="px-2 py-2.5 font-medium">Rule</th>
-                    <th className="px-2 py-2.5 font-medium">Outcome</th>
-                    <th className="px-2 py-2.5 text-right font-medium">Last 24h</th>
-                    <th className="px-2 py-2.5 text-center font-medium">On</th>
+                    <th className="px-2 py-2.5 font-medium">{t("ui.toolsPolicies.rule")}</th>
+                    <th className="px-2 py-2.5 font-medium">{t("ui.toolsPolicies.outcome")}</th>
+                    <th className="px-2 py-2.5 text-right font-medium">{t("ui.toolsPolicies.last24h")}</th>
+                    <th className="px-2 py-2.5 text-center font-medium">{t("ui.toolsPolicies.on")}</th>
                     <th className="w-10 px-2 py-2.5 text-right font-medium" />
                   </tr>
                 </thead>
@@ -1176,15 +1177,15 @@ export function PoliciesTab({ companyId }: { companyId: string }) {
         {confirm ? (
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{confirm.kind === "delete-rule" ? "Delete rule?" : "Forget remembered approval?"}</DialogTitle>
+              <DialogTitle>{confirm.kind === "delete-rule" ? t("ui.common.deleteRule") : t("ui.common.forgetRememberedApproval")}</DialogTitle>
               <DialogDescription>
                 {confirm.kind === "delete-rule"
-                  ? `This rule matched ${confirm.hits} ${confirm.hits === 1 ? "time" : "times"} in the last 24 hours. Deleting it may change what agents can do.`
-                  : "Paperclip will ask again the next time this action needs approval."}
+                  ? t("ui.common.deleteRuleDesc", { hits: confirm.hits })
+                  : t("ui.common.forgetRememberedApprovalDesc")}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setConfirm(null)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setConfirm(null)}>{t("ui.common.cancel")}</Button>
               <Button
                 variant="destructive"
                 disabled={deletePolicy.isPending || revoke.isPending}
@@ -1193,7 +1194,7 @@ export function PoliciesTab({ companyId }: { companyId: string }) {
                   else revoke.mutate(confirm.policy.id);
                 }}
               >
-                {confirm.kind === "delete-rule" ? "Delete" : "Forget"}
+                {confirm.kind === "delete-rule" ? t("ui.common.delete") : t("ui.common.forget")}
               </Button>
             </DialogFooter>
           </DialogContent>
