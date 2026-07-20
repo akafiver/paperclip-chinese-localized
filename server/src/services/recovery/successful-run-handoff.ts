@@ -437,9 +437,6 @@ export function decideSuccessfulRunHandoff(input: {
     detectedProgressSummary: input.detectedProgressSummary,
     handoffAttempt: 1,
     maxHandoffAttempts: DEFAULT_MAX_SUCCESSFUL_RUN_HANDOFF_ATTEMPTS,
-    resumeIntent: true,
-    followUpRequested: true,
-    resumeFromRunId: run.id,
     ...(input.taskKey ? { taskKey: input.taskKey } : {}),
     instruction,
   }, "status_only");

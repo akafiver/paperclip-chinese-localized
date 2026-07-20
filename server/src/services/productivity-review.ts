@@ -202,6 +202,12 @@ function isSoftStopTrigger(trigger: ProductivityReviewTrigger) {
   return trigger === "no_comment_streak" || trigger === "high_churn";
 }
 
+export function shouldCreateProductivityReviewForEvidence(input: {
+  activeRunCount: number;
+}) {
+  return input.activeRunCount <= 0;
+}
+
 function formatTrigger(trigger: ProductivityReviewTrigger) {
   if (trigger === "no_comment_streak") return "No-comment streak";
   if (trigger === "high_churn") return "High churn";
@@ -884,6 +890,10 @@ export function productivityReviewService(db: Db, deps?: { enqueueWakeup?: Enque
       }
       const evidence = await collectEvidence(candidate, sourceAgent, thresholds, now);
       if (!evidence) {
+        result.skipped += 1;
+        continue;
+      }
+      if (!shouldCreateProductivityReviewForEvidence(evidence)) {
         result.skipped += 1;
         continue;
       }
