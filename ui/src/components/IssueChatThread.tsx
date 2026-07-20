@@ -647,6 +647,26 @@ function fallbackTextParts(message: ThreadMessage) {
   return contentLines;
 }
 
+function issueChatTimelineAuthorLabel(message: ThreadMessage) {
+  const custom = message.metadata?.custom as Record<string, unknown> | undefined;
+  if (typeof custom?.["actorName"] === "string") {
+    if (custom["actorName"] === "You") return translate("ui.common.you");
+    if (custom["actorName"] === "System") return translate("ui.common.system");
+    return custom["actorName"];
+  }
+  if (typeof custom?.["authorName"] === "string") return custom["authorName"];
+  if (typeof custom?.["runAgentName"] === "string") return custom["runAgentName"];
+  if (message.role === "assistant") return translate("ui.common.agent");
+  if (message.role === "user") return translate("ui.common.you");
+  return translate("ui.common.system");
+}
+
+function issueChatTimelineTone(message: ThreadMessage): "user" | "assistant" | "system" {
+  if (message.role === "user") return "user";
+  if (message.role === "assistant") return "assistant";
+  return "system";
+}
+
 function IssueChatFallbackThread({
   messages,
   emptyMessage,
@@ -1424,9 +1444,11 @@ const IssueChatAssistantParts = memo(function IssueChatAssistantParts({
 function IssueChatUserMessage({
   message,
   isInterruptingQueuedRun,
+  timelineLayout = false,
 }: {
   message: ThreadMessage;
   isInterruptingQueuedRun: boolean;
+  timelineLayout?: boolean;
 }) {
   const {
     onInterruptQueued,
@@ -1478,22 +1500,37 @@ function IssueChatUserMessage({
     void onDeleteComment?.(commentId);
   };
   const messageBody = (
-    <div className={cn("flex min-w-0 max-w-(--pct-85) flex-col", isCurrentUser && "items-end")}>
-      <div className={cn("mb-1 flex items-center gap-2 px-1", isCurrentUser ? "justify-end" : "justify-start")}>
-        <span className="text-sm font-medium text-foreground">{resolvedAuthorName}</span>
-        <SourceTrustBadge sourceTrust={sourceTrust} artifactLabel="comment" />
-        {followUpRequested ? (
-          <Badge variant="outline" className="text-(length:--text-nano) uppercase tracking-(--tracking-eyebrow)">
-            Follow-up
-          </Badge>
-        ) : null}
-      </div>
+    <div className={cn(
+      "flex min-w-0 flex-col",
+      timelineLayout ? "w-full max-w-full items-start" : "max-w-(--pct-85)",
+      isCurrentUser && !timelineLayout && "items-end",
+    )}>
+      {!timelineLayout ? (
+        <div className={cn("mb-1 flex items-center gap-2 px-1", isCurrentUser ? "justify-end" : "justify-start")}>
+          <span className="text-sm font-medium text-foreground">{resolvedAuthorName}</span>
+          <SourceTrustBadge sourceTrust={sourceTrust} artifactLabel="comment" />
+          {followUpRequested ? (
+            <Badge variant="outline" className="text-(length:--text-nano) uppercase tracking-(--tracking-eyebrow)">
+              Follow-up
+            </Badge>
+          ) : null}
+        </div>
+      ) : sourceTrust || followUpRequested ? (
+        <div className="mb-1 flex items-center gap-2 px-1">
+          <SourceTrustBadge sourceTrust={sourceTrust} artifactLabel="comment" />
+          {followUpRequested ? (
+            <Badge variant="outline" className="text-(length:--text-nano) uppercase tracking-(--tracking-eyebrow)">
+              Follow-up
+            </Badge>
+          ) : null}
+        </div>
+      ) : null}
       <div
         className={cn(
           "min-w-0 max-w-full overflow-hidden break-all rounded-2xl px-4 py-2.5",
           // Tail-hugging corner: flatten the bottom corner nearest the avatar so
           // the bubble points at it (bottom-right for the right-aligned human).
-          isCurrentUser ? "rounded-br-(--rad-4)" : "rounded-bl-(--rad-4)",
+          isCurrentUser && !timelineLayout ? "rounded-br-(--rad-4)" : "rounded-bl-(--rad-4)",
           queued
             ? "bg-amber-50/80 dark:bg-amber-500/10"
             : deleted
@@ -1551,22 +1588,24 @@ function IssueChatUserMessage({
         <div
           className={cn(
             "mt-1 flex items-center gap-1.5 px-1 opacity-0 transition-opacity group-hover:opacity-100",
-            isCurrentUser ? "justify-end" : "justify-start",
+            isCurrentUser && !timelineLayout ? "justify-end" : "justify-start",
           )}
         >
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <a
-                href={anchorId ? `#${anchorId}` : undefined}
-                className="text-(length:--text-micro) text-muted-foreground hover:text-foreground hover:underline"
-              >
-                {message.createdAt ? commentDateLabel(message.createdAt) : ""}
-              </a>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              {message.createdAt ? formatDateTime(message.createdAt) : ""}
-            </TooltipContent>
-          </Tooltip>
+          {!timelineLayout ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <a
+                  href={anchorId ? `#${anchorId}` : undefined}
+                  className="text-(length:--text-micro) text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  {message.createdAt ? commentDateLabel(message.createdAt) : ""}
+                </a>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                {message.createdAt ? formatDateTime(message.createdAt) : ""}
+              </TooltipContent>
+            </Tooltip>
+          ) : null}
           {!deleted ? (
             <button
               type="button"
@@ -1612,12 +1651,14 @@ function IssueChatUserMessage({
   return (
     <>
       <div id={anchorId}>
-        <div className={cn("group flex items-end gap-2", isCurrentUser && "justify-end")}>
-          {isCurrentUser ? (
+        <div className={cn("group flex items-end gap-2", isCurrentUser && !timelineLayout && "justify-end")}>
+          {isCurrentUser && !timelineLayout ? (
             <>
               {messageBody}
               {authorAvatar}
             </>
+          ) : timelineLayout ? (
+            messageBody
           ) : (
             <>
               {authorAvatar}
@@ -1653,11 +1694,13 @@ function IssueChatAssistantMessage({
   activeVote,
   isRunActive,
   isStoppingRun,
+  timelineLayout = false,
 }: {
   message: ThreadMessage;
   activeVote: FeedbackVoteValue | null;
   isRunActive: boolean;
   isStoppingRun: boolean;
+  timelineLayout?: boolean;
 }) {
   const {
     feedbackDataSharingPreference,
@@ -1780,19 +1823,21 @@ function IssueChatAssistantMessage({
           onVote={handleVote}
         />
       ) : null}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <a
-            href={anchorId ? `#${anchorId}` : undefined}
-            className="text-(length:--text-micro) text-muted-foreground hover:text-foreground hover:underline"
-          >
-            {message.createdAt ? commentDateLabel(message.createdAt) : ""}
-          </a>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-xs">
-          {message.createdAt ? formatDateTime(message.createdAt) : ""}
-        </TooltipContent>
-      </Tooltip>
+      {!timelineLayout ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <a
+              href={anchorId ? `#${anchorId}` : undefined}
+              className="text-(length:--text-micro) text-muted-foreground hover:text-foreground hover:underline"
+            >
+              {message.createdAt ? commentDateLabel(message.createdAt) : ""}
+            </a>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            {message.createdAt ? formatDateTime(message.createdAt) : ""}
+          </TooltipContent>
+        </Tooltip>
+      ) : null}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -1860,6 +1905,7 @@ function IssueChatAssistantMessage({
       <div id={anchorId}>
         <div className="group flex flex-col items-start py-1.5">
           {/* Icon + name together in a header ABOVE the bubble (PAP-95 rev 7). */}
+          {!timelineLayout ? (
           <div className="mb-1 flex items-center gap-1.5 px-1">
             <span className="flex size-5 shrink-0 items-center justify-center text-muted-foreground">
               {agentIcon ? (
@@ -1878,6 +1924,16 @@ function IssueChatAssistantMessage({
               </Badge>
             ) : null}
           </div>
+          ) : sourceTrust || followUpRequested ? (
+            <div className="mb-1 flex items-center gap-1.5 px-1">
+              <SourceTrustBadge sourceTrust={sourceTrust} artifactLabel="comment" />
+              {followUpRequested ? (
+                <Badge variant="outline" className="text-(length:--text-nano) uppercase tracking-(--tracking-eyebrow)">
+                  Follow-up
+                </Badge>
+              ) : null}
+            </div>
+          ) : null}
           {/* Canonical conference-room agent bubble (BoardChat.tsx:712). */}
           <div
             className={cn(
@@ -1917,7 +1973,7 @@ function IssueChatAssistantMessage({
   return (
     <div id={anchorId}>
       <div className="flex items-start gap-2.5 py-1.5">
-        {agentAvatar}
+        {!timelineLayout ? agentAvatar : null}
 
         <div className="min-w-0 flex-1">
           {isFoldable ? (
@@ -1930,7 +1986,7 @@ function IssueChatAssistantMessage({
               <SourceTrustBadge sourceTrust={sourceTrust} artifactLabel="comment" />
               <span className="text-xs text-muted-foreground/60">{chainOfThoughtLabel?.toLowerCase()}</span>
               <span className="ml-auto flex items-center gap-1.5">
-                {message.createdAt ? (
+                {message.createdAt && !timelineLayout ? (
                   <span className="text-(length:--text-micro) text-muted-foreground/50">
                     {commentDateLabel(message.createdAt)}
                   </span>
@@ -1940,7 +1996,7 @@ function IssueChatAssistantMessage({
             </button>
           ) : (
             <div className="mb-1.5 flex items-center gap-2">
-              <span className="text-sm font-medium text-foreground">{authorName}</span>
+              {!timelineLayout ? <span className="text-sm font-medium text-foreground">{authorName}</span> : null}
               <SourceTrustBadge sourceTrust={sourceTrust} artifactLabel="comment" />
               {followUpRequested ? (
                 <Badge variant="outline" className="text-(length:--text-nano) uppercase tracking-(--tracking-eyebrow)">
@@ -2625,9 +2681,11 @@ function StaleDispositionWarningRow({
 function SystemNoticeCommentRow({
   message,
   anchorId,
+  timelineLayout = false,
 }: {
   message: ThreadMessage;
   anchorId?: string;
+  timelineLayout?: boolean;
 }) {
   const { t } = useTranslation();
   const { onImageClick, agentMap, issueStatus, successfulRunHandoff } = useContext(IssueChatCtx);
@@ -2731,19 +2789,21 @@ function SystemNoticeCommentRow({
       <div className="py-1">
         <SystemNotice {...props} label={localizedNoticeLabel} />
         <div className="mt-1 flex items-center justify-end gap-1.5 px-1 opacity-0 transition-opacity group-hover:opacity-100">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <a
-                href={anchorId ? `#${anchorId}` : undefined}
-                className="text-(length:--text-micro) text-muted-foreground hover:text-foreground hover:underline"
-              >
-                {message.createdAt ? commentDateLabel(message.createdAt) : ""}
-              </a>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              {message.createdAt ? formatDateTime(message.createdAt) : ""}
-            </TooltipContent>
-          </Tooltip>
+          {!timelineLayout ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <a
+                  href={anchorId ? `#${anchorId}` : undefined}
+                  className="text-(length:--text-micro) text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  {message.createdAt ? commentDateLabel(message.createdAt) : ""}
+                </a>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                {message.createdAt ? formatDateTime(message.createdAt) : ""}
+              </TooltipContent>
+            </Tooltip>
+          ) : null}
           {anchorId ? (
             <button
               type="button"
@@ -2780,16 +2840,24 @@ function IssueChatMetadataRow({
   icon,
   children,
   testid = "issue-chat-metadata-row",
+  timelineLayout = false,
 }: {
   anchorId?: string;
   icon: ReactNode;
   children: ReactNode;
   testid?: string;
+  timelineLayout?: boolean;
 }) {
   return (
     <div id={anchorId} data-testid={testid}>
-      <div className="ml-3 flex items-start gap-2.5 border-l-2 border-border/50 py-0.5 pl-3">
-        <span className="mt-px flex size-(--sz-18px) shrink-0 items-center justify-center rounded-full border border-border/70 bg-muted/30 text-muted-foreground/60">
+      <div className={cn(
+        "flex items-start gap-2.5 py-0.5",
+        timelineLayout ? "pl-0" : "ml-3 border-l-2 border-border/50 pl-3",
+      )}>
+        <span className={cn(
+          "mt-px size-(--sz-18px) shrink-0 items-center justify-center rounded-full border border-border/70 bg-muted/30 text-muted-foreground/60",
+          timelineLayout ? "hidden" : "flex",
+        )}>
           {icon}
         </span>
         <div className="min-w-0 flex-1 space-y-1">{children}</div>
@@ -2798,7 +2866,13 @@ function IssueChatMetadataRow({
   );
 }
 
-function IssueChatSystemMessage({ message }: { message: ThreadMessage }) {
+function IssueChatSystemMessage({
+  message,
+  timelineLayout = false,
+}: {
+  message: ThreadMessage;
+  timelineLayout?: boolean;
+}) {
   const { t } = useTranslation();
   const {
     agentMap,
@@ -2840,6 +2914,7 @@ function IssueChatSystemMessage({ message }: { message: ThreadMessage }) {
       <SystemNoticeCommentRow
         message={message}
         anchorId={anchorId}
+        timelineLayout={timelineLayout}
       />
     );
   }
@@ -2896,7 +2971,7 @@ function IssueChatSystemMessage({ message }: { message: ThreadMessage }) {
     };
 
     return (
-      <IssueChatMetadataRow anchorId={anchorId} icon={rowIcon}>
+      <IssueChatMetadataRow anchorId={anchorId} icon={rowIcon} timelineLayout={timelineLayout}>
         <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-xs">
           <span className="font-medium text-foreground">{displayActorName}</span>
           <span className="text-muted-foreground">
@@ -2904,12 +2979,14 @@ function IssueChatSystemMessage({ message }: { message: ThreadMessage }) {
               ? t("ui.issueChat.timeline.requestedFollowUp")
               : t("ui.issueChat.timeline.updatedThisTask")}
           </span>
-          <a
-            href={anchorId ? `#${anchorId}` : undefined}
-            className="text-xs text-muted-foreground/70 transition-colors hover:text-foreground hover:underline"
-          >
-            {timeAgo(message.createdAt)}
-          </a>
+          {!timelineLayout ? (
+            <a
+              href={anchorId ? `#${anchorId}` : undefined}
+              className="text-xs text-muted-foreground/70 transition-colors hover:text-foreground hover:underline"
+            >
+              {timeAgo(message.createdAt)}
+            </a>
+          ) : null}
         </div>
 
         {statusChange ? (
@@ -2969,7 +3046,7 @@ function IssueChatSystemMessage({ message }: { message: ThreadMessage }) {
       : <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50" />;
 
     return (
-      <IssueChatMetadataRow anchorId={anchorId} icon={rowIcon}>
+      <IssueChatMetadataRow anchorId={anchorId} icon={rowIcon} timelineLayout={timelineLayout}>
         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs">
           <Link to={`/agents/${runAgentId}`} className="font-medium text-foreground transition-colors hover:underline">
             {displayedRunAgentName}
@@ -2985,12 +3062,14 @@ function IssueChatSystemMessage({ message }: { message: ThreadMessage }) {
             status={runStatus}
             operatorInterrupted={custom.runOperatorInterrupted === true}
           />
-          <a
-            href={anchorId ? `#${anchorId}` : undefined}
-            className="text-xs text-muted-foreground/70 transition-colors hover:text-foreground hover:underline"
-          >
-            {timeAgo(message.createdAt)}
-          </a>
+          {!timelineLayout ? (
+            <a
+              href={anchorId ? `#${anchorId}` : undefined}
+              className="text-xs text-muted-foreground/70 transition-colors hover:text-foreground hover:underline"
+            >
+              {timeAgo(message.createdAt)}
+            </a>
+          ) : null}
         </div>
       </IssueChatMetadataRow>
     );
@@ -3573,6 +3652,7 @@ const IssueChatMessageRow = memo(function IssueChatMessageRow({
       <IssueChatUserMessage
         message={message}
         isInterruptingQueuedRun={isInterruptingQueuedRun}
+        timelineLayout={timelineLayout}
       />
     )
     : message.role === "assistant"
@@ -3582,22 +3662,58 @@ const IssueChatMessageRow = memo(function IssueChatMessageRow({
           activeVote={activeVote}
           isRunActive={isRunActive}
           isStoppingRun={isStoppingRun}
+          timelineLayout={timelineLayout}
         />
       )
-      : <IssueChatSystemMessage message={message} />;
+      : <IssueChatSystemMessage message={message} timelineLayout={timelineLayout} />;
+
+  if (timelineLayout) {
+    const tone = issueChatTimelineTone(message);
+    const anchorId = issueChatMessageAnchorId(message) ?? undefined;
+    return (
+      <div
+        data-testid="issue-chat-message-row"
+        data-message-role={message.role}
+        data-message-kind={kind}
+        className="grid grid-cols-[6.75rem_1.5rem_minmax(0,1fr)] gap-x-3"
+      >
+        <a
+          href={anchorId ? `#${anchorId}` : undefined}
+          className="min-w-0 pt-3 text-right no-underline"
+          title={message.createdAt ? formatDateTime(message.createdAt) : undefined}
+        >
+          <div className="truncate text-xs font-medium text-foreground">
+            {issueChatTimelineAuthorLabel(message)}
+          </div>
+          {message.createdAt ? (
+            <div className="mt-0.5 truncate text-(length:--text-micro) text-muted-foreground">
+              {commentDateLabel(message.createdAt)}
+            </div>
+          ) : null}
+        </a>
+        <div className="relative flex justify-center">
+          <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border/70" />
+          <span
+            className={cn(
+              "relative mt-4 h-2.5 w-2.5 rounded-full border-2 border-background shadow-sm",
+              tone === "user" && "bg-primary",
+              tone === "assistant" && "bg-emerald-500",
+              tone === "system" && "bg-muted-foreground",
+            )}
+          />
+        </div>
+        <div className="min-w-0 py-1.5">
+          {renderedMessage}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
       data-testid="issue-chat-message-row"
       data-message-role={message.role}
       data-message-kind={kind}
-      className={cn(
-        timelineLayout
-          && "relative pl-5 before:absolute before:left-1.5 before:top-0 before:bottom-0 before:w-px before:bg-border/70 after:absolute after:left-[3px] after:top-4 after:h-2.5 after:w-2.5 after:rounded-full after:border-2 after:border-background",
-        timelineLayout && message.role === "user" && "after:bg-primary",
-        timelineLayout && message.role === "assistant" && "after:bg-emerald-500",
-        timelineLayout && message.role === "system" && "after:bg-muted-foreground",
-      )}
     >
       {renderedMessage}
     </div>
