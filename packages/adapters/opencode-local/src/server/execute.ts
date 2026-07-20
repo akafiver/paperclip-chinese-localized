@@ -26,6 +26,7 @@ import {
 import {
   asString,
   asNumber,
+  asBoolean,
   asStringArray,
   parseObject,
   buildPaperclipEnv,
@@ -46,6 +47,13 @@ import {
   resolvePaperclipDesiredSkillNames,
   resolveRequiredAdapterWorkspaceCwd,
 } from "@paperclipai/adapter-utils/server-utils";
+import {
+  parseLocalProcessFilesystemScope,
+  parseLocalProcessNetworkAllowlist,
+  parseLocalProcessNetworkScope,
+  parseLocalProcessSandboxExtraPaths,
+  type LocalProcessSandboxOptions,
+} from "@paperclipai/adapter-utils/local-process-sandbox";
 import {
   formatOpenCodeAdapterError,
   isOpenCodeUnknownSessionError,
@@ -85,6 +93,11 @@ function resolveOpenCodeBiller(env: Record<string, string>, provider: string | n
 
 const REMOTE_OPENCODE_MODELS_PROBE_DEFAULT_TIMEOUT_SEC = 20;
 const REMOTE_OPENCODE_MODELS_PROBE_SANDBOX_TIMEOUT_SEC = 120;
+
+function defaultOpenCodeFilesystemScope(config: Record<string, unknown>): "workspace" | null {
+  if (asBoolean(config.dangerouslyDisableFilesystemSandbox, false)) return null;
+  return parseLocalProcessFilesystemScope(config.filesystemScope ?? "workspace");
+}
 
 export function buildOpenCodeRunArgs(input: {
   cwd: string;
@@ -503,6 +516,37 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         });
       }
     }
+    const networkScope = parseLocalProcessNetworkScope(config.networkScope);
+    const filesystemScope = !executionTargetIsRemote
+      ? defaultOpenCodeFilesystemScope(config)
+      : null;
+    const localProcessSandbox: LocalProcessSandboxOptions | null =
+      (filesystemScope || networkScope) && !executionTargetIsRemote
+        ? {
+            workspaceDir: effectiveExecutionCwd,
+            filesystemScope,
+            managedPaths: [
+              ...(localRuntimeConfigHome ? [{ path: localRuntimeConfigHome, access: "rw" as const }] : []),
+            ],
+            extraPaths: parseLocalProcessSandboxExtraPaths(config.filesystemExtraPaths),
+            homeDir: filesystemScope ? (localRuntimeConfigHome || effectiveExecutionCwd) : null,
+            networkScope,
+            networkAllowlist: parseLocalProcessNetworkAllowlist(config.networkAllowlist),
+            command: asString(
+              config.filesystemSandboxCommand,
+              process.platform === "darwin" ? "sandbox-exec" : "bwrap",
+            ),
+          }
+        : null;
+    if (localProcessSandbox) {
+      const scopes = [filesystemScope ? "workspace filesystem" : null, networkScope ? `${networkScope} network` : null]
+        .filter(Boolean)
+        .join(" and ");
+      await onLog(
+        "stdout",
+        `[paperclip] Confining OpenCode with ${scopes} scope.\n`,
+      );
+    }
 
     const runtimeSessionParams = parseObject(runtime.sessionParams);
     const runtimeSessionId = asString(runtimeSessionParams.sessionId, runtime.sessionId ?? "");
@@ -643,6 +687,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         onRuntimeProgress: ctx.onRuntimeProgress,
         onLog,
         runLogTail: paperclipBridge?.runLogTail,
+        localProcessSandbox,
       });
       return {
         proc,

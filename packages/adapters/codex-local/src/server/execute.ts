@@ -23,6 +23,7 @@ import {
 import {
   asString,
   asNumber,
+  asBoolean,
   parseObject,
   buildPaperclipEnv,
   buildInvocationEnvForLogs,
@@ -95,6 +96,11 @@ const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const executeCodexAcp = createCodexAcpExecutor();
 const CODEX_ROLLOUT_NOISE_RE =
   /^\d{4}-\d{2}-\d{2}T[^\s]+\s+ERROR\s+codex_core::rollout::list:\s+state db missing rollout path for thread\s+[a-z0-9-]+$/i;
+
+function defaultCodexFilesystemScope(config: Record<string, unknown>): "workspace" | null {
+  if (asBoolean(config.dangerouslyDisableFilesystemSandbox, false)) return null;
+  return parseLocalProcessFilesystemScope(config.filesystemScope ?? "workspace");
+}
 
 function stripCodexRolloutNoise(text: string): string {
   const parts = text.split(/\r?\n/);
@@ -771,7 +777,9 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     );
     const billingType = resolveCodexBillingType(effectiveEnv);
     const networkScope = parseLocalProcessNetworkScope(config.networkScope);
-    const filesystemScope = parseLocalProcessFilesystemScope(config.filesystemScope);
+    const filesystemScope = !executionTargetIsRemote
+      ? defaultCodexFilesystemScope(config)
+      : null;
     const localProcessSandbox: LocalProcessSandboxOptions | null =
       (filesystemScope || networkScope) && !executionTargetIsRemote
         ? {
@@ -782,7 +790,10 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
             homeDir: filesystemScope ? effectiveCodexHome : null,
             networkScope,
             networkAllowlist: parseLocalProcessNetworkAllowlist(config.networkAllowlist),
-            command: asString(config.filesystemSandboxCommand, "bwrap"),
+            command: asString(
+              config.filesystemSandboxCommand,
+              process.platform === "darwin" ? "sandbox-exec" : "bwrap",
+            ),
           }
         : null;
     if (localProcessSandbox) {

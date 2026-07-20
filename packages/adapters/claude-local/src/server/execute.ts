@@ -89,6 +89,11 @@ import {
 const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const executeClaudeAcp = createClaudeAcpExecutor();
 
+function defaultClaudeFilesystemScope(config: Record<string, unknown>): "workspace" | null {
+  if (asBoolean(config.dangerouslyDisableFilesystemSandbox, false)) return null;
+  return parseLocalProcessFilesystemScope(config.filesystemScope ?? "workspace");
+}
+
 interface ClaudeExecutionInput {
   runId: string;
   agent: AdapterExecutionContext["agent"];
@@ -518,7 +523,9 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const localMcpConfigDir = path.dirname(localMcpConfigPath);
   const sharedClaudeConfigDir = resolveSharedClaudeConfigDir(process.env);
   const networkScope = parseLocalProcessNetworkScope(config.networkScope);
-  const filesystemScope = parseLocalProcessFilesystemScope(config.filesystemScope);
+  const filesystemScope = !executionTargetIsRemote
+    ? defaultClaudeFilesystemScope(config)
+    : null;
   const localProcessSandbox: LocalProcessSandboxOptions | null =
     (filesystemScope || networkScope) && !executionTargetIsRemote
       ? {
@@ -534,7 +541,10 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
           homeDir: filesystemScope ? path.dirname(sharedClaudeConfigDir) : null,
           networkScope,
           networkAllowlist: parseLocalProcessNetworkAllowlist(config.networkAllowlist),
-          command: asString(config.filesystemSandboxCommand, "bwrap"),
+          command: asString(
+            config.filesystemSandboxCommand,
+            process.platform === "darwin" ? "sandbox-exec" : "bwrap",
+          ),
         }
       : null;
   if (localProcessSandbox) {

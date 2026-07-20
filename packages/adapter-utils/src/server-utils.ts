@@ -3117,6 +3117,11 @@ export async function runChildProcess(
     for (const key of CLAUDE_CODE_NESTING_VARS) {
       delete rawMerged[key];
     }
+    for (const key of Object.keys(rawMerged)) {
+      if (key.startsWith("npm_")) delete rawMerged[key];
+    }
+    delete rawMerged.INIT_CWD;
+    delete rawMerged.OLDPWD;
 
     const mergedEnv = ensurePathInEnv(rawMerged);
     if (opts.localProcessSandbox?.homeDir) {
@@ -3129,6 +3134,7 @@ export async function runChildProcess(
     })
       .then((target) => {
         const childEnv = { ...mergedEnv, ...target.env };
+        childEnv.PWD = target.cwd ?? opts.cwd;
         for (const [key, value] of Object.entries(childEnv)) {
           if (value === undefined) delete childEnv[key];
         }

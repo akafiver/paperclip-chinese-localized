@@ -108,6 +108,105 @@ async function executableReadPaths(command: string): Promise<string[]> {
   return Array.from(paths);
 }
 
+function sandboxSchemeString(value: string): string {
+  return JSON.stringify(value);
+}
+
+async function buildDarwinSandboxSpawnTarget(input: {
+  executable: string;
+  args: string[];
+  cwd: string;
+  options: LocalProcessSandboxOptions;
+}): Promise<LocalProcessSandboxSpawnTarget> {
+  const filesystemScope = input.options.filesystemScope ?? null;
+  const networkScope = input.options.networkScope ?? null;
+  if (!filesystemScope && !networkScope) throw new Error("Local process sandbox requires a filesystem or network scope.");
+  if (networkScope === "allowlist") {
+    throw new Error('Local process networkScope="allowlist" is currently supported only on Linux.');
+  }
+
+  const workspaceDir = normalizeAbsolutePath(input.options.workspaceDir, "Sandbox workspaceDir");
+  const cwd = normalizeAbsolutePath(input.cwd, "Sandbox cwd");
+  if (filesystemScope === "workspace") {
+    const relativeCwd = path.relative(workspaceDir, cwd);
+    if (relativeCwd.startsWith("..") || path.isAbsolute(relativeCwd)) {
+      throw new Error(`Sandbox cwd "${cwd}" must be inside workspaceDir "${workspaceDir}".`);
+    }
+  }
+
+  const lines = [
+    "(version 1)",
+    "(allow default)",
+  ];
+
+  if (networkScope === "deny") {
+    lines.push("(deny network*)");
+  }
+
+  if (filesystemScope === "workspace") {
+    const tmpDir = path.join(workspaceDir, ".paperclip", "tmp");
+    await fs.mkdir(tmpDir, { recursive: true });
+    const deniedSourceRoots = await paperclipSourceRootsToDeny([process.cwd(), input.cwd, input.executable]);
+    for (const sourceRoot of deniedSourceRoots) {
+      const relativeWorkspace = path.relative(sourceRoot, workspaceDir);
+      if (!relativeWorkspace.startsWith("..") && !path.isAbsolute(relativeWorkspace)) continue;
+      const filter = `(subpath ${sandboxSchemeString(sourceRoot)})`;
+      lines.push(`(deny file-read* ${filter})`);
+      lines.push(`(deny file-write* ${filter})`);
+    }
+  }
+
+  const env: Record<string, string | undefined> = {};
+  if (networkScope === "deny") {
+    for (const key of PROXY_ENV_KEYS) env[key] = undefined;
+    env.NO_PROXY = "";
+    env.no_proxy = "";
+  }
+  if (filesystemScope === "workspace") {
+    env.TMPDIR = path.join(workspaceDir, ".paperclip", "tmp");
+  }
+
+  return {
+    command: input.options.command?.trim() || "sandbox-exec",
+    args: ["-p", `${lines.join("\n")}\n`, input.executable, ...input.args],
+    cwd,
+    env,
+  };
+}
+
+async function paperclipSourceRootsToDeny(candidates: string[]): Promise<string[]> {
+  const roots = new Set<string>();
+  for (const candidate of candidates) {
+    let current = path.resolve(candidate);
+    try {
+      const stat = await fs.stat(current);
+      if (!stat.isDirectory()) current = path.dirname(current);
+    } catch {
+      current = path.dirname(current);
+    }
+    while (true) {
+      try {
+        const packageJson = JSON.parse(await fs.readFile(path.join(current, "package.json"), "utf8")) as { name?: unknown };
+        if (
+          packageJson.name === "paperclip" &&
+          (await pathExists(path.join(current, "server"))) &&
+          (await pathExists(path.join(current, "packages"))) &&
+          (await pathExists(path.join(current, "ui")))
+        ) {
+          roots.add(current);
+          break;
+        }
+      } catch {
+        // keep walking upward
+      }
+      const parent = path.dirname(current);
+      if (parent === current) break;
+      current = parent;
+    }
+  }
+  return [...roots];
+}
+
 function parseNetworkAllowlistEntry(entry: string, index: number): NetworkAllowlistRule {
   const trimmed = entry.trim();
   if (!trimmed) throw new Error(`networkAllowlist[${index}] must not be empty.`);
@@ -259,8 +358,11 @@ export async function buildLocalProcessSandboxSpawnTarget(input: {
   cwd: string;
   options: LocalProcessSandboxOptions;
 }): Promise<LocalProcessSandboxSpawnTarget> {
+  if (process.platform === "darwin") {
+    return buildDarwinSandboxSpawnTarget(input);
+  }
   if (process.platform !== "linux") {
-    throw new Error("Local process filesystem and network scopes are currently supported only on Linux.");
+    throw new Error("Local process filesystem and network scopes are currently supported only on Linux and macOS.");
   }
   const filesystemScope = input.options.filesystemScope ?? null;
   const networkScope = input.options.networkScope ?? null;
