@@ -489,7 +489,9 @@ interface IssueChatThreadProps {
   composerHint?: string | null;
   onWorkModeChange?: (workMode: IssueWorkMode) => Promise<void> | void;
   showComposer?: boolean;
+  composerPlacement?: "top" | "bottom";
   showJumpToLatest?: boolean;
+  messageOrder?: "oldestFirst" | "newestFirst";
   autoScrollToLatestOnInitialLoad?: boolean;
   autoScrollToHashOnInitialLoad?: boolean;
   emptyMessage?: string;
@@ -4310,7 +4312,9 @@ export function IssueChatThread({
   composerDisabledReason = null,
   composerHint = null,
   showComposer = true,
+  composerPlacement = "bottom",
   showJumpToLatest,
+  messageOrder = "oldestFirst",
   autoScrollToLatestOnInitialLoad = false,
   autoScrollToHashOnInitialLoad = false,
   emptyMessage,
@@ -4503,6 +4507,13 @@ export function IssueChatThread({
     return map;
   }, [feedbackVotes]);
   const useVirtualizedThread = messages.length >= VIRTUALIZED_THREAD_ROW_THRESHOLD;
+  const displayedMessages = useMemo(
+    () =>
+      messageOrder === "newestFirst" && !useVirtualizedThread
+        ? [...messages].reverse()
+        : messages,
+    [messageOrder, messages, useVirtualizedThread],
+  );
   const messageAnchorIndex = useMemo(() => {
     const map = new Map<string, number>();
     messages.forEach((message, index) => {
@@ -4940,6 +4951,39 @@ export function IssueChatThread({
     errorBoundaryResetVersionRef.current += 1;
   }
   const errorBoundaryResetKey = String(errorBoundaryResetVersionRef.current);
+  const composerDock = showComposer ? (
+    <div
+      ref={composerViewportAnchorRef}
+      data-testid="issue-chat-composer-dock"
+      className={cn(
+        "z-20 space-y-2",
+        composerPlacement === "bottom"
+          ? "sticky bottom-(--sz-calc-8) bg-gradient-to-t from-background via-background/95 to-background/0 pt-6"
+          : "rounded-lg border border-border/70 bg-background/70 p-3",
+      )}
+    >
+      <IssueChatComposer
+        ref={composerRef}
+        onImageUpload={imageUploadHandler}
+        onAttachImage={onAttachImage}
+        draftKey={draftKey}
+        enableReassign={enableReassign}
+        reassignOptions={reassignOptions}
+        currentAssigneeValue={currentAssigneeValue}
+        suggestedAssigneeValue={suggestedAssigneeValue}
+        mentions={mentions}
+        agentMap={agentMap}
+        hasActiveRun={!!hasActiveRun}
+        currentUserId={currentUserId}
+        userLabelMap={userLabelMap}
+        composerDisabledReason={composerDisabledReason}
+        composerHint={composerHint}
+        issueStatus={issueStatus}
+        issueWorkMode={issueWorkMode}
+        onWorkModeChange={onWorkModeChange}
+      />
+    </div>
+  ) : null;
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
@@ -4957,6 +5001,8 @@ export function IssueChatThread({
             </button>
           </div>
         ) : null}
+
+        {composerPlacement === "top" ? composerDock : null}
 
         <IssueChatErrorBoundary
           resetKey={errorBoundaryResetKey}
@@ -4993,7 +5039,7 @@ export function IssueChatThread({
                 // Keep transcript rendering independent from assistant-ui's
                 // index-scoped message providers; live transcripts can shrink
                 // or regroup while the runtime still holds stale indices.
-                messages.map((message) => (
+                displayedMessages.map((message) => (
                   <IssueChatMessageRow
                     key={message.id}
                     message={message}
@@ -5090,34 +5136,7 @@ export function IssueChatThread({
           </div>
         </IssueChatErrorBoundary>
 
-        {showComposer ? (
-          <div
-            ref={composerViewportAnchorRef}
-            data-testid="issue-chat-composer-dock"
-            className="sticky bottom-(--sz-calc-8) z-20 space-y-2 bg-gradient-to-t from-background via-background/95 to-background/0 pt-6"
-          >
-            <IssueChatComposer
-              ref={composerRef}
-              onImageUpload={imageUploadHandler}
-              onAttachImage={onAttachImage}
-              draftKey={draftKey}
-              enableReassign={enableReassign}
-              reassignOptions={reassignOptions}
-              currentAssigneeValue={currentAssigneeValue}
-              suggestedAssigneeValue={suggestedAssigneeValue}
-              mentions={mentions}
-              agentMap={agentMap}
-              hasActiveRun={!!hasActiveRun}
-              currentUserId={currentUserId}
-              userLabelMap={userLabelMap}
-              composerDisabledReason={composerDisabledReason}
-              composerHint={composerHint}
-              issueStatus={issueStatus}
-              issueWorkMode={issueWorkMode}
-              onWorkModeChange={onWorkModeChange}
-            />
-          </div>
-        ) : null}
+        {composerPlacement === "bottom" ? composerDock : null}
       </div>
       </IssueChatCtx.Provider>
     </AssistantRuntimeProvider>

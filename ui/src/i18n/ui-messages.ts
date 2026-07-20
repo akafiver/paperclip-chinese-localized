@@ -5300,7 +5300,7 @@ export const uiMessages = {
         workEnvironment: "Work environment",
         workEnvironmentDescription: "Workspace, files, and execution boundary used by agents while working on this task.",
         communicationHistory: "Communication and history",
-        communicationHistoryDescription: "Conversation, run log, relations, and technical trace for deeper review.",
+        communicationHistoryDescription: "Conversation, timeline, relations, and technical trace for deeper review.",
       },
       actions: {
         uploading: "Uploading...",
@@ -5310,7 +5310,7 @@ export const uiMessages = {
       },
       tabs: {
         chat: "Conversation",
-        activity: "Run log",
+        activity: "Timeline",
         relatedWork: "Relations & references",
       },
       summary: {
@@ -5372,7 +5372,7 @@ export const uiMessages = {
         progressLabel: "Progress",
         ownerLabel: "Owner",
         openConversation: "Conversation",
-        openRunLog: "Run log",
+        openRunLog: "Timeline",
         diagnostics: "System diagnostics",
         diagnosticBlocked: "Blocked reason: {{reason}} · severity {{severity}}.",
         diagnosticRecovery: "Recovery action: {{kind}} · {{status}}.",
@@ -11178,7 +11178,7 @@ export const uiMessages = {
         workEnvironment: "工作环境",
         workEnvironmentDescription: "Agent 处理此任务时使用的工作区、文件和执行边界。",
         communicationHistory: "沟通与历史",
-        communicationHistoryDescription: "用于深入复核的沟通内容、运行记录、关系引用和技术追踪。",
+        communicationHistoryDescription: "用于深入复核的沟通内容、时间线、关系引用和技术追踪。",
       },
       actions: {
         uploading: "上传中...",
@@ -11188,7 +11188,7 @@ export const uiMessages = {
       },
       tabs: {
         chat: "沟通",
-        activity: "运行记录",
+        activity: "时间线",
         relatedWork: "关系与引用",
       },
       summary: {
@@ -11250,7 +11250,7 @@ export const uiMessages = {
         progressLabel: "进度",
         ownerLabel: "负责人",
         openConversation: "对话",
-        openRunLog: "运行记录",
+        openRunLog: "时间线",
         diagnostics: "系统诊断",
         diagnosticBlocked: "阻塞原因：{{reason}} · 严重性 {{severity}}。",
         diagnosticRecovery: "恢复动作：{{kind}} · {{status}}。",

@@ -1557,19 +1557,6 @@ const IssueDetailChatTab = memo(function IssueDetailChatTab({
 
   return (
     <div className="space-y-3">
-      {hasOlderComments ? (
-        <div className="flex justify-center">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={commentsLoadingOlder}
-            onClick={onLoadOlderComments}
-          >
-            {commentsLoadingOlder ? t("ui.issueDetail.toast.loadingEarlierComments") : t("ui.issueDetail.toast.loadEarlierComments")}
-          </Button>
-        </div>
-      ) : null}
       <ThreadComponent
         composerRef={composerRef}
         comments={commentsWithRunMeta}
@@ -1623,6 +1610,9 @@ const IssueDetailChatTab = memo(function IssueDetailChatTab({
         onCancelQueued={onCancelQueued}
         interruptingQueuedRunId={interruptingQueuedRunId}
         stoppingRunId={pausingWorkRunId}
+        composerPlacement="top"
+        messageOrder="newestFirst"
+        showJumpToLatest={false}
         onStopRun={onPauseWorkRun}
         stopRunLabel="Pause work"
         stoppingRunLabel="Pausing..."
@@ -1651,6 +1641,19 @@ const IssueDetailChatTab = memo(function IssueDetailChatTab({
         externalReferences={externalReferences}
         linkCaseReferences={linkCaseReferences}
       />
+      {hasOlderComments ? (
+        <div className="flex justify-center">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={commentsLoadingOlder}
+            onClick={onLoadOlderComments}
+          >
+            {commentsLoadingOlder ? t("ui.issueDetail.toast.loadingEarlierComments") : t("ui.issueDetail.toast.loadEarlierComments")}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 });
