@@ -8302,7 +8302,7 @@ export const uiMessages = {
       newTask: "新建任务",
       dashboard: "仪表盘",
       inbox: "收件箱",
-      taskDesk: "Task Desk",
+      taskDesk: "任务板",
       unread: "未读",
       decisions: "决策",
       conferenceRoom: "会议室",
