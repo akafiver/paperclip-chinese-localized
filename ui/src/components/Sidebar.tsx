@@ -1,7 +1,6 @@
 import {
   Inbox,
   ListChecks,
-  CircleDot,
   Target,
   LayoutDashboard,
   DollarSign,
@@ -202,15 +201,6 @@ export function Sidebar() {
             );
           })()}
           <SidebarNavItem to="/dashboard" label={t("ui.nav.dashboard")} icon={LayoutDashboard} liveCount={liveRunCount} />
-          <SidebarNavItem
-            to="/inbox"
-            label={t("ui.nav.inbox")}
-            icon={Inbox}
-            badge={inboxBadge.inbox}
-            badgeLabel={t("ui.nav.unread")}
-            badgeTone={inboxBadge.failedRuns > 0 ? "danger" : "default"}
-            alert={inboxBadge.failedRuns > 0}
-          />
           {showDecisions ? (
             <SidebarNavItem
               to="/decisions"
@@ -226,7 +216,15 @@ export function Sidebar() {
         </div>
 
         <SidebarSection label={t("ui.nav.work")} collapsible={{ open: workOpen, onOpenChange: setWorkOpen }}>
-          <SidebarNavItem to="/issues" label={t("ui.nav.tasks")} icon={CircleDot} />
+          <SidebarNavItem
+            to="/issues"
+            label={t("ui.nav.taskDesk")}
+            icon={Inbox}
+            badge={inboxBadge.inbox}
+            badgeLabel={t("ui.nav.unread")}
+            badgeTone={inboxBadge.failedRuns > 0 ? "danger" : "default"}
+            alert={inboxBadge.failedRuns > 0}
+          />
           {showCases ? (
             <SidebarNavItem to="/cases" label={t("ui.nav.cases")} icon={Layers} textBadge="beta" />
           ) : null}

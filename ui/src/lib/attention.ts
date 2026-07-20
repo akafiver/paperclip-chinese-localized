@@ -267,7 +267,7 @@ export function attentionImageUrl(assetId: string): string {
  * Decisions-only badge count. Every feed row *is* a pending decision (the
  * server drops anything without a decision verb into Activity, per the §0
  * invariant), and mentions/unread never enter the feed — so the row count is
- * the decisions-only number. `/inbox` keeps its own unread count untouched.
+ * the decisions-only number. Task Desk keeps its own unread count untouched.
  */
 export function attentionBadgeCount(feed: AttentionFeed | null | undefined): number {
   return feed?.items.length ?? 0;

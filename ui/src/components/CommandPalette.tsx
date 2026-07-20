@@ -359,13 +359,9 @@ export function CommandPalette() {
             <LayoutDashboard className="mr-2 h-4 w-4" />
             {t("ui.commandPalette.dashboard")}
           </CommandItem>
-          <CommandItem onSelect={() => go("/inbox")}>
-            <Inbox className="mr-2 h-4 w-4" />
-            {t("ui.commandPalette.inbox")}
-          </CommandItem>
           <CommandItem onSelect={() => go("/issues")}>
-            <CircleDot className="mr-2 h-4 w-4" />
-            {t("ui.commandPalette.tasks")}
+            <Inbox className="mr-2 h-4 w-4" />
+            {t("ui.nav.taskDesk")}
           </CommandItem>
           <CommandItem onSelect={() => go("/projects")}>
             <Hexagon className="mr-2 h-4 w-4" />

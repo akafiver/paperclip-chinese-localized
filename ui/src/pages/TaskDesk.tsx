@@ -1,6 +1,6 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "@/lib/router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link, useLocation, useNavigate, useSearchParams } from "@/lib/router";
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { deriveOriginatingActor, INBOX_MINE_ISSUE_STATUS_FILTER } from "@paperclipai/shared";
 import { usePublishSharedQueryData, useSharedPollingQuery } from "@/hooks/useSharedPolling";
 import { t as translate, useTranslation } from "@/i18n";
@@ -74,6 +74,7 @@ import {
   issueTrailingColumns,
 } from "../components/IssueColumns";
 import { IssueFiltersPopover } from "../components/IssueFiltersPopover";
+import { IssuesList } from "../components/IssuesList";
 import { IssueRow } from "../components/IssueRow";
 import { BlockedInboxView } from "../components/BlockedInboxView";
 import { SwipeToArchive } from "../components/SwipeToArchive";
@@ -172,6 +173,70 @@ import { useDismissedInboxAlerts, useInboxDismissals, useReadInboxItems } from "
 const INBOX_HEARTBEAT_RUN_LIMIT = 200;
 const INBOX_ISSUE_LIST_LIMIT = 500;
 const INBOX_HOT_PATH_STALE_MS = 30_000;
+const TASK_DESK_ISSUES_PAGE_SIZE = 100;
+const WORKSPACE_FILTER_ISSUE_LIMIT = 1000;
+
+type TaskDeskView = InboxTab | "active" | "hidden";
+
+function normalizeTaskDeskView(value: string | null): TaskDeskView {
+  if (
+    value === "mine"
+    || value === "unread"
+    || value === "blocked"
+    || value === "all"
+    || value === "active"
+    || value === "hidden"
+  ) {
+    return value;
+  }
+  if (value === "recent") return "active";
+  return "mine";
+}
+
+function isInboxTaskDeskView(value: TaskDeskView): value is InboxTab {
+  return value !== "active" && value !== "hidden";
+}
+
+function taskDeskViewHref(value: TaskDeskView): string {
+  return value === "mine" ? "/issues" : `/issues?view=${value}`;
+}
+
+export function getNextTaskDeskIssuesPageOffset(
+  loadedPageSize: number,
+  currentOffset: number,
+  pageSize: number = TASK_DESK_ISSUES_PAGE_SIZE,
+): number | undefined {
+  return loadedPageSize >= pageSize ? currentOffset + pageSize : undefined;
+}
+
+export function mergeTaskDeskIssuePagesStable<T extends { id: string }>(pages: T[][]): T[] {
+  const seenIssueIds = new Set<string>();
+  const merged: T[] = [];
+
+  for (const page of pages) {
+    for (const issue of page) {
+      if (seenIssueIds.has(issue.id)) continue;
+      seenIssueIds.add(issue.id);
+      merged.push(issue);
+    }
+  }
+
+  return merged;
+}
+
+export function buildTaskDeskSearchUrl(currentHref: string, search: string): string | null {
+  const url = new URL(currentHref);
+  const currentSearch = url.searchParams.get("q") ?? "";
+  if (currentSearch === search) return null;
+
+  if (search.length > 0) {
+    url.searchParams.set("q", search);
+  } else {
+    url.searchParams.delete("q");
+  }
+
+  return `${url.pathname}${url.search}${url.hash}`;
+}
 
 export { InboxIssueMetaLeading, InboxIssueTrailingColumns } from "../components/IssueColumns";
 export { IssueGroupHeader as InboxGroupHeader } from "../components/IssueGroupHeader";
@@ -693,7 +758,7 @@ function JoinRequestInboxRow({
   );
 }
 
-export function Inbox() {
+export function TaskDesk() {
   const { t } = useTranslation();
   const { selectedCompanyId } = useCompany();
   const { setBreadcrumbs } = useBreadcrumbs();
@@ -701,7 +766,9 @@ export function Inbox() {
   const { isMobile } = useSidebar();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
+  const fetchNextTaskListPageInFlightRef = useRef(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const { keyboardShortcutsEnabled } = useGeneralSettings();
   const { data: experimentalSettings } = useQuery({
@@ -724,22 +791,16 @@ export function Inbox() {
   const { readItems, markRead: markItemRead, markUnread: markItemUnread } = useReadInboxItems();
   const { allCategoryFilter, allApprovalFilter, issueFilters } = filterPreferences;
 
-  const pathSegment = location.pathname.split("/").pop() ?? "mine";
-  const tab: InboxTab =
-    pathSegment === "mine"
-    || pathSegment === "recent"
-    || pathSegment === "all"
-    || pathSegment === "unread"
-    || pathSegment === "blocked"
-      ? pathSegment
-      : "mine";
+  const taskDeskView = normalizeTaskDeskView(searchParams.get("view"));
+  const tab: InboxTab = isInboxTaskDeskView(taskDeskView) ? taskDeskView : "mine";
+  const showingTaskList = taskDeskView === "active" || taskDeskView === "hidden";
   const canArchiveFromTab = isMineInboxTab(tab);
   const issueLinkState = useMemo(
     () =>
       createIssueDetailLocationState(
-        "Inbox",
+        "Task Desk",
         `${location.pathname}${location.search}${location.hash}`,
-        "inbox",
+        "issues",
       ),
     [location.pathname, location.search, location.hash],
   );
@@ -776,14 +837,14 @@ export function Inbox() {
   });
 
   useEffect(() => {
-    setBreadcrumbs([{ label: t("ui.inbox.title") }]);
+    setBreadcrumbs([{ label: t("ui.taskDesk.title") }]);
   }, [setBreadcrumbs, t]);
 
   useEffect(() => {
-    saveLastInboxTab(tab);
+    if (isInboxTaskDeskView(taskDeskView)) saveLastInboxTab(tab);
     setSelectedIndex(-1);
     setSearchQuery("");
-  }, [tab]);
+  }, [tab, taskDeskView]);
 
   const previousSelectedCompanyIdRef = useRef<string | null>(selectedCompanyId);
   useEffect(() => {
@@ -939,6 +1000,105 @@ export function Inbox() {
   });
   usePublishSharedQueryData(sharedLiveRuns, liveRuns, liveRunsUpdatedAt);
   const liveIssueIds = useMemo(() => collectLiveIssueIds(liveRuns), [liveRuns]);
+  const urlSearch = searchParams.get("q") ?? "";
+  const [taskListSearchOverride, setTaskListSearchOverride] = useState<{ search: string; locationSearch: string } | null>(null);
+  const taskListSearch = useMemo(() => {
+    if (typeof window !== "undefined" && taskListSearchOverride?.locationSearch === window.location.search) {
+      return taskListSearchOverride.search;
+    }
+    return urlSearch;
+  }, [taskListSearchOverride, urlSearch, location.search]);
+  const participantAgentId = searchParams.get("participantAgentId") ?? undefined;
+  const taskListInitialWorkspaces = searchParams.getAll("workspace").filter((workspaceId) => workspaceId.length > 0);
+  const taskListWorkspaceIdFilter = taskListInitialWorkspaces.length === 1 ? taskListInitialWorkspaces[0] : undefined;
+  const taskListIssuePageSize = taskListWorkspaceIdFilter ? WORKSPACE_FILTER_ISSUE_LIMIT : TASK_DESK_ISSUES_PAGE_SIZE;
+  const hiddenOnlyTaskList = taskDeskView === "hidden";
+  const handleTaskListSearchChange = useCallback((search: string) => {
+    const nextUrl = buildTaskDeskSearchUrl(window.location.href, search);
+    if (!nextUrl) {
+      setTaskListSearchOverride(null);
+      return;
+    }
+    window.history.replaceState(window.history.state, "", nextUrl);
+    setTaskListSearchOverride({ search, locationSearch: window.location.search });
+  }, []);
+  const {
+    data: taskListIssuePages,
+    isLoading: isTaskListIssuesLoading,
+    isFetchingNextPage: isFetchingNextTaskListIssuePage,
+    error: taskListIssuesError,
+    hasNextPage: hasNextTaskListIssuePage,
+    fetchNextPage: fetchNextTaskListIssuePage,
+  } = useInfiniteQuery({
+    queryKey: [
+      ...queryKeys.issues.list(selectedCompanyId!),
+      "task-desk",
+      "participant-agent",
+      participantAgentId ?? "__all__",
+      "workspace",
+      taskListWorkspaceIdFilter ?? "__all__",
+      "compact",
+      "with-routine-executions",
+      "with-blocked-inbox-attention",
+      "hidden",
+      hiddenOnlyTaskList ? "only" : "visible",
+      "infinite",
+      taskListIssuePageSize,
+    ],
+    queryFn: ({ pageParam, signal }) => issuesApi.listCompact(selectedCompanyId!, {
+      participantAgentId,
+      workspaceId: taskListWorkspaceIdFilter,
+      includeRoutineExecutions: true,
+      includeBlockedInboxAttention: true,
+      hidden: hiddenOnlyTaskList,
+      limit: taskListIssuePageSize,
+      offset: pageParam,
+      sortField: "updated",
+      sortDir: "desc",
+    }, { signal }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) =>
+      getNextTaskDeskIssuesPageOffset(lastPage.length, lastPageParam, taskListIssuePageSize),
+    enabled: !!selectedCompanyId && showingTaskList,
+    placeholderData: (previousData) => previousData,
+  });
+  const taskListIssues = useMemo(
+    () => mergeTaskDeskIssuePagesStable(taskListIssuePages?.pages ?? []) as Issue[],
+    [taskListIssuePages],
+  );
+  const hasMoreTaskListIssues = taskListSearch.trim().length === 0 && hasNextTaskListIssuePage === true;
+  const loadMoreTaskListIssues = useCallback(() => {
+    if (!hasNextTaskListIssuePage || isFetchingNextTaskListIssuePage || fetchNextTaskListPageInFlightRef.current) return;
+    fetchNextTaskListPageInFlightRef.current = true;
+    void fetchNextTaskListIssuePage({ cancelRefetch: false }).finally(() => {
+      fetchNextTaskListPageInFlightRef.current = false;
+    });
+  }, [fetchNextTaskListIssuePage, hasNextTaskListIssuePage, isFetchingNextTaskListIssuePage]);
+  const updateTaskListIssue = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
+      issuesApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.issues.list(selectedCompanyId!) });
+    },
+  });
+  const restoreTaskListIssue = useMutation({
+    mutationFn: (id: string) => issuesApi.update(id, { hiddenAt: null }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.issues.list(selectedCompanyId!) });
+    },
+  });
+  const hideTaskListIssue = useMutation({
+    mutationFn: (id: string) => issuesApi.update(id, { hiddenAt: new Date().toISOString() }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.issues.list(selectedCompanyId!) });
+    },
+  });
+  const deleteTaskListIssue = useMutation({
+    mutationFn: (id: string) => issuesApi.remove(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.issues.list(selectedCompanyId!) });
+    },
+  });
   const { data: companyMembers } = useQuery({
     queryKey: queryKeys.access.companyUserDirectory(selectedCompanyId!),
     queryFn: () => accessApi.listUserDirectory(selectedCompanyId!),
@@ -2143,6 +2303,60 @@ export function Inbox() {
   const canMarkAllRead = unreadIssueIds.length > 0;
   const activeIssueFilterCount = countActiveIssueFilters(issueFilters, true);
   const showGeneralIssueToolbarControls = tab !== "blocked";
+  const taskDeskTabItems = [
+    { value: "mine", label: t("ui.taskDesk.tabs.mine") },
+    { value: "blocked", label: t("ui.taskDesk.tabs.blocked") },
+    { value: "unread", label: t("ui.taskDesk.tabs.unread") },
+    { value: "all", label: t("ui.taskDesk.tabs.allAttention") },
+    { value: "active", label: t("ui.taskDesk.tabs.activeTasks") },
+    { value: "hidden", label: t("ui.taskDesk.tabs.hiddenTasks") },
+  ];
+  const setTaskDeskView = (value: string) => {
+    navigate(taskDeskViewHref(normalizeTaskDeskView(value)));
+  };
+
+  if (showingTaskList) {
+    return (
+      <div className="space-y-4">
+        <Tabs value={taskDeskView} onValueChange={setTaskDeskView}>
+          <PageTabBar
+            align="start"
+            items={taskDeskTabItems}
+            value={taskDeskView}
+            onValueChange={setTaskDeskView}
+          />
+        </Tabs>
+        <IssuesList
+          issues={taskListIssues}
+          isLoading={isTaskListIssuesLoading}
+          isLoadingMoreIssues={isFetchingNextTaskListIssuePage}
+          error={taskListIssuesError as Error | null}
+          agents={agents}
+          projects={projects}
+          liveIssueIds={liveIssueIds}
+          viewStateKey={`paperclip:task-desk-${taskDeskView}-view`}
+          issueLinkState={issueLinkState}
+          initialAssignees={searchParams.get("assignee") ? [searchParams.get("assignee")!] : undefined}
+          initialWorkspaces={taskListInitialWorkspaces.length > 0 ? taskListInitialWorkspaces : undefined}
+          initialSearch={taskListSearch}
+          onSearchChange={handleTaskListSearchChange}
+          enableRoutineVisibilityFilter
+          hasMoreIssues={hasMoreTaskListIssues}
+          onLoadMoreIssues={loadMoreTaskListIssues}
+          onUpdateIssue={(id, data) => updateTaskListIssue.mutate({ id, data })}
+          hiddenOnly={hiddenOnlyTaskList}
+          onRestoreIssue={(id) => restoreTaskListIssue.mutate(id)}
+          restorePendingIssueId={restoreTaskListIssue.isPending ? restoreTaskListIssue.variables : null}
+          onHideIssue={(id) => hideTaskListIssue.mutateAsync(id)}
+          hidePendingIssueId={hideTaskListIssue.isPending ? hideTaskListIssue.variables : null}
+          onDeleteIssue={(id) => deleteTaskListIssue.mutateAsync(id)}
+          deletePendingIssueId={deleteTaskListIssue.isPending ? deleteTaskListIssue.variables : null}
+          searchFilters={participantAgentId || taskListWorkspaceIdFilter ? { participantAgentId, workspaceId: taskListWorkspaceIdFilter } : undefined}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -2176,21 +2390,11 @@ export function Inbox() {
           />
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
-        <Tabs value={tab} onValueChange={(value) => navigate(`/inbox/${value}`)}>
+        <Tabs value={taskDeskView} onValueChange={setTaskDeskView}>
           <PageTabBar
-            items={[
-              {
-                value: "mine",
-                label: t("ui.inbox.mine"),
-              },
-              {
-                value: "recent",
-                label: t("ui.inbox.recent"),
-              },
-              { value: "unread", label: t("ui.inbox.unread") },
-              { value: "blocked", label: t("ui.inbox.blocked") },
-              { value: "all", label: t("ui.inbox.all") },
-            ]}
+            items={taskDeskTabItems}
+            value={taskDeskView}
+            onValueChange={setTaskDeskView}
           />
         </Tabs>
 

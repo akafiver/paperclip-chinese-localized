@@ -20,7 +20,7 @@ import { Projects } from "./pages/Projects";
 import { ProjectDetail } from "./pages/ProjectDetail";
 import { ProjectWorkspaceDetail } from "./pages/ProjectWorkspaceDetail";
 import { Workspaces } from "./pages/Workspaces";
-import { Issues } from "./pages/Issues";
+import { TaskDesk } from "./pages/TaskDesk";
 import { Search } from "./pages/Search";
 import { IssueDetail } from "./pages/IssueDetail";
 import { IssueChatLongThreadPerf } from "./pages/IssueChatLongThreadPerf";
@@ -37,7 +37,6 @@ import { Approvals } from "./pages/Approvals";
 import { ApprovalDetail } from "./pages/ApprovalDetail";
 import { Costs } from "./pages/Costs";
 import { Activity } from "./pages/Activity";
-import { Inbox } from "./pages/Inbox";
 import { WhatNeedsMe } from "./pages/WhatNeedsMe";
 import { BoardChat } from "./pages/BoardChat";
 import { CompanySettings } from "./pages/CompanySettings";
@@ -81,11 +80,9 @@ import { AuthPage } from "./pages/Auth";
 import { BoardClaimPage } from "./pages/BoardClaim";
 import { CliAuthPage } from "./pages/CliAuth";
 import { InviteLandingPage } from "./pages/InviteLanding";
-import { JoinRequestQueue } from "./pages/JoinRequestQueue";
 import { NotFoundPage } from "./pages/NotFound";
 import { useCompany } from "./context/CompanyContext";
 import { useDialogActions, useDialogState } from "./context/DialogContext";
-import { loadLastInboxTab } from "./lib/inbox";
 import {
   isOnboardingWizardActive,
   shouldRedirectCompanylessRouteToOnboarding,
@@ -176,13 +173,13 @@ function boardRoutes() {
       <Route path="projects/:projectId/configuration" element={<ProjectDetail />} />
       <Route path="projects/:projectId/budget" element={<ProjectDetail />} />
       <Route path="workspaces" element={<Workspaces />} />
-      <Route path="issues" element={<Issues />} />
+      <Route path="issues" element={<TaskDesk />} />
       <Route path="search" element={<Search />} />
-      <Route path="issues/all" element={<Navigate to="/issues" replace />} />
-      <Route path="issues/active" element={<Navigate to="/issues" replace />} />
-      <Route path="issues/backlog" element={<Navigate to="/issues" replace />} />
-      <Route path="issues/done" element={<Navigate to="/issues" replace />} />
-      <Route path="issues/recent" element={<Navigate to="/issues" replace />} />
+      <Route path="issues/all" element={<Navigate to="/issues?view=active" replace />} />
+      <Route path="issues/active" element={<Navigate to="/issues?view=active" replace />} />
+      <Route path="issues/backlog" element={<Navigate to="/issues?view=active" replace />} />
+      <Route path="issues/done" element={<Navigate to="/issues?view=active" replace />} />
+      <Route path="issues/recent" element={<Navigate to="/issues?view=active" replace />} />
       <Route path="issues/:issueId" element={<IssueDetail />} />
       {import.meta.env.DEV ? (
         <Route path="tests/perf/long-thread" element={<IssueChatLongThreadPerf />} />
@@ -255,14 +252,8 @@ function boardRoutes() {
         <Route path="artifacts" element={<Artifacts />} />
       </Route>
       <Route path="decisions" element={<WhatNeedsMe />} />
-      <Route path="inbox" element={<InboxRootRedirect />} />
-      <Route path="inbox/mine" element={<Inbox />} />
-      <Route path="inbox/recent" element={<Inbox />} />
-      <Route path="inbox/unread" element={<Inbox />} />
-      <Route path="inbox/blocked" element={<Inbox />} />
-      <Route path="inbox/all" element={<Inbox />} />
-      <Route path="inbox/requests" element={<JoinRequestQueue />} />
-      <Route path="inbox/new" element={<Navigate to="/inbox/mine" replace />} />
+      <Route path="inbox" element={<LegacyInboxRedirect />} />
+      <Route path="inbox/:tab" element={<LegacyInboxRedirect />} />
       <Route path="u/:userSlug" element={<UserProfile />} />
       <Route path="design-guide" element={<DesignGuide />} />
       <Route path="instance/settings/adapters" element={<AdapterManager />} />
@@ -278,8 +269,15 @@ function AppsConnectEntryRoute() {
   return searchParams.get("byo") === "1" ? <AppsConnect /> : <Navigate to="/apps/browse" replace />;
 }
 
-function InboxRootRedirect() {
-  return <Navigate to={`/inbox/${loadLastInboxTab()}`} replace />;
+function LegacyInboxRedirect() {
+  const { tab } = useParams<{ tab?: string }>();
+  const view =
+    tab === "blocked" || tab === "unread" || tab === "all"
+      ? tab
+      : tab === "recent"
+        ? "active"
+        : "mine";
+  return <Navigate to={view === "mine" ? "/issues" : `/issues?view=${view}`} replace />;
 }
 
 function LegacySkillStudioRedirect() {

@@ -3494,7 +3494,7 @@ export function IssueDetail() {
         removeIssueFromInboxCaches(queryClient, selectedCompanyId, id);
       }
       invalidateIssueCollections();
-      navigate(sourceBreadcrumb.href.startsWith("/inbox") ? sourceBreadcrumb.href : "/inbox", { replace: true });
+      navigate(sourceBreadcrumb.href.startsWith("/inbox") ? "/issues" : sourceBreadcrumb.href, { replace: true });
       pushToast({ title: t("ui.issueDetail.toast.taskArchivedFromInbox"), tone: "success" });
     },
     onError: (err, id, context) => {
@@ -3739,7 +3739,7 @@ export function IssueDetail() {
       if (action === "navigate_inbox") {
         event.preventDefault();
         event.stopPropagation();
-        navigate(sourceBreadcrumb.href.startsWith("/inbox") ? sourceBreadcrumb.href : "/inbox");
+        navigate(sourceBreadcrumb.href.startsWith("/inbox") ? "/issues" : sourceBreadcrumb.href);
         return;
       }
       if (action === "focus_comment") {
@@ -3941,7 +3941,7 @@ export function IssueDetail() {
     onDelete: () => setDeleteConfirmOpen(true),
   };
 
-  const backHref = sourceBreadcrumb.href ?? "/inbox";
+  const backHref = sourceBreadcrumb.href?.startsWith("/inbox") ? "/issues" : sourceBreadcrumb.href ?? "/issues";
   const showInboxToolbar = isMobile && isFromInbox;
   const archivePending = archiveFromInbox.isPending;
   const issueHidden = !!issue?.hiddenAt;

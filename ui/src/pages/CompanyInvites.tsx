@@ -335,7 +335,7 @@ export function CompanyInvites() {
               {t("ui.invites.historyDescription")}
             </p>
           </div>
-          <Link to="/inbox/requests" className="text-sm underline underline-offset-4">
+          <Link to="/issues?view=all" className="text-sm underline underline-offset-4">
             {t("ui.invites.openQueue")}
           </Link>
         </div>
@@ -378,7 +378,7 @@ export function CompanyInvites() {
                       </td>
                       <td className="px-5 py-3 align-top">
                         {invite.relatedJoinRequestId ? (
-                          <Link to="/inbox/requests" className="underline underline-offset-4">
+                          <Link to="/issues?view=all" className="underline underline-offset-4">
                             {t("ui.invites.reviewRequest")}
                           </Link>
                         ) : (

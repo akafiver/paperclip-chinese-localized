@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { NavLink, useLocation } from "@/lib/router";
 import {
   House,
-  CircleDot,
   SquarePen,
   Users,
   Inbox,
@@ -44,16 +43,15 @@ export function MobileBottomNav({ visible }: MobileBottomNavProps) {
   const items = useMemo<MobileNavItem[]>(
     () => [
       { type: "link", to: "/dashboard", label: "Home", icon: House },
-      { type: "link", to: "/issues", label: "Tasks", icon: CircleDot },
-      { type: "action", label: "Create", icon: SquarePen, onClick: () => openNewIssue() },
-      { type: "link", to: "/agents/all", label: "Agents", icon: Users },
       {
         type: "link",
-        to: "/inbox",
-        label: "Inbox",
+        to: "/issues",
+        label: "Task Desk",
         icon: Inbox,
         badge: inboxBadge.inbox,
       },
+      { type: "action", label: "Create", icon: SquarePen, onClick: () => openNewIssue() },
+      { type: "link", to: "/agents/all", label: "Agents", icon: Users },
     ],
     [openNewIssue, inboxBadge.inbox],
   );
@@ -66,7 +64,7 @@ export function MobileBottomNav({ visible }: MobileBottomNavProps) {
       )}
       aria-label="Mobile navigation"
     >
-      <div className="grid h-16 grid-cols-5 px-1">
+      <div className="grid h-16 grid-cols-4 px-1">
         {items.map((item) => {
           if (item.type === "action") {
             const Icon = item.icon;

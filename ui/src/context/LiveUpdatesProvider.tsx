@@ -726,7 +726,7 @@ function buildJoinRequestToast(
     title: `${label} wants to join`,
     body: "A new join request is waiting for approval.",
     tone: "info",
-    action: { label: "View inbox", href: "/inbox/mine" },
+    action: { label: "View Task Desk", href: "/issues" },
     dedupeKey: `join-request:${entityId}`,
   };
 }

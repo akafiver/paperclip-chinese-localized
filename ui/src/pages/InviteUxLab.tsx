@@ -623,7 +623,7 @@ function CompanyInvitesPreview() {
                 Review invite status, role, inviter, and any linked join request.
               </CardDescription>
             </div>
-            <a href="/inbox/requests" className="text-sm underline underline-offset-4">
+            <a href="/issues?view=all" className="text-sm underline underline-offset-4">
               Open join request queue
             </a>
           </div>
@@ -657,7 +657,7 @@ function CompanyInvitesPreview() {
                     <td className="px-5 py-3 align-top text-muted-foreground">{invite.createdAt}</td>
                     <td className="px-5 py-3 align-top">
                       {invite.relatedLabel === "Review request" ? (
-                        <a href="/inbox/requests" className="underline underline-offset-4">
+                        <a href="/issues?view=all" className="underline underline-offset-4">
                           {invite.relatedLabel}
                         </a>
                       ) : (
