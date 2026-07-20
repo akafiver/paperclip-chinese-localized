@@ -74,6 +74,7 @@ import {
   issueTrailingColumns,
 } from "../components/IssueColumns";
 import { IssueFiltersPopover } from "../components/IssueFiltersPopover";
+import { IssueMeaningLegend } from "../components/IssueMeaningLegend";
 import { IssuesList } from "../components/IssuesList";
 import { IssueRow } from "../components/IssueRow";
 import { BlockedInboxView } from "../components/BlockedInboxView";
@@ -2629,6 +2630,8 @@ export function TaskDesk() {
         </div>
         </div>
       </div>
+
+      <IssueMeaningLegend />
 
       {tab === "all" && (
         <div className="flex flex-wrap items-center gap-2">
