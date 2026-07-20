@@ -51,7 +51,6 @@ interface IssueRowProps {
   archiveDisabled?: boolean;
   onRestore?: () => void;
   restoreDisabled?: boolean;
-  showBlockedReasonChip?: boolean;
   onHide?: () => void;
   hideDisabled?: boolean;
   onDelete?: () => void;
@@ -95,7 +94,6 @@ export function IssueRow({
   archiveDisabled,
   onRestore,
   restoreDisabled,
-  showBlockedReasonChip = true,
   onHide,
   hideDisabled,
   onDelete,
@@ -171,12 +169,12 @@ export function IssueRow({
   ) : null;
   const recoveryAction = issue.activeRecoveryAction ?? null;
   const recoveryIndicator = recoveryAction ? renderRecoveryChip(recoveryAction, selected, t) : null;
-  const blockedInboxAttention = showBlockedReasonChip ? issue.blockedInboxAttention ?? null : null;
+  const blockedInboxAttention = issue.blockedInboxAttention ?? null;
   const blockedReasonIndicator = blockedInboxAttention ? (
     <BlockedReasonChip
       reason={blockedInboxAttention.reason}
       severity={blockedInboxAttention.severity}
-      className="ml-1.5 max-w-(--sz-12rem)"
+      className="max-w-(--sz-12rem)"
     />
   ) : null;
   const parkedBlockerIndicator = hasAssignedBacklogBlocker(issue.blockedBy) ? (
@@ -217,11 +215,16 @@ export function IssueRow({
         {productivityReviewIndicator}
         {parkedBlockerIndicator}
         {recoveryIndicator}
-        {blockedReasonIndicator}
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-1 sm:contents">
-        <span className={cn("line-clamp-2 text-sm sm:order-2 sm:min-w-0 sm:flex-1 sm:truncate sm:line-clamp-none", titleClassName)}>
-          {issue.title}{titleSuffix}
+        <span className={cn("flex min-w-0 items-center gap-1.5 text-sm sm:order-2 sm:flex-1", titleClassName)}>
+          <span className="line-clamp-2 min-w-0 sm:truncate sm:line-clamp-none">{issue.title}</span>
+          {titleSuffix}
+          {blockedReasonIndicator ? (
+            <span className="inline-flex shrink-0 items-center">
+              {blockedReasonIndicator}
+            </span>
+          ) : null}
         </span>
         {checklistDependencyChips ? (
           <span className="flex flex-wrap gap-1 sm:order-3 sm:ml-(--sz-calc-13)">
@@ -294,14 +297,6 @@ export function IssueRow({
               {recoveryIndicator}
             </>
           )}
-          {blockedReasonIndicator ? (
-            <span className="hidden shrink-0 items-center sm:inline-flex">
-              {blockedReasonIndicator}
-            </span>
-          ) : null}
-          {blockedReasonIndicator ? (
-            <span className="sm:hidden">{blockedReasonIndicator}</span>
-          ) : null}
           {mobileMeta ? (
             <>
               <span className="text-xs text-muted-foreground sm:hidden" aria-hidden="true">

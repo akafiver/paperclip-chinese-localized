@@ -17,7 +17,6 @@ import {
   type BlockedInboxIssueRow,
   type BlockedInboxSort,
 } from "../lib/blockedInbox";
-import { BlockedReasonChip } from "./BlockedReasonChip";
 import { IssueGroupHeader } from "./IssueGroupHeader";
 import { IssueRow } from "./IssueRow";
 import { Identity } from "./Identity";
@@ -309,16 +308,6 @@ function BlockedInboxRow({
 
   const desktopTrailing = (
     <span className="flex shrink-0 items-center gap-3 text-xs">
-      <span
-        className="hidden w-(--sz-10_5rem) shrink-0 justify-start sm:inline-flex"
-        data-testid="blocked-row-reason-column"
-      >
-        <BlockedReasonChip
-          reason={row.attention.reason}
-          severity={row.attention.severity}
-          className="max-w-full"
-        />
-      </span>
       {ownerName ? (
         <span className="hidden w-(--sz-150px) min-w-0 items-center text-muted-foreground sm:inline-flex">
           <Identity
@@ -359,7 +348,6 @@ function BlockedInboxRow({
     <IssueRow
       issue={row.issue}
       issueLinkState={issueLinkState}
-      showBlockedReasonChip={false}
       desktopMetaLeading={
         <BlockedRowDesktopMeta
           row={row}
@@ -372,13 +360,6 @@ function BlockedInboxRow({
         <span className="flex shrink-0 items-center gap-1.5 pt-px">
           <StatusIcon status={row.issue.status} blockerAttention={blockerAttention} />
         </span>
-      }
-      titleSuffix={
-        <BlockedReasonChip
-          reason={row.attention.reason}
-          severity={row.attention.severity}
-          className="ml-2 max-w-(--sz-12rem) align-middle sm:hidden"
-        />
       }
       mobileMeta={mobileMeta}
       desktopTrailing={desktopTrailing}
