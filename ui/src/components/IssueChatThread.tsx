@@ -144,6 +144,7 @@ import {
 } from "../lib/successful-run-handoff";
 import {
   SystemNotice,
+  type SystemNoticeProps,
   type SystemNoticeMetadataRow,
   type SystemNoticeMetadataSection,
 } from "./SystemNotice";
@@ -852,23 +853,17 @@ export function SuccessfulRunHandoffCommentCallout({
   recessed?: boolean;
   onImageClick?: (src: string) => void;
 }) {
-  const escalated = isSuccessfulRunHandoffEscalationComment(text);
   return (
     <div
       className={cn(
         "rounded-md border px-3 py-2.5 text-sm shadow-sm",
-        escalated
-          ? "border-red-500/35 bg-red-500/10 text-red-950 dark:text-red-100"
-          : "border-amber-300/70 bg-amber-50/90 text-amber-950 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100",
+        "border-amber-300/70 bg-amber-50/90 text-amber-950 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100",
       )}
       style={recessed ? { opacity: 0.55 } : undefined}
     >
       <div className="flex items-start gap-2">
         <AlertTriangle
-          className={cn(
-            "mt-1 h-4 w-4 shrink-0",
-            escalated ? "text-red-600 dark:text-red-300" : "text-amber-600 dark:text-amber-300",
-          )}
+          className="mt-1 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300"
         />
         <MarkdownBody className="min-w-0 text-sm leading-6" softBreaks onImageClick={onImageClick}>
           {text}
@@ -2463,6 +2458,14 @@ function localizeKnownSystemNoticeBody(text: string, t: ReturnType<typeof useTra
     && next.trim().endsWith("The issue is blocked on a recovery owner.")
   ) {
     next = t("ui.issueChat.systemNotice.successfulRunHandoffExhausted");
+  } else if (
+    (
+      next.trim().startsWith("Paperclip already tried one status-only follow-up") ||
+      next.trim().startsWith("Paperclip tried one status-only follow-up")
+    )
+    && next.trim().endsWith("until the recovery owner chooses the next step.")
+  ) {
+    next = t("ui.issueChat.systemNotice.successfulRunHandoffExhausted");
   }
   next = next.replace(
     /Paperclip automatically retried continuation for this assigned `in_progress` issue during terminal run recovery, but it still has no live execution path\./g,
@@ -2495,6 +2498,45 @@ function localizeKnownSystemNoticeBody(text: string, t: ReturnType<typeof useTra
     `- ${t("ui.issueChat.systemNotice.nextActionRestoreOrRecord")}`,
   );
   return next;
+}
+
+function localizeKnownSystemNoticeLabel(
+  label: string,
+  tone: SystemNoticeProps["tone"],
+  t: ReturnType<typeof useTranslation>["t"],
+) {
+  const trimmed = label.trim();
+  if (!trimmed) {
+    if (tone === "danger") return t("ui.systemNotice.alert");
+    if (tone === "warning") return t("ui.systemNotice.warning");
+    return t("ui.systemNotice.notice");
+  }
+  if (
+    trimmed === "Task needs an outcome decision" ||
+    trimmed === "Missing issue disposition"
+  ) {
+    return t("ui.issueChat.systemNotice.successfulRunHandoffRequiredTitle");
+  }
+  if (
+    trimmed === "Outcome decision still needed" ||
+    trimmed === "Missing disposition recovery blocked"
+  ) {
+    return t("ui.issueChat.systemNotice.successfulRunHandoffExhaustedTitle");
+  }
+  const genericLabels = new Set([
+    "System alert",
+    "System warning",
+    "System notice",
+    t("ui.systemNotice.alert"),
+    t("ui.systemNotice.warning"),
+    t("ui.systemNotice.notice"),
+  ]);
+  if (!genericLabels.has(trimmed)) {
+    return label;
+  }
+  if (tone === "danger") return t("ui.systemNotice.alert");
+  if (tone === "warning") return t("ui.systemNotice.warning");
+  return t("ui.systemNotice.notice");
 }
 
 function StaleDispositionWarningMetadataRow({ row }: { row: SystemNoticeMetadataRow }) {
@@ -2738,12 +2780,8 @@ function SystemNoticeCommentRow({
     source,
     runAgentId,
   });
-  const localizedNoticeLabel =
-    props.tone === "danger"
-      ? t("ui.systemNotice.alert")
-      : props.tone === "warning"
-        ? t("ui.systemNotice.warning")
-        : t("ui.systemNotice.notice");
+  const displayTone = isSuccessfulRunHandoffEscalationComment(bodyText) ? "warning" : props.tone;
+  const localizedNoticeLabel = localizeKnownSystemNoticeLabel(props.label ?? "", displayTone, t);
 
   const handleCopy = () => {
     void copyTextToClipboard(bodyText).then(() => {
@@ -2787,7 +2825,7 @@ function SystemNoticeCommentRow({
   return (
     <div id={anchorId} className="group">
       <div className="py-1">
-        <SystemNotice {...props} label={localizedNoticeLabel} />
+        <SystemNotice {...props} tone={displayTone} label={localizedNoticeLabel} />
         <div className="mt-1 flex items-center justify-end gap-1.5 px-1 opacity-0 transition-opacity group-hover:opacity-100">
           {!timelineLayout ? (
             <Tooltip>

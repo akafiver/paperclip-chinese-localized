@@ -720,6 +720,7 @@ function recoveryOwnerLabelForSummary(action: IssueRecoveryAction, agentMap: Map
 
 function recoveryNextStepForSummary(action: IssueRecoveryAction) {
   if (action.kind === "workspace_validation") return translate("ui.issueDetail.summary.workspaceRecoveryNextStep");
+  if (action.kind === "missing_disposition") return translate("ui.issueDetail.summary.missingDispositionNextStep");
   return action.nextAction || translate("ui.issueDetail.summary.recoveryNextStep");
 }
 
@@ -756,16 +757,21 @@ function buildIssueDecisionSummary(input: {
   if (issue.activeRecoveryAction) {
     const recoveryAction = issue.activeRecoveryAction;
     const isWorkspaceRecovery = recoveryAction.kind === "workspace_validation";
+    const isMissingDispositionRecovery = recoveryAction.kind === "missing_disposition";
     const recoveryOwner = recoveryOwnerLabelForSummary(recoveryAction, agentMap);
     return {
       tone: "blocked" as const,
       eyebrow: translate("ui.issueDetail.summary.recoveryEyebrow"),
       headline: isWorkspaceRecovery
         ? translate("ui.issueDetail.summary.workspaceRecoveryHeadline")
+        : isMissingDispositionRecovery
+          ? translate("ui.issueDetail.summary.missingDispositionHeadline")
         : translate("ui.issueDetail.summary.recoveryHeadline"),
       nextStep: recoveryNextStepForSummary(recoveryAction),
       evidence: isWorkspaceRecovery
         ? translate("ui.issueDetail.summary.workspaceRecoveryEvidence", { owner: recoveryOwner })
+        : isMissingDispositionRecovery
+          ? translate("ui.issueDetail.summary.missingDispositionEvidence", { owner: recoveryOwner })
         : translate("ui.issueDetail.summary.recoveryEvidence", {
           cause: recoveryAction.cause,
           owner: recoveryOwner,
@@ -777,6 +783,10 @@ function buildIssueDecisionSummary(input: {
         ? translate("ui.issueDetail.summary.workspaceRecoveryDiagnostic", {
           cause: recoveryAction.cause ?? recoveryAction.kind,
         })
+        : isMissingDispositionRecovery
+          ? translate("ui.issueDetail.summary.missingDispositionDiagnostic", {
+            cause: recoveryAction.cause ?? recoveryAction.kind,
+          })
         : translate("ui.issueDetail.summary.recoveryDiagnostic"),
     };
   }

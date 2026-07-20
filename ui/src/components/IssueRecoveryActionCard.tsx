@@ -142,6 +142,8 @@ function outcomeLabel(outcome: IssueRecoveryActionOutcome, t: Translate) {
 const KNOWN_RECOVERY_TEXT_KEYS: Record<string, string> = {
   "Restore a live execution path, fix the runtime/adapter failure, or record an intentional manual resolution.":
     "ui.recoveryActionCard.knownText.restoreLiveExecutionPath",
+  "Choose and record a valid issue disposition without copying transcript content.":
+    "ui.recoveryActionCard.knownText.recordDisposition",
   "Repair the source issue workspace link or project workspace before resuming adapter execution. If the task requires Git, also provide a Git checkout.":
     "ui.recoveryActionCard.knownText.repairWorkspaceLink",
   "Repair the source issue git worktree branch incoherence, or choose a new execution workspace, before resuming adapter execution.":
@@ -156,9 +158,26 @@ function localizeKnownRecoveryText(text: string, t: Translate) {
 }
 
 function recoveryExplanationKey(kind: IssueRecoveryActionKind) {
-  if (kind === "workspace_validation") return "workspace_validation";
-  if (kind === "configuration_validation") return "configuration_validation";
-  return null;
+  return kind;
+}
+
+function recoveryEvidenceText(kind: IssueRecoveryActionKind, t: Translate) {
+  switch (kind) {
+    case "workspace_validation":
+      return t("ui.recoveryActionCard.metadata.workspaceValidationEvidence");
+    case "missing_disposition":
+      return t("ui.recoveryActionCard.metadata.missingDispositionEvidence");
+    case "stranded_assigned_issue":
+      return t("ui.recoveryActionCard.metadata.strandedEvidence");
+    case "configuration_validation":
+      return t("ui.recoveryActionCard.metadata.configurationEvidence");
+    case "active_run_watchdog":
+      return t("ui.recoveryActionCard.metadata.activeWatchdogEvidence");
+    case "issue_graph_liveness":
+      return t("ui.recoveryActionCard.metadata.graphLivenessEvidence");
+    default:
+      return null;
+  }
 }
 
 const STATE_TONE: Record<RecoveryCardCardState, {
@@ -937,6 +956,7 @@ export function IssueRecoveryActionCard({
 
   const wakeSummary = readWakePolicySummary(action, t);
   const evidenceSummary = pickEvidenceSummary(action);
+  const productEvidence = recoveryEvidenceText(action.kind, t);
   const sourceRunId = readEvidenceRunId(action, "sourceRunId") ?? readEvidenceRunId(action, "latestRunId");
   const correctiveRunId = readEvidenceRunId(action, "correctiveRunId");
   const showAttempt = action.attemptCount > 1 && action.maxAttempts !== null;
@@ -1097,9 +1117,9 @@ export function IssueRecoveryActionCard({
           </MetadataRow>
         ) : null}
         <MetadataRow label={t("ui.recoveryActionCard.metadata.evidence")}>
-          {action.kind === "workspace_validation" ? (
+          {productEvidence ? (
             <span className="text-xs leading-5 text-foreground/80">
-              {t("ui.recoveryActionCard.metadata.workspaceValidationEvidence")}
+              {productEvidence}
             </span>
           ) : evidenceSummary ? (
             evidenceSummary.isCode ? (

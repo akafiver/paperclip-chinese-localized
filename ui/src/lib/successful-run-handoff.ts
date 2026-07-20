@@ -6,7 +6,7 @@ export const SUCCESSFUL_RUN_HANDOFF_ESCALATED_ACTION = "issue.successful_run_han
 export const SUCCESSFUL_RUN_HANDOFF_REQUIRED_NOTICE_BODY =
   "Paperclip needs a disposition before this issue can continue.";
 export const SUCCESSFUL_RUN_HANDOFF_EXHAUSTED_NOTICE_BODY =
-  "Paperclip could not resolve this issue's missing disposition automatically. The issue is blocked on a recovery owner.";
+  "Paperclip tried one status-only follow-up, but the issue still has no recorded disposition. The issue is blocked until the recovery owner chooses the next step.";
 
 export function isSuccessfulRunHandoffActivity(action: string) {
   return action === SUCCESSFUL_RUN_HANDOFF_REQUIRED_ACTION
@@ -70,14 +70,15 @@ export function isSuccessfulRunHandoffEscalationComment(text: string) {
   const trimmed = text.trim();
   return trimmed === SUCCESSFUL_RUN_HANDOFF_EXHAUSTED_NOTICE_BODY
     || (trimmed.startsWith("Paperclip could not resolve this issue's missing disposition") && trimmed.endsWith("The issue is blocked on a recovery owner."))
+    || (trimmed.startsWith("Paperclip tried one status-only follow-up") && trimmed.endsWith("until the recovery owner chooses the next step."))
     || /^Paperclip exhausted the bounded successful-run handoff correction\b/i.test(trimmed);
 }
 
 export function successfulRunHandoffActivityTone(action: string) {
   if (action === SUCCESSFUL_RUN_HANDOFF_ESCALATED_ACTION) {
     return {
-      className: "border-red-500/35 bg-red-500/10 text-red-950 dark:text-red-100",
-      iconClassName: "text-red-600 dark:text-red-300",
+      className: "border-amber-300/70 bg-amber-50/90 text-amber-950 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100",
+      iconClassName: "text-amber-600 dark:text-amber-300",
     };
   }
   if (action === SUCCESSFUL_RUN_HANDOFF_REQUIRED_ACTION) {
