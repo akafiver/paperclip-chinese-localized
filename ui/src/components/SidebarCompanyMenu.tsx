@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  Building2,
   Check,
   ChevronsUpDown,
   GripVertical,
@@ -155,6 +156,7 @@ export function SidebarCompanyMenu({ open: controlledOpen, onOpenChange }: Sideb
     () => companies.filter((company) => company.status !== "archived"),
     [companies],
   );
+  const archivedCompanyCount = companies.length - sidebarCompanies.length;
   const { data: session } = useQuery({
     queryKey: queryKeys.auth.session,
     queryFn: () => authApi.getSession(),
@@ -328,6 +330,28 @@ export function SidebarCompanyMenu({ open: controlledOpen, onOpenChange }: Sideb
           >
             <Settings className="size-4" />
             <span>{t("ui.company.settings")}</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild disabled={isEditingOrder}>
+          <Link
+            to="/companies"
+            onClick={(event) => {
+              if (isEditingOrder) {
+                event.preventDefault();
+                return;
+              }
+              closeNavigationChrome();
+            }}
+          >
+            <Building2 className="size-4" />
+            <span className="min-w-0 flex-1 truncate">
+              {t("ui.company.manageAndRestore")}
+            </span>
+            {archivedCompanyCount > 0 ? (
+              <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-(length:--text-micro) text-muted-foreground">
+                {archivedCompanyCount}
+              </span>
+            ) : null}
           </Link>
         </DropdownMenuItem>
         {session?.session ? (

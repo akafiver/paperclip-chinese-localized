@@ -213,6 +213,21 @@ export function Companies() {
                       >
                         <Pencil className="h-3 w-3" />
                       </Button>
+                      {company.status === "archived" ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            restoreMutation.mutate(company.id);
+                          }}
+                          disabled={restoreMutation.isPending}
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          {restoreMutation.isPending ? t("ui.companies.restoring") : t("ui.companies.restoreCompany")}
+                        </Button>
+                      ) : null}
                     </div>
                   )}
                   {company.description && !isEditing && (

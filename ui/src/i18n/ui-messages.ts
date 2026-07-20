@@ -2302,6 +2302,7 @@ export const uiMessages = {
       invitePeople: "Invite people",
       invitePeopleTo: "Invite people to {{name}}",
       settings: "Company settings",
+      manageAndRestore: "Manage companies / restore archived",
       reorder: "Reorder {{name}}",
     },
     costs: {
@@ -8338,6 +8339,7 @@ export const uiMessages = {
       invitePeople: "邀请成员",
       invitePeopleTo: "邀请成员加入 {{name}}",
       settings: "公司设置",
+      manageAndRestore: "公司管理 / 恢复归档公司",
       reorder: "调整 {{name}} 的顺序",
     },
     costs: {
