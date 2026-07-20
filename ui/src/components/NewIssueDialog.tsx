@@ -1006,21 +1006,6 @@ export function NewIssueDialog() {
       thinkingEffortOverride: assigneeThinkingEffort,
       chrome: assigneeChrome,
     });
-    const selectedProject = orderedProjects.find((project) => project.id === projectId);
-    const executionWorkspacePolicy =
-      experimentalSettings?.enableIsolatedWorkspaces === true
-        ? selectedProject?.executionWorkspacePolicy ?? null
-        : null;
-    const selectedReusableExecutionWorkspace = selectableReusableWorkspaces.find(
-      (workspace) => workspace.id === selectedExecutionWorkspaceId,
-    );
-    const requestedExecutionWorkspaceMode =
-      executionWorkspaceMode === "reuse_existing"
-        ? issueExecutionWorkspaceModeForExistingWorkspace(selectedReusableExecutionWorkspace?.mode)
-        : executionWorkspaceMode;
-    const executionWorkspaceSettings = executionWorkspacePolicy?.enabled
-      ? { mode: requestedExecutionWorkspaceMode }
-      : null;
     const executionPolicy = buildExecutionPolicy({
       reviewerValues: reviewerValue ? [reviewerValue] : [],
       approverValues: approverValue ? [approverValue] : [],
@@ -1040,11 +1025,6 @@ export function NewIssueDialog() {
       ...(projectId ? { projectId } : {}),
       ...(projectWorkspaceId ? { projectWorkspaceId } : {}),
       ...(assigneeAdapterOverrides ? { assigneeAdapterOverrides } : {}),
-      ...(executionWorkspacePolicy?.enabled ? { executionWorkspacePreference: executionWorkspaceMode } : {}),
-      ...(executionWorkspaceMode === "reuse_existing" && selectedExecutionWorkspaceId
-        ? { executionWorkspaceId: selectedExecutionWorkspaceId }
-        : {}),
-      ...(executionWorkspaceSettings ? { executionWorkspaceSettings } : {}),
       ...(executionPolicy ? { executionPolicy } : {}),
       ...(taskWatchdogsEnabled && watchdogAgentId
         ? { watchdog: { agentId: watchdogAgentId, instructions: watchdogInstructions.trim() || null } }
@@ -1145,11 +1125,7 @@ export function NewIssueDialog() {
     },
     [currentAssignee?.adapterConfig, currentProject?.env, selectedAssigneeAgentId, status],
   );
-  const currentProjectExecutionWorkspacePolicy =
-    experimentalSettings?.enableIsolatedWorkspaces === true
-      ? currentProject?.executionWorkspacePolicy ?? null
-      : null;
-  const currentProjectSupportsExecutionWorkspace = Boolean(currentProjectExecutionWorkspacePolicy?.enabled);
+  const currentProjectSupportsExecutionWorkspace = false;
   const taskWatchdogsEnabled = experimentalSettings?.enableTaskWatchdogs === true;
   const selectableReusableWorkspaces = reusableExecutionWorkspaces ?? [];
   const selectedReusableExecutionWorkspace = selectableReusableWorkspaces.find(

@@ -203,7 +203,6 @@ export function normalizeExperimentalSettings(raw: unknown): InstanceExperimenta
   if (parsed.success) {
     return {
       enableEnvironments: parsed.data.enableEnvironments ?? false,
-      enableIsolatedWorkspaces: parsed.data.enableIsolatedWorkspaces ?? false,
       enableStreamlinedLeftNavigation: parsed.data.enableStreamlinedLeftNavigation ?? true,
       enableApps: parsed.data.enableApps ?? false,
       enablePipelines: parsed.data.enablePipelines ?? false,
@@ -234,7 +233,6 @@ export function normalizeExperimentalSettings(raw: unknown): InstanceExperimenta
   }
   return {
     enableEnvironments: false,
-    enableIsolatedWorkspaces: false,
     enableStreamlinedLeftNavigation: true,
     enableApps: false,
     enablePipelines: false,

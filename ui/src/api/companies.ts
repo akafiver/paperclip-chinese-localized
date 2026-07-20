@@ -12,10 +12,18 @@ import type {
 import { api } from "./client";
 
 export type CompanyStats = Record<string, { agentCount: number; issueCount: number }>;
+export type CompanyWorkspaceRoot = {
+  companyId: string;
+  path: string;
+  managedBy: "paperclip";
+  directories: string[];
+};
 
 export const companiesApi = {
   list: () => api.get<Company[]>("/companies"),
   get: (companyId: string) => api.get<Company>(`/companies/${companyId}`),
+  workspaceRoot: (companyId: string) =>
+    api.get<CompanyWorkspaceRoot>(`/companies/${companyId}/workspace-root`),
   stats: () => api.get<CompanyStats>("/companies/stats"),
   create: (data: {
     name: string;

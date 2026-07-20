@@ -22,7 +22,7 @@ function getDetachedClient(): QueryClient {
  * and `InstanceExperimentalSettings` use) so the Smoke Lab tab, its sidebar
  * nav item, and the dashboard card share one gate. `enabled` stays false while
  * the query is in flight (no flash of gated UI, matching the sidebar's
- * `showWorkspacesLink` pattern); `loaded` lets route gates avoid redirecting
+ * sidebar feature-gate pattern); `loaded` lets route gates avoid redirecting
  * before the flag value is known.
  *
  * Renders without a QueryClientProvider resolve to the flag-off default

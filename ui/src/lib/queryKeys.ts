@@ -2,6 +2,7 @@ export const queryKeys = {
   companies: {
     all: ["companies"] as const,
     detail: (id: string) => ["companies", id] as const,
+    workspaceRoot: (id: string) => ["companies", id, "workspace-root"] as const,
     stats: ["companies", "stats"] as const,
   },
   apps: {

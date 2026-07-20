@@ -290,7 +290,6 @@ export function InstanceExperimentalSettings() {
     getWorktreeInstanceId(),
   );
   const enableEnvironments = experimentalQuery.data?.enableEnvironments === true;
-  const enableIsolatedWorkspaces = experimentalQuery.data?.enableIsolatedWorkspaces === true;
   const enableApps = experimentalQuery.data?.enableApps === true;
   // Streamlined left navigation is now the standard sidebar (PAP-12472); the
   // experimental opt-out was retired, so it no longer surfaces a toggle here.
@@ -577,23 +576,6 @@ export function InstanceExperimentalSettings() {
             onCheckedChange={() => toggleMutation.mutate({ enableGoalsSidebarLink: !enableGoalsSidebarLink })}
             disabled={toggleMutation.isPending}
             aria-label={t("ui.instanceExperimental.toggleGoalsSidebar")}
-          />
-        </div>
-      </Card>
-
-      <Card className="block p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-1.5">
-            <h2 className="text-sm font-semibold">{t("ui.instanceExperimental.isolatedWorkspacesTitle")}</h2>
-            <p className="max-w-2xl text-sm text-muted-foreground">
-              {t("ui.instanceExperimental.isolatedWorkspacesDescription")}
-            </p>
-          </div>
-          <ToggleSwitch
-            checked={enableIsolatedWorkspaces}
-            onCheckedChange={() => toggleMutation.mutate({ enableIsolatedWorkspaces: !enableIsolatedWorkspaces })}
-            disabled={toggleMutation.isPending}
-            aria-label={t("ui.instanceExperimental.toggleIsolatedWorkspaces")}
           />
         </div>
       </Card>

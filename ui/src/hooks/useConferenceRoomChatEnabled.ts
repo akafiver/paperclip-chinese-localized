@@ -20,7 +20,7 @@ function getDetachedClient(): QueryClient {
  *
  * Wraps the shared experimental-settings query so gated call sites don't
  * repeat the boilerplate. `enabled` stays false while the query is in
- * flight (no flash of gated UI, same as the sidebar's `showWorkspacesLink`
+ * flight (no flash of gated UI, same as other feature-gated sidebar links
  * pattern); `loaded` lets route gates avoid redirecting away before the
  * flag value is actually known.
  *

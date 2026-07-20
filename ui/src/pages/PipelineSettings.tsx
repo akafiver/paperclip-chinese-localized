@@ -1594,7 +1594,7 @@ export function PipelineSettings() {
     [selectedAutomationProject, stageProjectWorkspaceId],
   );
   const selectedProjectSupportsExecutionWorkspace =
-    experimentalSettingsQuery.data?.enableIsolatedWorkspaces === true
+    false
     && Boolean(selectedAutomationProject?.executionWorkspacePolicy?.enabled);
   const reusableExecutionWorkspacesQuery = useQuery({
     queryKey: selectedCompanyId && stageProjectId

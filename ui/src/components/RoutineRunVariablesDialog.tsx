@@ -258,7 +258,7 @@ export function RoutineRunVariablesDialog({
 
   const workspaceSelectionEnabled = supportsRoutineRunWorkspaceSelection(
     selectedProject,
-    experimentalSettings?.enableIsolatedWorkspaces === true,
+    false,
   );
 
   useEffect(() => {

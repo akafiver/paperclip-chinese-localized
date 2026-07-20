@@ -84,14 +84,12 @@ export function Sidebar() {
   });
   usePublishSharedQueryData(sharedLiveRuns, liveRuns, liveRunsUpdatedAt);
   const liveRunCount = liveRuns?.length ?? 0;
-  const showWorkspacesLink = experimentalSettings?.enableIsolatedWorkspaces === true;
   const showApps = experimentalSettings?.enableApps === true;
   const showPipelines = experimentalSettings?.enablePipelines === true;
   const goalsLinkPending = experimentalSettings === undefined;
   const showGoalsLink = experimentalSettings?.enableGoalsSidebarLink === true;
   // Decisions (attention home) is an experimental surface (PAP-13481): the nav
-  // item is hidden entirely until the flag is enabled (same no-flash pattern as
-  // showWorkspacesLink — it defaults hidden, so no placeholder is needed).
+  // item is hidden entirely until the flag is enabled.
   const showDecisions = experimentalSettings?.enableDecisions === true;
   const { data: attentionFeed } = useQuery({
     queryKey: queryKeys.attention(selectedCompanyId!),
@@ -108,8 +106,7 @@ export function Sidebar() {
   // documented reference until it is fully removed. Routes are unaffected.
   const streamlined = true;
   // Conference Room Chat flag (PAP-136/PAP-137): the Conference Room nav item
-  // is a new surface, hidden entirely while the flag is off (same no-flash
-  // pattern as showWorkspacesLink above).
+  // is a new surface, hidden entirely while the flag is off.
   const conferenceRoomChatEnabled = experimentalSettings?.enableConferenceRoomChat === true;
 
   const pluginContext = {
@@ -243,9 +240,6 @@ export function Sidebar() {
           ) : null}
           <SidebarNavItem to="/artifacts" label={t("ui.nav.artifacts")} icon={Package} />
           <SidebarNavItem to="/skills" label={t("ui.nav.skills")} icon={Boxes} />
-          {showWorkspacesLink ? (
-            <SidebarNavItem to="/workspaces" label={t("ui.nav.workspaces")} icon={GitBranch} />
-          ) : null}
           {streamlined ? (
             <>
               <SidebarNavItem to="/projects" label={t("ui.nav.projects")} icon={FolderOpen} />

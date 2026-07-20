@@ -13,7 +13,7 @@ import { queryKeys } from "../lib/queryKeys";
 import { Link, useNavigate } from "@/lib/router";
 import { useTranslation } from "@/i18n";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Archive, CloudUpload, Download, RotateCcw, Settings, Trash2, Upload } from "lucide-react";
+import { AlertTriangle, Archive, CloudUpload, Download, FolderOpen, RotateCcw, Settings, Trash2, Upload } from "lucide-react";
 import { CompanyPatternIcon } from "../components/CompanyPatternIcon";
 import {
   Field,
@@ -71,6 +71,13 @@ export function CompanySettings() {
     && attachmentMaxBytes >= BYTES_PER_MIB
     && attachmentMaxBytes <= MAX_COMPANY_ATTACHMENT_MAX_BYTES;
   const cloudSyncEnabled = experimentalSettings?.enableCloudSync === true;
+  const workspaceRootQuery = useQuery({
+    queryKey: selectedCompanyId
+      ? queryKeys.companies.workspaceRoot(selectedCompanyId)
+      : queryKeys.companies.all,
+    queryFn: () => companiesApi.workspaceRoot(selectedCompanyId!),
+    enabled: Boolean(selectedCompanyId),
+  });
 
   const generalDirty =
     !!selectedCompany &&
@@ -428,6 +435,56 @@ export function CompanySettings() {
           )}
         </div>
       )}
+
+      {/* Company workspace */}
+      <div className="space-y-4">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          {t("ui.companySettings.workspace")}
+        </div>
+        <div className="space-y-4 rounded-md border border-border px-4 py-4">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 rounded-md border border-border bg-muted/40 p-2">
+              <FolderOpen className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="text-sm font-medium">{t("ui.companySettings.workspaceTitle")}</div>
+              <p className="text-sm text-muted-foreground">
+                {t("ui.companySettings.workspaceDescription")}
+              </p>
+            </div>
+          </div>
+          <Field
+            label={t("ui.companySettings.workspacePath")}
+            hint={t("ui.companySettings.workspacePathHint")}
+          >
+            <div className="rounded-md border border-border bg-muted/30 px-2.5 py-2 font-mono text-xs text-foreground" style={{ overflowWrap: "anywhere" }}>
+              {workspaceRootQuery.isLoading
+                ? t("ui.common.loading")
+                : workspaceRootQuery.error instanceof Error
+                  ? workspaceRootQuery.error.message
+                  : workspaceRootQuery.data?.path ?? t("ui.companySettings.workspaceUnavailable")}
+            </div>
+          </Field>
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-muted-foreground">
+              {t("ui.companySettings.workspaceManagedFolders")}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(workspaceRootQuery.data?.directories ?? ["projects", "media", "documents", "datasets", "scripts", "outputs"]).map((directory) => (
+                <span
+                  key={directory}
+                  className="rounded-md border border-border bg-muted/40 px-2 py-1 font-mono text-xs text-muted-foreground"
+                >
+                  {directory}
+                </span>
+              ))}
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {t("ui.companySettings.workspaceBoundaryNote")}
+          </p>
+        </div>
+      </div>
 
       {/* Hiring */}
       <div className="space-y-4" data-testid="company-settings-team-section">

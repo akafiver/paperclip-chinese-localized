@@ -301,7 +301,7 @@ export function ProjectProperties({ project, onUpdate, onFieldUpdate, getFieldSa
   const hasAdditionalLegacyWorkspaces = workspaces.some((workspace) => workspace.id !== primaryCodebaseWorkspace?.id);
   const executionWorkspacePolicy = project.executionWorkspacePolicy ?? null;
   const executionWorkspacesEnabled = executionWorkspacePolicy?.enabled === true;
-  const isolatedWorkspacesEnabled = experimentalSettings?.enableIsolatedWorkspaces === true;
+  const isolatedWorkspacesEnabled = false;
   const executionWorkspaceDefaultMode =
     executionWorkspacePolicy?.defaultMode === "isolated_workspace" ? "isolated_workspace" : "shared_workspace";
   const executionWorkspaceEnvironmentId = executionWorkspacePolicy?.environmentId ?? "";

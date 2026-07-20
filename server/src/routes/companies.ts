@@ -33,6 +33,8 @@ import {
 import type { StorageService } from "../storage/types.js";
 import { assertBoard, assertCompanyAccess, assertInstanceAdmin, getActorInfo } from "./authz.js";
 import { COMPANY_IMPORT_ROUTE_PATH } from "./company-import-paths.js";
+import { PROJECT_WORKSPACE_DIRECTORIES } from "../services/project-workspace-layout.js";
+import { resolveCompanyWorkspaceRoot } from "../home-paths.js";
 
 export function companyRoutes(db: Db, storage?: StorageService) {
   const router = Router();
@@ -212,6 +214,23 @@ export function companyRoutes(db: Db, storage?: StorageService) {
       return;
     }
     res.json(company);
+  });
+
+  router.get("/:companyId/workspace-root", async (req, res) => {
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    assertBoard(req);
+    const company = await svc.getById(companyId);
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+    res.json({
+      companyId,
+      path: resolveCompanyWorkspaceRoot(companyId),
+      managedBy: "paperclip",
+      directories: PROJECT_WORKSPACE_DIRECTORIES,
+    });
   });
 
   router.get("/:companyId/feedback-traces", async (req, res) => {

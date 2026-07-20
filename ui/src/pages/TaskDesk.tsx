@@ -826,7 +826,7 @@ export function TaskDesk() {
     queryFn: () => issuesApi.listLabels(selectedCompanyId!),
     enabled: !!selectedCompanyId,
   });
-  const isolatedWorkspacesEnabled = experimentalSettings?.enableIsolatedWorkspaces === true;
+  const isolatedWorkspacesEnabled = false;
   const externalObjectsEnabled = experimentalSettings?.enableExternalObjects === true;
   const { data: executionWorkspaces = [] } = useQuery({
     queryKey: selectedCompanyId

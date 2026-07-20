@@ -6131,12 +6131,7 @@ export function issueService(db: Db) {
         onDeduplicated,
         ...issueData
       } = data;
-      const isolatedWorkspacesEnabled = (await instanceSettings.getExperimental()).enableIsolatedWorkspaces;
-      if (!isolatedWorkspacesEnabled) {
-        delete issueData.executionWorkspaceId;
-        delete issueData.executionWorkspacePreference;
-        delete issueData.executionWorkspaceSettings;
-      }
+      const isolatedWorkspacesEnabled = true;
       if (data.assigneeAgentId && data.assigneeUserId) {
         throw unprocessable("Issue can only have one assignee");
       }
@@ -6467,12 +6462,7 @@ export function issueService(db: Db) {
         actorUserId,
         ...issueData
       } = data;
-      const isolatedWorkspacesEnabled = (await instanceSettings.getExperimental()).enableIsolatedWorkspaces;
-      if (!isolatedWorkspacesEnabled) {
-        delete issueData.executionWorkspaceId;
-        delete issueData.executionWorkspacePreference;
-        delete issueData.executionWorkspaceSettings;
-      }
+      const isolatedWorkspacesEnabled = true;
 
       if (issueData.status) {
         assertTransition(existing.status, issueData.status);

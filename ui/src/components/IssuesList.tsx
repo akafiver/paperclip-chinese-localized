@@ -717,7 +717,7 @@ export function IssuesList({
   });
   const currentUserId = session?.user?.id ?? session?.session?.userId ?? null;
   const experimentalSettingsLoaded = experimentalSettings !== undefined;
-  const isolatedWorkspacesEnabled = experimentalSettings?.enableIsolatedWorkspaces === true;
+  const isolatedWorkspacesEnabled = false;
   const externalObjectsEnabled = experimentalSettings?.enableExternalObjects === true;
 
   // Scope the storage key per company so folding/view state is independent across companies.

@@ -19,7 +19,6 @@ import { AgentDetail } from "./pages/AgentDetail";
 import { Projects } from "./pages/Projects";
 import { ProjectDetail } from "./pages/ProjectDetail";
 import { ProjectWorkspaceDetail } from "./pages/ProjectWorkspaceDetail";
-import { Workspaces } from "./pages/Workspaces";
 import { TaskDesk } from "./pages/TaskDesk";
 import { Search } from "./pages/Search";
 import { IssueDetail } from "./pages/IssueDetail";
@@ -172,7 +171,7 @@ function boardRoutes() {
       <Route path="projects/:projectId/workspaces" element={<ProjectDetail />} />
       <Route path="projects/:projectId/configuration" element={<ProjectDetail />} />
       <Route path="projects/:projectId/budget" element={<ProjectDetail />} />
-      <Route path="workspaces" element={<Workspaces />} />
+      <Route path="workspaces" element={<Navigate to="/company/settings" replace />} />
       <Route path="issues" element={<TaskDesk />} />
       <Route path="search" element={<Search />} />
       <Route path="issues/all" element={<Navigate to="/issues?view=active" replace />} />

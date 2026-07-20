@@ -211,8 +211,7 @@ export function IssueWorkspaceCard({
   });
 
   const environmentsEnabled = experimentalSettings?.enableEnvironments === true;
-  const policyEnabled = experimentalSettings?.enableIsolatedWorkspaces === true
-    && Boolean(project?.executionWorkspacePolicy?.enabled);
+  const policyEnabled = false;
 
   const workspace = issue.currentExecutionWorkspace as ExecutionWorkspace | null | undefined;
   const { data: environments } = useQuery({
