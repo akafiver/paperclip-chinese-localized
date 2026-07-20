@@ -12,6 +12,8 @@ export interface Company {
   budgetMonthlyCents: number;
   spentMonthlyCents: number;
   attachmentMaxBytes: number;
+  maxConcurrentRuns: number;
+  maxConcurrentRunsPerAgent: number;
   defaultResponsibleUserId: string | null;
   requireBoardApprovalForNewAgents: boolean;
   feedbackDataSharingEnabled: boolean;

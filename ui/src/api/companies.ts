@@ -41,6 +41,8 @@ export const companiesApi = {
         | "status"
         | "budgetMonthlyCents"
         | "attachmentMaxBytes"
+        | "maxConcurrentRuns"
+        | "maxConcurrentRunsPerAgent"
         | "requireBoardApprovalForNewAgents"
         | "feedbackDataSharingEnabled"
         | "brandColor"

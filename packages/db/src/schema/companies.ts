@@ -16,6 +16,8 @@ export const companies = pgTable(
     attachmentMaxBytes: integer("attachment_max_bytes")
       .notNull()
       .default(10 * 1024 * 1024),
+    maxConcurrentRuns: integer("max_concurrent_runs").notNull().default(2),
+    maxConcurrentRunsPerAgent: integer("max_concurrent_runs_per_agent").notNull().default(1),
     defaultResponsibleUserId: text("default_responsible_user_id"),
     requireBoardApprovalForNewAgents: boolean("require_board_approval_for_new_agents")
       .notNull()

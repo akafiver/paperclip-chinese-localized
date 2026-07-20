@@ -1,6 +1,9 @@
 import { ChangeEvent, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  COMPANY_DEFAULT_MAX_CONCURRENT_RUNS,
+  COMPANY_DEFAULT_MAX_CONCURRENT_RUNS_PER_AGENT,
+  COMPANY_MAX_CONCURRENT_RUNS_LIMIT,
   DEFAULT_COMPANY_ATTACHMENT_MAX_BYTES,
   MAX_COMPANY_ATTACHMENT_MAX_BYTES,
 } from "@paperclipai/shared";
@@ -51,6 +54,8 @@ export function CompanySettings() {
   const [description, setDescription] = useState("");
   const [brandColor, setBrandColor] = useState("");
   const [attachmentMaxMiB, setAttachmentMaxMiB] = useState(String(DEFAULT_COMPANY_ATTACHMENT_MAX_MIB));
+  const [maxConcurrentRuns, setMaxConcurrentRuns] = useState(String(COMPANY_DEFAULT_MAX_CONCURRENT_RUNS));
+  const [maxConcurrentRunsPerAgent, setMaxConcurrentRunsPerAgent] = useState(String(COMPANY_DEFAULT_MAX_CONCURRENT_RUNS_PER_AGENT));
   const [logoUrl, setLogoUrl] = useState("");
   const [logoUploadError, setLogoUploadError] = useState<string | null>(null);
   const [confirmLifecycleAction, setConfirmLifecycleAction] = useState<"archive" | "delete" | null>(null);
@@ -62,14 +67,27 @@ export function CompanySettings() {
     setDescription(selectedCompany.description ?? "");
     setBrandColor(selectedCompany.brandColor ?? "");
     setAttachmentMaxMiB(String(Math.round((selectedCompany.attachmentMaxBytes ?? DEFAULT_COMPANY_ATTACHMENT_MAX_BYTES) / BYTES_PER_MIB)));
+    setMaxConcurrentRuns(String(selectedCompany.maxConcurrentRuns ?? COMPANY_DEFAULT_MAX_CONCURRENT_RUNS));
+    setMaxConcurrentRunsPerAgent(String(selectedCompany.maxConcurrentRunsPerAgent ?? COMPANY_DEFAULT_MAX_CONCURRENT_RUNS_PER_AGENT));
     setLogoUrl(selectedCompany.logoUrl ?? "");
   }, [selectedCompany]);
 
   const attachmentMaxBytes = Number.parseInt(attachmentMaxMiB, 10) * BYTES_PER_MIB;
+  const parsedMaxConcurrentRuns = Number.parseInt(maxConcurrentRuns, 10);
+  const parsedMaxConcurrentRunsPerAgent = Number.parseInt(maxConcurrentRunsPerAgent, 10);
   const attachmentMaxValid =
     Number.isInteger(attachmentMaxBytes)
     && attachmentMaxBytes >= BYTES_PER_MIB
     && attachmentMaxBytes <= MAX_COMPANY_ATTACHMENT_MAX_BYTES;
+  const maxConcurrentRunsValid =
+    Number.isInteger(parsedMaxConcurrentRuns)
+    && parsedMaxConcurrentRuns >= 1
+    && parsedMaxConcurrentRuns <= COMPANY_MAX_CONCURRENT_RUNS_LIMIT;
+  const maxConcurrentRunsPerAgentValid =
+    Number.isInteger(parsedMaxConcurrentRunsPerAgent)
+    && parsedMaxConcurrentRunsPerAgent >= 1
+    && parsedMaxConcurrentRunsPerAgent <= COMPANY_MAX_CONCURRENT_RUNS_LIMIT;
+  const concurrencyValid = maxConcurrentRunsValid && maxConcurrentRunsPerAgentValid;
   const cloudSyncEnabled = experimentalSettings?.enableCloudSync === true;
   const workspaceRootQuery = useQuery({
     queryKey: selectedCompanyId
@@ -85,6 +103,10 @@ export function CompanySettings() {
       description !== (selectedCompany.description ?? "") ||
       brandColor !== (selectedCompany.brandColor ?? "") ||
       attachmentMaxBytes !== (selectedCompany.attachmentMaxBytes ?? DEFAULT_COMPANY_ATTACHMENT_MAX_BYTES));
+  const concurrencyDirty =
+    !!selectedCompany &&
+    (parsedMaxConcurrentRuns !== (selectedCompany.maxConcurrentRuns ?? COMPANY_DEFAULT_MAX_CONCURRENT_RUNS) ||
+      parsedMaxConcurrentRunsPerAgent !== (selectedCompany.maxConcurrentRunsPerAgent ?? COMPANY_DEFAULT_MAX_CONCURRENT_RUNS_PER_AGENT));
 
   const generalMutation = useMutation({
     mutationFn: (data: {
@@ -105,6 +127,16 @@ export function CompanySettings() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
+    }
+  });
+
+  const concurrencyMutation = useMutation({
+    mutationFn: (data: {
+      maxConcurrentRuns: number;
+      maxConcurrentRunsPerAgent: number;
+    }) => companiesApi.update(selectedCompanyId!, data),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
     }
   });
 
@@ -483,6 +515,89 @@ export function CompanySettings() {
           <p className="text-xs text-muted-foreground">
             {t("ui.companySettings.workspaceBoundaryNote")}
           </p>
+        </div>
+      </div>
+
+      {/* Run concurrency */}
+      <div className="space-y-4" data-testid="company-settings-concurrency-section">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          运行并发
+        </div>
+        <div className="space-y-4 rounded-md border border-border px-4 py-4">
+          <p className="text-sm text-muted-foreground">
+            控制该公司内 Agent 请求的启动槽位。超出上限的运行会留在队列中，等待已有运行结束后再启动。
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="全局请求并发数"
+              hint={`该公司所有 Agent 加起来最多同时运行多少个请求。默认 ${COMPANY_DEFAULT_MAX_CONCURRENT_RUNS}。`}
+            >
+              <div className="flex flex-col gap-1.5">
+                <input
+                  type="number"
+                  min={1}
+                  max={COMPANY_MAX_CONCURRENT_RUNS_LIMIT}
+                  step={1}
+                  value={maxConcurrentRuns}
+                  onChange={(e) => setMaxConcurrentRuns(e.target.value)}
+                  className="w-28 rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm outline-none"
+                />
+                {!maxConcurrentRunsValid && (
+                  <span className="text-xs text-destructive">
+                    请输入 1 到 {COMPANY_MAX_CONCURRENT_RUNS_LIMIT} 的整数。
+                  </span>
+                )}
+              </div>
+            </Field>
+            <Field
+              label="单 Agent 请求并发数"
+              hint={`同一个 Agent 最多同时运行多少个请求。默认 ${COMPANY_DEFAULT_MAX_CONCURRENT_RUNS_PER_AGENT}。`}
+            >
+              <div className="flex flex-col gap-1.5">
+                <input
+                  type="number"
+                  min={1}
+                  max={COMPANY_MAX_CONCURRENT_RUNS_LIMIT}
+                  step={1}
+                  value={maxConcurrentRunsPerAgent}
+                  onChange={(e) => setMaxConcurrentRunsPerAgent(e.target.value)}
+                  className="w-28 rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm outline-none"
+                />
+                {!maxConcurrentRunsPerAgentValid && (
+                  <span className="text-xs text-destructive">
+                    请输入 1 到 {COMPANY_MAX_CONCURRENT_RUNS_LIMIT} 的整数。
+                  </span>
+                )}
+              </div>
+            </Field>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            实际启动数量还会受实例级环境变量和 vLLM 模型槽位限制约束；这里设置的是公司级运行边界。
+          </p>
+          {concurrencyDirty && (
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                onClick={() => concurrencyMutation.mutate({
+                  maxConcurrentRuns: parsedMaxConcurrentRuns,
+                  maxConcurrentRunsPerAgent: parsedMaxConcurrentRunsPerAgent,
+                })}
+                disabled={concurrencyMutation.isPending || !concurrencyValid}
+              >
+                {concurrencyMutation.isPending ? t("ui.companySettings.saving") : t("ui.companySettings.saveChanges")}
+              </Button>
+              {concurrencyMutation.isSuccess && (
+                <span className="text-xs text-muted-foreground">{t("ui.companySettings.saved")}</span>
+              )}
+              {concurrencyMutation.isError && (
+                <span className="text-xs text-destructive">
+                  {concurrencyMutation.error instanceof Error
+                    ? concurrencyMutation.error.message
+                    : t("ui.companySettings.failedToSave")}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

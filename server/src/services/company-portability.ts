@@ -35,6 +35,8 @@ import type {
 } from "@paperclipai/shared";
 import {
   AGENT_DEFAULT_MAX_CONCURRENT_RUNS,
+  COMPANY_DEFAULT_MAX_CONCURRENT_RUNS,
+  COMPANY_DEFAULT_MAX_CONCURRENT_RUNS_PER_AGENT,
   ISSUE_PRIORITIES,
   ISSUE_STATUSES,
   PROJECT_ICON_NAMES,
@@ -2669,6 +2671,14 @@ function buildManifestFromPackageFiles(
         typeof paperclipCompany.attachmentMaxBytes === "number" && Number.isFinite(paperclipCompany.attachmentMaxBytes)
           ? Math.max(1, Math.floor(paperclipCompany.attachmentMaxBytes))
           : null,
+      maxConcurrentRuns:
+        typeof paperclipCompany.maxConcurrentRuns === "number" && Number.isFinite(paperclipCompany.maxConcurrentRuns)
+          ? Math.max(1, Math.floor(paperclipCompany.maxConcurrentRuns))
+          : COMPANY_DEFAULT_MAX_CONCURRENT_RUNS,
+      maxConcurrentRunsPerAgent:
+        typeof paperclipCompany.maxConcurrentRunsPerAgent === "number" && Number.isFinite(paperclipCompany.maxConcurrentRunsPerAgent)
+          ? Math.max(1, Math.floor(paperclipCompany.maxConcurrentRunsPerAgent))
+          : COMPANY_DEFAULT_MAX_CONCURRENT_RUNS_PER_AGENT,
       requireBoardApprovalForNewAgents:
         typeof paperclipCompany.requireBoardApprovalForNewAgents === "boolean"
           ? paperclipCompany.requireBoardApprovalForNewAgents
@@ -3896,6 +3906,8 @@ export function companyPortabilityService(db: Db, storage?: StorageService) {
           brandColor: company.brandColor ?? null,
           logoPath: companyLogoPath,
           attachmentMaxBytes: company.attachmentMaxBytes,
+          maxConcurrentRuns: company.maxConcurrentRuns,
+          maxConcurrentRunsPerAgent: company.maxConcurrentRunsPerAgent,
           requireBoardApprovalForNewAgents: company.requireBoardApprovalForNewAgents ? true : undefined,
           feedbackDataSharingEnabled: company.feedbackDataSharingEnabled ? true : undefined,
           feedbackDataSharingConsentAt: company.feedbackDataSharingConsentAt?.toISOString() ?? null,
@@ -4433,6 +4445,8 @@ export function companyPortabilityService(db: Db, storage?: StorageService) {
       name: string;
       requireBoardApprovalForNewAgents?: boolean | null;
       attachmentMaxBytes?: number | null;
+      maxConcurrentRuns?: number | null;
+      maxConcurrentRunsPerAgent?: number | null;
     } | null = null;
     let companyAction: "created" | "updated" | "unchanged" = "unchanged";
 
@@ -4458,6 +4472,12 @@ export function companyPortabilityService(db: Db, storage?: StorageService) {
         attachmentMaxBytes: include.company
           ? (sourceManifest.company?.attachmentMaxBytes ?? undefined)
           : undefined,
+        maxConcurrentRuns: include.company
+          ? (sourceManifest.company?.maxConcurrentRuns ?? COMPANY_DEFAULT_MAX_CONCURRENT_RUNS)
+          : COMPANY_DEFAULT_MAX_CONCURRENT_RUNS,
+        maxConcurrentRunsPerAgent: include.company
+          ? (sourceManifest.company?.maxConcurrentRunsPerAgent ?? COMPANY_DEFAULT_MAX_CONCURRENT_RUNS_PER_AGENT)
+          : COMPANY_DEFAULT_MAX_CONCURRENT_RUNS_PER_AGENT,
         requireBoardApprovalForNewAgents: include.company
           ? (sourceManifest.company?.requireBoardApprovalForNewAgents ?? false)
           : false,
@@ -4497,6 +4517,8 @@ export function companyPortabilityService(db: Db, storage?: StorageService) {
           description: sourceManifest.company.description,
           brandColor: sourceManifest.company.brandColor,
           attachmentMaxBytes: sourceManifest.company.attachmentMaxBytes ?? undefined,
+          maxConcurrentRuns: sourceManifest.company.maxConcurrentRuns,
+          maxConcurrentRunsPerAgent: sourceManifest.company.maxConcurrentRunsPerAgent,
           requireBoardApprovalForNewAgents: sourceManifest.company.requireBoardApprovalForNewAgents,
           feedbackDataSharingEnabled: sourceManifest.company.feedbackDataSharingEnabled,
           feedbackDataSharingConsentAt: sourceManifest.company.feedbackDataSharingConsentAt

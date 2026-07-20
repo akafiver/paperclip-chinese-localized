@@ -1,6 +1,11 @@
 import { z } from "zod";
-import { PERMISSION_KEYS } from "../constants.js";
-import { MAX_COMPANY_ATTACHMENT_MAX_BYTES } from "../constants.js";
+import {
+  COMPANY_DEFAULT_MAX_CONCURRENT_RUNS,
+  COMPANY_DEFAULT_MAX_CONCURRENT_RUNS_PER_AGENT,
+  COMPANY_MAX_CONCURRENT_RUNS_LIMIT,
+  MAX_COMPANY_ATTACHMENT_MAX_BYTES,
+  PERMISSION_KEYS,
+} from "../constants.js";
 import {
   issueCommentAuthorTypeSchema,
   issueCommentMetadataSchema,
@@ -45,6 +50,8 @@ export const portabilityCompanyManifestEntrySchema = z.object({
   brandColor: z.string().nullable(),
   logoPath: z.string().nullable(),
   attachmentMaxBytes: z.number().int().min(1).max(MAX_COMPANY_ATTACHMENT_MAX_BYTES).nullable().default(null),
+  maxConcurrentRuns: z.number().int().min(1).max(COMPANY_MAX_CONCURRENT_RUNS_LIMIT).default(COMPANY_DEFAULT_MAX_CONCURRENT_RUNS),
+  maxConcurrentRunsPerAgent: z.number().int().min(1).max(COMPANY_MAX_CONCURRENT_RUNS_LIMIT).default(COMPANY_DEFAULT_MAX_CONCURRENT_RUNS_PER_AGENT),
   requireBoardApprovalForNewAgents: z.boolean(),
   feedbackDataSharingEnabled: z.boolean().default(false),
   feedbackDataSharingConsentAt: z.string().datetime().nullable().default(null),

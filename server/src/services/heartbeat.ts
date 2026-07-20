@@ -7,6 +7,8 @@ import { and, asc, desc, eq, getTableColumns, gt, gte, inArray, isNull, lt, lte,
 import type { Db } from "@paperclipai/db";
 import {
   AGENT_DEFAULT_MAX_CONCURRENT_RUNS,
+  COMPANY_DEFAULT_MAX_CONCURRENT_RUNS,
+  COMPANY_DEFAULT_MAX_CONCURRENT_RUNS_PER_AGENT,
   ISSUE_CONTINUATION_SUMMARY_DOCUMENT_KEY,
   MODEL_PROFILE_KEYS,
   PROVIDER_QUOTA_MONITOR_SERVICE_NAME,
@@ -2090,6 +2092,12 @@ function normalizeVllmLocalRunLimit() {
 function normalizeSystemRunLimit() {
   const configured = Math.floor(asNumber(process.env.PAPERCLIP_MAX_CONCURRENT_RUNS, SYSTEM_MAX_CONCURRENT_RUNS_DEFAULT));
   if (!Number.isFinite(configured)) return SYSTEM_MAX_CONCURRENT_RUNS_DEFAULT;
+  return Math.max(1, Math.min(HEARTBEAT_MAX_CONCURRENT_RUNS_MAX, configured));
+}
+
+function normalizeCompanyRunLimit(value: unknown, fallback: number) {
+  const configured = Math.floor(asNumber(value, fallback));
+  if (!Number.isFinite(configured)) return fallback;
   return Math.max(1, Math.min(HEARTBEAT_MAX_CONCURRENT_RUNS_MAX, configured));
 }
 
@@ -10693,6 +10701,36 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
     return Number(count ?? 0);
   }
 
+  async function countRunningRunsForCompany(companyId: string) {
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(heartbeatRuns)
+      .where(and(eq(heartbeatRuns.companyId, companyId), eq(heartbeatRuns.status, "running")));
+    return Number(count ?? 0);
+  }
+
+  async function getCompanyRunConcurrencyPolicy(companyId: string) {
+    const row = await db
+      .select({
+        maxConcurrentRuns: companies.maxConcurrentRuns,
+        maxConcurrentRunsPerAgent: companies.maxConcurrentRunsPerAgent,
+      })
+      .from(companies)
+      .where(eq(companies.id, companyId))
+      .then((rows) => rows[0] ?? null);
+
+    return {
+      maxConcurrentRuns: normalizeCompanyRunLimit(
+        row?.maxConcurrentRuns,
+        COMPANY_DEFAULT_MAX_CONCURRENT_RUNS,
+      ),
+      maxConcurrentRunsPerAgent: normalizeCompanyRunLimit(
+        row?.maxConcurrentRunsPerAgent,
+        COMPANY_DEFAULT_MAX_CONCURRENT_RUNS_PER_AGENT,
+      ),
+    };
+  }
+
   async function countRunningVllmModelRuns(model: string) {
     const [{ count }] = await db
       .select({ count: sql<number>`count(*)` })
@@ -11802,12 +11840,15 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
       }
       const policy = parseHeartbeatPolicy(agent);
       const runningCount = await countRunningRunsForAgent(agentId);
+      const companyRunPolicy = await getCompanyRunConcurrencyPolicy(agent.companyId);
+      const perAgentLimit = Math.min(policy.maxConcurrentRuns, companyRunPolicy.maxConcurrentRunsPerAgent);
+      const companySlots = Math.max(0, companyRunPolicy.maxConcurrentRuns - await countRunningRunsForCompany(agent.companyId));
       const systemSlots = Math.max(0, normalizeSystemRunLimit() - await countRunningRuns());
       const vllmModel = readAgentConfiguredModel(agent);
       const vllmSlots = vllmModel && isVllmLocalAgent(agent)
         ? Math.max(0, normalizeVllmLocalRunLimit() - await countRunningVllmModelRuns(vllmModel))
         : Number.POSITIVE_INFINITY;
-      const availableSlots = Math.max(0, Math.min(policy.maxConcurrentRuns - runningCount, systemSlots, vllmSlots));
+      const availableSlots = Math.max(0, Math.min(perAgentLimit - runningCount, companySlots, systemSlots, vllmSlots));
       if (availableSlots <= 0) return [];
 
       const queuedRuns = await db

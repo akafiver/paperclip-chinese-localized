@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  COMPANY_MAX_CONCURRENT_RUNS_LIMIT,
   COMPANY_STATUSES,
   MAX_COMPANY_ATTACHMENT_MAX_BYTES,
 } from "../constants.js";
@@ -12,6 +13,11 @@ const attachmentMaxBytesSchema = z
   .int()
   .min(1)
   .max(MAX_COMPANY_ATTACHMENT_MAX_BYTES);
+const companyConcurrencyLimitSchema = z
+  .number()
+  .int()
+  .min(1)
+  .max(COMPANY_MAX_CONCURRENT_RUNS_LIMIT);
 
 export const createCompanySchema = z.object({
   name: z.string().min(1),
@@ -36,6 +42,8 @@ export const updateCompanySchema = createCompanySchema
     brandColor: brandColorSchema,
     logoAssetId: logoAssetIdSchema,
     attachmentMaxBytes: attachmentMaxBytesSchema.optional(),
+    maxConcurrentRuns: companyConcurrencyLimitSchema.optional(),
+    maxConcurrentRunsPerAgent: companyConcurrencyLimitSchema.optional(),
   });
 
 export type UpdateCompany = z.infer<typeof updateCompanySchema>;
