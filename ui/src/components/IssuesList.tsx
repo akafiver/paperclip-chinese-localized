@@ -53,6 +53,7 @@ import {
   issueTrailingColumns,
 } from "./IssueColumns";
 import { StatusIcon } from "./StatusIcon";
+import { PriorityIcon } from "./PriorityIcon";
 import { EmptyState } from "./EmptyState";
 import { Identity } from "./Identity";
 import { IssueGroupHeader } from "./IssueGroupHeader";
@@ -135,6 +136,33 @@ const progressSegmentClasses: Record<IssueStatus, string> = {
   blocked: "bg-red-500",
   cancelled: "bg-neutral-400",
 };
+
+function IssueMeaningLegend({ t }: { t: IssuesListTranslate }) {
+  return (
+    <div className="rounded-lg border border-border bg-card/60 px-3 py-2">
+      <div className="flex flex-col gap-2 text-xs text-muted-foreground lg:flex-row lg:items-center lg:gap-5">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
+          <span className="font-medium text-foreground">{t("ui.issueFilters.status")}</span>
+          {issueStatusOrder.map((status) => (
+            <span key={status} className="inline-flex items-center gap-1.5 whitespace-nowrap">
+              <StatusIcon status={status} size="md" />
+              <span>{t(`ui.issueFilters.statuses.${status}`)}</span>
+            </span>
+          ))}
+        </div>
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
+          <span className="font-medium text-foreground">{t("ui.issueFilters.priority")}</span>
+          {issuePriorityOrder.map((priority) => (
+            <span key={priority} className="inline-flex items-center gap-1.5 whitespace-nowrap">
+              <PriorityIcon priority={priority} />
+              <span>{t(`ui.issueFilters.priorities.${priority}`)}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /* ── View state ── */
 
@@ -1890,6 +1918,8 @@ export function IssuesList({
           )}
         </div>
       </div>
+
+      <IssueMeaningLegend t={t} />
 
       {(isLoading || externalObjectFilterLoading) && <PageSkeleton variant="issues-list" />}
       {error && <p className="text-sm text-destructive">{error.message}</p>}
