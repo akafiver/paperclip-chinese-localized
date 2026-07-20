@@ -195,6 +195,7 @@ import {
   type IssueRecoveryAction,
   type IssueAttachment,
   type IssueComment,
+  type IssueProductivityReview,
   type IssueWorkProduct,
   type IssueWorkMode,
   type IssueThreadInteraction,
@@ -626,6 +627,360 @@ function IssueSectionSkeleton({
         ))}
       </div>
     </div>
+  );
+}
+
+type IssueDecisionSummaryTone = "live" | "blocked" | "review" | "done" | "neutral";
+
+function issueDecisionSummaryToneClass(tone: IssueDecisionSummaryTone) {
+  switch (tone) {
+    case "live":
+      return "border-blue-500/35 bg-blue-500/10";
+    case "blocked":
+      return "border-amber-500/35 bg-amber-500/10";
+    case "review":
+      return "border-violet-500/35 bg-violet-500/10";
+    case "done":
+      return "border-emerald-500/35 bg-emerald-500/10";
+    default:
+      return "border-border bg-card";
+  }
+}
+
+function formatIssueStatusForSummary(status: Issue["status"]) {
+  return translate(`ui.issueFilters.statuses.${status}`);
+}
+
+function issueProductivityReviewTriggerForSummary(trigger: IssueProductivityReview["trigger"]) {
+  return translate(`ui.productivityReview.triggers.${trigger ?? "default"}`);
+}
+
+function issueAssigneeLabelForSummary(issue: Issue, agentMap: Map<string, Agent>) {
+  if (issue.assigneeAgentId) return agentMap.get(issue.assigneeAgentId)?.name ?? issue.assigneeAgentId.slice(0, 8);
+  if (issue.assigneeUserId) return translate("ui.issueDetail.labels.user");
+  return translate("ui.issueDetail.summary.unassigned");
+}
+
+function buildIssueDecisionSummary(input: {
+  issue: Issue;
+  childIssues: Issue[];
+  hasLiveRuns: boolean;
+  workProductCount: number;
+  commentCount: number;
+  agentMap: Map<string, Agent>;
+}) {
+  const { issue, childIssues, hasLiveRuns, workProductCount, commentCount, agentMap } = input;
+  const totalChildren = childIssues.length;
+  const completedChildren = childIssues.filter((child) => child.status === "done" || child.status === "cancelled").length;
+  const blockedChildren = childIssues.filter((child) => child.status === "blocked").length;
+  const openChildren = Math.max(0, totalChildren - completedChildren);
+  const assigneeLabel = issueAssigneeLabelForSummary(issue, agentMap);
+  const isProductivityReviewTask = issue.originKind === "issue_productivity_review";
+
+  if (issue.hiddenAt) {
+    return {
+      tone: "neutral" as const,
+      eyebrow: translate("ui.issueDetail.summary.hiddenEyebrow"),
+      headline: translate("ui.issueDetail.summary.hiddenHeadline"),
+      nextStep: translate("ui.issueDetail.summary.hiddenNextStep"),
+      evidence: translate("ui.issueDetail.summary.hiddenEvidence"),
+      progress: totalChildren > 0
+        ? translate("ui.issueDetail.summary.childProgress", { completed: completedChildren, total: totalChildren, open: openChildren })
+        : translate("ui.issueDetail.summary.noSubtasks"),
+      diagnostic: null,
+    };
+  }
+
+  if (issue.activeRecoveryAction) {
+    return {
+      tone: "blocked" as const,
+      eyebrow: translate("ui.issueDetail.summary.recoveryEyebrow"),
+      headline: translate("ui.issueDetail.summary.recoveryHeadline"),
+      nextStep: issue.activeRecoveryAction.nextAction || translate("ui.issueDetail.summary.recoveryNextStep"),
+      evidence: translate("ui.issueDetail.summary.recoveryEvidence", {
+        cause: issue.activeRecoveryAction.cause,
+        owner: issue.activeRecoveryAction.ownerType,
+      }),
+      progress: totalChildren > 0
+        ? translate("ui.issueDetail.summary.childProgress", { completed: completedChildren, total: totalChildren, open: openChildren })
+        : translate("ui.issueDetail.summary.noSubtasks"),
+      diagnostic: translate("ui.issueDetail.summary.recoveryDiagnostic"),
+    };
+  }
+
+  if (issue.blockedInboxAttention) {
+    const attention = issue.blockedInboxAttention;
+    return {
+      tone: "blocked" as const,
+      eyebrow: translate("ui.issueDetail.summary.blockedEyebrow"),
+      headline: attention.action.label || translate("ui.issueDetail.summary.blockedHeadline"),
+      nextStep: attention.action.detail || translate("ui.issueDetail.summary.blockedNextStep"),
+      evidence: translate("ui.issueDetail.summary.blockedEvidence", {
+        owner: attention.owner.label ?? translate("ui.issueDetail.summary.unknownOwner"),
+        reason: attention.reason.replace(/_/g, " "),
+      }),
+      progress: totalChildren > 0
+        ? translate("ui.issueDetail.summary.childProgress", { completed: completedChildren, total: totalChildren, open: openChildren })
+        : translate("ui.issueDetail.summary.noSubtasks"),
+      diagnostic: translate("ui.issueDetail.summary.blockedDiagnostic", { severity: attention.severity }),
+    };
+  }
+
+  if (hasLiveRuns) {
+    return {
+      tone: "live" as const,
+      eyebrow: translate("ui.issueDetail.summary.liveEyebrow"),
+      headline: translate("ui.issueDetail.summary.liveHeadline", { assignee: assigneeLabel }),
+      nextStep: translate("ui.issueDetail.summary.liveNextStep"),
+      evidence: translate("ui.issueDetail.summary.liveEvidence"),
+      progress: totalChildren > 0
+        ? translate("ui.issueDetail.summary.childProgress", { completed: completedChildren, total: totalChildren, open: openChildren })
+        : translate("ui.issueDetail.summary.noSubtasks"),
+      diagnostic: null,
+    };
+  }
+
+  if (isProductivityReviewTask) {
+    return {
+      tone: "review" as const,
+      eyebrow: translate("ui.issueDetail.summary.productivityTaskEyebrow"),
+      headline: translate("ui.issueDetail.summary.productivityTaskHeadline"),
+      nextStep: translate("ui.issueDetail.summary.productivityTaskNextStep"),
+      evidence: issue.originId
+        ? translate("ui.issueDetail.summary.productivityTaskEvidence", { source: issue.originId.slice(0, 8) })
+        : translate("ui.issueDetail.summary.productivityTaskEvidenceNoSource"),
+      progress: translate("ui.issueDetail.summary.systemTaskProgress"),
+      diagnostic: translate("ui.issueDetail.summary.productivityTaskDiagnostic"),
+    };
+  }
+
+  if (issue.status === "done") {
+    return {
+      tone: "done" as const,
+      eyebrow: translate("ui.issueDetail.summary.doneEyebrow"),
+      headline: translate("ui.issueDetail.summary.doneHeadline"),
+      nextStep: translate("ui.issueDetail.summary.doneNextStep"),
+      evidence: workProductCount > 0
+        ? translate("ui.issueDetail.summary.outputEvidence", { count: workProductCount })
+        : translate("ui.issueDetail.summary.commentEvidence", { count: commentCount }),
+      progress: totalChildren > 0
+        ? translate("ui.issueDetail.summary.childProgress", { completed: completedChildren, total: totalChildren, open: openChildren })
+        : translate("ui.issueDetail.summary.noSubtasks"),
+      diagnostic: null,
+    };
+  }
+
+  if (issue.productivityReview) {
+    const review = issue.productivityReview;
+    const reviewId = review.reviewIdentifier ?? review.reviewIssueId.slice(0, 8);
+    return {
+      tone: "review" as const,
+      eyebrow: translate("ui.issueDetail.summary.productivityEyebrow"),
+      headline: translate("ui.issueDetail.summary.productivityHeadline"),
+      nextStep: translate("ui.issueDetail.summary.productivityNextStep", { review: reviewId }),
+      evidence: translate("ui.issueDetail.summary.productivityEvidence", {
+        trigger: issueProductivityReviewTriggerForSummary(review.trigger),
+      }),
+      progress: totalChildren > 0
+        ? translate("ui.issueDetail.summary.childProgress", { completed: completedChildren, total: totalChildren, open: openChildren })
+        : translate("ui.issueDetail.summary.noSubtasks"),
+      diagnostic: translate("ui.issueDetail.summary.productivityDiagnostic"),
+    };
+  }
+
+  if (issue.status === "cancelled") {
+    return {
+      tone: "neutral" as const,
+      eyebrow: translate("ui.issueDetail.summary.cancelledEyebrow"),
+      headline: translate("ui.issueDetail.summary.cancelledHeadline"),
+      nextStep: translate("ui.issueDetail.summary.cancelledNextStep"),
+      evidence: translate("ui.issueDetail.summary.statusEvidence", { status: formatIssueStatusForSummary(issue.status) }),
+      progress: totalChildren > 0
+        ? translate("ui.issueDetail.summary.childProgress", { completed: completedChildren, total: totalChildren, open: openChildren })
+        : translate("ui.issueDetail.summary.noSubtasks"),
+      diagnostic: null,
+    };
+  }
+
+  if (issue.status === "blocked") {
+    return {
+      tone: "blocked" as const,
+      eyebrow: translate("ui.issueDetail.summary.blockedEyebrow"),
+      headline: translate("ui.issueDetail.summary.blockedHeadline"),
+      nextStep: translate("ui.issueDetail.summary.blockedNextStep"),
+      evidence: totalChildren > 0 && blockedChildren > 0
+        ? translate("ui.issueDetail.summary.blockedChildrenEvidence", { count: blockedChildren })
+        : translate("ui.issueDetail.summary.statusEvidence", { status: formatIssueStatusForSummary(issue.status) }),
+      progress: totalChildren > 0
+        ? translate("ui.issueDetail.summary.childProgress", { completed: completedChildren, total: totalChildren, open: openChildren })
+        : translate("ui.issueDetail.summary.noSubtasks"),
+      diagnostic: translate("ui.issueDetail.summary.blockedGenericDiagnostic"),
+    };
+  }
+
+  if (issue.status === "in_review") {
+    return {
+      tone: "review" as const,
+      eyebrow: translate("ui.issueDetail.summary.reviewEyebrow"),
+      headline: translate("ui.issueDetail.summary.reviewHeadline"),
+      nextStep: translate("ui.issueDetail.summary.reviewNextStep"),
+      evidence: workProductCount > 0
+        ? translate("ui.issueDetail.summary.outputEvidence", { count: workProductCount })
+        : translate("ui.issueDetail.summary.statusEvidence", { status: formatIssueStatusForSummary(issue.status) }),
+      progress: totalChildren > 0
+        ? translate("ui.issueDetail.summary.childProgress", { completed: completedChildren, total: totalChildren, open: openChildren })
+        : translate("ui.issueDetail.summary.noSubtasks"),
+      diagnostic: null,
+    };
+  }
+
+  return {
+    tone: "neutral" as const,
+    eyebrow: translate("ui.issueDetail.summary.openEyebrow"),
+    headline: issue.assigneeAgentId || issue.assigneeUserId
+      ? translate("ui.issueDetail.summary.openAssignedHeadline", { assignee: assigneeLabel })
+      : translate("ui.issueDetail.summary.openUnassignedHeadline"),
+    nextStep: issue.assigneeAgentId || issue.assigneeUserId
+      ? translate("ui.issueDetail.summary.openAssignedNextStep")
+      : translate("ui.issueDetail.summary.openUnassignedNextStep"),
+    evidence: translate("ui.issueDetail.summary.statusEvidence", { status: formatIssueStatusForSummary(issue.status) }),
+    progress: totalChildren > 0
+      ? translate("ui.issueDetail.summary.childProgress", { completed: completedChildren, total: totalChildren, open: openChildren })
+      : translate("ui.issueDetail.summary.noSubtasks"),
+    diagnostic: null,
+  };
+}
+
+function IssueDecisionSummary({
+  issue,
+  childIssues,
+  hasLiveRuns,
+  workProductCount,
+  commentCount,
+  agentMap,
+  onShowChat,
+  onShowActivity,
+}: {
+  issue: Issue;
+  childIssues: Issue[];
+  hasLiveRuns: boolean;
+  workProductCount: number;
+  commentCount: number;
+  agentMap: Map<string, Agent>;
+  onShowChat: () => void;
+  onShowActivity: () => void;
+}) {
+  const { t } = useTranslation();
+  const summary = buildIssueDecisionSummary({
+    issue,
+    childIssues,
+    hasLiveRuns,
+    workProductCount,
+    commentCount,
+    agentMap,
+  });
+  const shouldShowDiagnostics =
+    Boolean(summary.diagnostic)
+    || Boolean(issue.activeRecoveryAction)
+    || Boolean(issue.blockedInboxAttention)
+    || Boolean(issue.productivityReview)
+    || issue.originKind === "issue_productivity_review"
+    || hasLiveRuns;
+
+  return (
+    <section
+      className={cn(
+        "rounded-xl border p-3 shadow-sm",
+        issueDecisionSummaryToneClass(summary.tone),
+      )}
+      aria-label={t("ui.issueDetail.summary.ariaLabel")}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-(length:--text-nano) font-medium uppercase tracking-(--tracking-label) text-muted-foreground">
+              {summary.eyebrow}
+            </span>
+            <Badge variant="outline" className="gap-1.5 rounded-full">
+              <StatusIcon status={issue.status} size="sm" blockerAttention={issue.blockerAttention} />
+              {formatIssueStatusForSummary(issue.status)}
+            </Badge>
+            {issue.productivityReview ? <ProductivityReviewBadge review={issue.productivityReview} /> : null}
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">{summary.headline}</p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">{summary.nextStep}</p>
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={onShowChat} className="shadow-none">
+            <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+            {t("ui.issueDetail.summary.openConversation")}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onShowActivity}>
+            <ActivityIcon className="mr-1.5 h-3.5 w-3.5" />
+            {t("ui.issueDetail.summary.openRunLog")}
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        <div className="rounded-lg border border-border/70 bg-background/60 p-2">
+          <div className="text-(length:--text-nano) font-medium uppercase tracking-(--tracking-label) text-muted-foreground">
+            {t("ui.issueDetail.summary.resultLabel")}
+          </div>
+          <div className="mt-1 text-xs leading-5 text-foreground">{summary.evidence}</div>
+        </div>
+        <div className="rounded-lg border border-border/70 bg-background/60 p-2">
+          <div className="text-(length:--text-nano) font-medium uppercase tracking-(--tracking-label) text-muted-foreground">
+            {t("ui.issueDetail.summary.progressLabel")}
+          </div>
+          <div className="mt-1 text-xs leading-5 text-foreground">{summary.progress}</div>
+        </div>
+        <div className="rounded-lg border border-border/70 bg-background/60 p-2">
+          <div className="text-(length:--text-nano) font-medium uppercase tracking-(--tracking-label) text-muted-foreground">
+            {t("ui.issueDetail.summary.ownerLabel")}
+          </div>
+          <div className="mt-1 text-xs leading-5 text-foreground">{issueAssigneeLabelForSummary(issue, agentMap)}</div>
+        </div>
+      </div>
+
+      {shouldShowDiagnostics ? (
+        <details className="mt-3 rounded-lg border border-border/70 bg-background/60 p-2">
+          <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+            {t("ui.issueDetail.summary.diagnostics")}
+          </summary>
+          <div className="mt-2 space-y-2 text-xs leading-5 text-muted-foreground">
+            {summary.diagnostic ? <p>{summary.diagnostic}</p> : null}
+            {issue.blockedInboxAttention ? (
+              <p>
+                {t("ui.issueDetail.summary.diagnosticBlocked", {
+                  reason: issue.blockedInboxAttention.reason.replace(/_/g, " "),
+                  severity: issue.blockedInboxAttention.severity,
+                })}
+              </p>
+            ) : null}
+            {issue.activeRecoveryAction ? (
+              <p>
+                {t("ui.issueDetail.summary.diagnosticRecovery", {
+                  kind: issue.activeRecoveryAction.kind,
+                  status: issue.activeRecoveryAction.status,
+                })}
+              </p>
+            ) : null}
+            {issue.productivityReview ? (
+              <p>
+                {t("ui.issueDetail.summary.diagnosticProductivity", {
+                  review: issue.productivityReview.reviewIdentifier ?? issue.productivityReview.reviewIssueId.slice(0, 8),
+                  trigger: issueProductivityReviewTriggerForSummary(issue.productivityReview.trigger),
+                })}
+              </p>
+            ) : null}
+            {hasLiveRuns ? <p>{t("ui.issueDetail.summary.diagnosticLive")}</p> : null}
+          </div>
+        </details>
+      ) : null}
+    </section>
   );
 }
 
@@ -4544,6 +4899,17 @@ export function IssueDetail() {
           }}
         />
       </div>
+
+      <IssueDecisionSummary
+        issue={issue}
+        childIssues={childIssues}
+        hasLiveRuns={hasLiveRuns}
+        workProductCount={workProducts?.length ?? issue.workProducts?.length ?? 0}
+        commentCount={threadComments.length}
+        agentMap={agentMap}
+        onShowChat={() => setDetailTab("chat")}
+        onShowActivity={() => setDetailTab("activity")}
+      />
 
       <PluginSlotOutlet
         slotTypes={["toolbarButton", "contextMenuItem"]}
