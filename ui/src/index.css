@@ -293,10 +293,10 @@
    .dark {                 → line 198   dark-mode overrides (shadcn only)
    ::highlight {           → line 230   CSS ::highlight pseudo-elements
    @layer base {           → line 302   reset / body styles
-   --gradient-extract-*    → line 1523  batch-extracted gradients (9 total)
-   --shadow-extract-*      → line 1743  batch-extracted box-shadows (15 total)
-   --drop-shadow-extract-* → line 1886  batch-extracted drop-shadows (1)
-   ── ALLOWLIST ──         → line 1897  files allowed to hardcode values
+   --gradient-*              → line 1523  semantic gradients (7 total)
+   --shadow-*                → line 1753  semantic box-shadows (15 total)
+   --drop-shadow-icon        → line 1885  semantic drop-shadow (1)
+   ── ALLOWLIST ──         → line 1895  files allowed to hardcode values
    ═══════════════════════════════════════════════════════════════════ */
 
 @layer base {
@@ -1520,17 +1520,17 @@ span.paperclip-mention-chip[data-mention-kind="external-object"] {
   --app-logo-tile-6: #1a73e8;
   --app-logo-tile-7: #0f9d58;
   --app-logo-tile-8: #ea4335;
-  /* gradient-extract-* groups (9 total):
-     --gradient-extract-1,4  → card red    linear 180deg red tint (Dashboard alert, BudgetIncident)
-     --gradient-extract-2    → card white  linear 180deg subtle   (Costs)
-     --gradient-extract-3,7  → radial    decorative overlay       (AccountingModel, ProfileSettings)
-     --gradient-extract-25,26 → brand     linear 135deg primary/ accent (SidebarAccountMenu, ProfileSettings)
+  /* gradient-* groups (7 total):
+     --gradient-red-card,red-card-sm  → card red    linear 180deg (Dashboard, BudgetIncident)
+     --gradient-white-card            → card white  linear 180deg (Costs)
+     --gradient-radial-card,radial-page → radial    decorative overlay (AccountingModel, ProfileSettings)
+     --gradient-brand,brand-alt        → brand     linear 135deg primary/ accent (SidebarAccountMenu, ProfileSettings)
   */
-  --gradient-extract-1: linear-gradient(180deg,rgba(255,80,80,0.12),rgba(255,255,255,0.02)); /* card red */
-  --gradient-extract-2: linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02)); /* card white */
-  --gradient-extract-3: radial-gradient(circle at top left,rgba(244,114,182,0.08),transparent 35%),radial-gradient(circle at bottom right,rgba(56,189,248,0.1),transparent 32%); /* radial decorative */
-  --gradient-extract-4: linear-gradient(180deg,rgba(255,70,70,0.10),rgba(255,255,255,0.02)); /* card red */
-  --gradient-extract-7: radial-gradient(circle at top right,rgba(255,255,255,0.22),transparent 34%),radial-gradient(circle at bottom left,rgba(255,255,255,0.08),transparent 36%); /* radial decorative */
+  --gradient-red-card: linear-gradient(180deg,rgba(255,80,80,0.12),rgba(255,255,255,0.02)); /* card red */
+  --gradient-white-card: linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02)); /* card white */
+  --gradient-radial-card: radial-gradient(circle at top left,rgba(244,114,182,0.08),transparent 35%),radial-gradient(circle at bottom right,rgba(56,189,248,0.1),transparent 32%); /* radial decorative */
+  --gradient-red-card-sm: linear-gradient(180deg,rgba(255,70,70,0.10),rgba(255,255,255,0.02)); /* card red */
+  --gradient-radial-page: radial-gradient(circle at top right,rgba(255,255,255,0.22),transparent 34%),radial-gradient(circle at bottom left,rgba(255,255,255,0.08),transparent 36%); /* radial decorative */
 }
 
 /* ── Extracted verbatim TYPE tokens (Phase 2 Batch 2, design/token-extraction) ── */
@@ -1746,31 +1746,40 @@ span.paperclip-mention-chip[data-mention-kind="external-object"] {
   --pct-70: 70%; /* Extracted from ui/src/components/CaseFieldsPanel.tsx (max-w-[70%]). */
   --pct-neg-50: -50%; /* Extracted from ui/src/components/ui/alert-dialog.tsx (translate-x-[-50%]). */
   --pct-72: 72%; /* Extracted from ui/src/pages/IssueDetail.tsx (w-[72%]). */
-  /* shadow-extract-* groups (15 total):
-     --shadow-extract-1,11,14  → blue glow    rgba(37,99,235,0.08)  (ActiveAgentsPanel, LiveRunWidget, AgentDetail)
-     --shadow-extract-2,18     → deep float   dark rgba, offset blur (BudgetPolicyCard, ProfileSettings)
-     --shadow-extract-3,6,10,12 → 0-0-0 line  1-2px outline        (BudgetSidebarMarker, DocAnnotation, KeyboardShortcuts, SidebarNavItem)
-     --shadow-extract-4,5      → overlay pop   -12px vertical      (ChatComposer light/dark)
-     --shadow-extract-7        → overlay pop + primary border (IssueChatThread drag state)
-     --shadow-extract-8,10     → line shadow  1px top only        (IssueRecoveryActionCard, KeyboardShortcuts)
-     --shadow-extract-9        → card float    18px blur           (IssueThreadInteractionCard)
-     --shadow-extract-13       → amber outline 3px                 (env-var editor active indicator)
+  /* shadow-* groups (15 total): */
+  /* --shadow-glow-blue (1,11,14)  → blue glow  rgba(37,99,235,0.08)  (ActiveAgentsPanel, LiveRunWidget, AgentDetail)
+  /* --shadow-heavy (2,18)         → deep float dark rgba, offset blur (BudgetPolicyCard, ProfileSettings)
+  /* --shadow-outline* (3,6,10,12) → 0-0-0 line 1-2px outline        (BudgetSidebarMarker, DocAnnotation, KeyboardShortcuts, SidebarNavItem)
+  /* --shadow-overlay (4,5)        → overlay pop -12px vertical      (ChatComposer light/dark)
+  /* --shadow-drag (7)             → overlay pop + primary border    (IssueChatThread drag state)
+  /* --shadow-line (8,10)          → line shadow 1px top only        (IssueRecoveryActionCard, KeyboardShortcuts)
+  /* --shadow-card (9)             → card float 18px blur           (IssueThreadInteractionCard)
+  /* --shadow-amber (13)           → amber outline 3px               (env-var editor active indicator)
   */
-  --shadow-extract-1: 0 16px 40px rgba(37,99,235,0.08); /* blue glow */
-  --shadow-extract-2: 0 20px 80px -40px rgba(0,0,0,0.55); /* deep float */
-  --shadow-extract-3: 0 0 0 1px rgba(255,255,255,0.08); /* white outline */
-  --shadow-extract-4: 0 -12px 28px rgba(15,23,42,0.08); /* overlay light */
-  --shadow-extract-5: 0 -12px 28px rgba(0,0,0,0.28); /* overlay dark */
-  --shadow-extract-6: 0 0 0 1px var(--color-background); /* background outline */
-  --shadow-extract-7: 0 -12px 28px rgba(15,23,42,0.08),0 0 0 1px hsl(var(--primary)/0.16); /* overlay + primary border */
-  --shadow-extract-8: 0 1px 0 rgba(15,23,42,0.02); /* line top */
-  --shadow-extract-9: 0 18px 42px rgba(15,23,42,0.06); /* card float */
-  --shadow-extract-10: 0 1px 0 1px hsl(var(--border)); /* line border */
-  --shadow-extract-11: 0 18px 50px rgba(37,99,235,0.08); /* blue glow */
-  --shadow-extract-12: 0 0 0 2px hsl(var(--background)); /* background outline */
-  --shadow-extract-13: 0 0 0 3px rgba(245,158,11,0.18); /* amber outline */
-  --shadow-extract-14: 0 0 12px rgba(37,99,235,0.08); /* blue glow */
-  --shadow-extract-18: 0 18px 44px -28px rgba(0,0,0,0.45); /* deep float */
+     --shadow-glow-blue,11,14  → blue glow    rgba(37,99,235,0.08)  (ActiveAgentsPanel, LiveRunWidget, AgentDetail)
+     --shadow-heavy,18     → deep float   dark rgba, offset blur (BudgetPolicyCard, ProfileSettings)
+     --shadow-outline-w,6,10,12 → 0-0-0 line  1-2px outline        (BudgetSidebarMarker, DocAnnotation, KeyboardShortcuts, SidebarNavItem)
+     --shadow-overlay,5      → overlay pop   -12px vertical      (ChatComposer light/dark)
+     --shadow-drag        → overlay pop + primary border (IssueChatThread drag state)
+     --shadow-line,10     → line shadow  1px top only        (IssueRecoveryActionCard, KeyboardShortcuts)
+     --shadow-card        → card float    18px blur           (IssueThreadInteractionCard)
+     --shadow-amber       → amber outline 3px                 (env-var editor active indicator)
+  */
+  --shadow-glow-blue: 0 16px 40px rgba(37,99,235,0.08); /* blue glow */
+  --shadow-heavy: 0 20px 80px -40px rgba(0,0,0,0.55); /* deep float */
+  --shadow-outline-w: 0 0 0 1px rgba(255,255,255,0.08); /* white outline */
+  --shadow-overlay: 0 -12px 28px rgba(15,23,42,0.08); /* overlay light */
+  --shadow-overlay-dark: 0 -12px 28px rgba(0,0,0,0.28); /* overlay dark */
+  --shadow-outline-bg: 0 0 0 1px var(--color-background); /* background outline */
+  --shadow-drag: 0 -12px 28px rgba(15,23,42,0.08),0 0 0 1px hsl(var(--primary)/0.16); /* overlay + primary border */
+  --shadow-line: 0 1px 0 rgba(15,23,42,0.02); /* line top */
+  --shadow-card: 0 18px 42px rgba(15,23,42,0.06); /* card float */
+  --shadow-line-border: 0 1px 0 1px hsl(var(--border)); /* line border */
+  --shadow-glow-blue-lg: 0 18px 50px rgba(37,99,235,0.08); /* blue glow */
+  --shadow-outline-bg-md: 0 0 0 2px hsl(var(--background)); /* background outline */
+  --shadow-amber: 0 0 0 3px rgba(245,158,11,0.18); /* amber outline */
+  --shadow-glow-blue-sm: 0 0 12px rgba(37,99,235,0.08); /* blue glow */
+  --shadow-heavy-sm: 0 18px 44px -28px rgba(0,0,0,0.45); /* deep float */
 }
 
 /* ── Extracted verbatim MISC tokens (Batch 4/4, final sweep) ──
@@ -1883,15 +1892,15 @@ span.paperclip-mention-chip[data-mention-kind="external-object"] {
   --sw-2_3: 2.3; /* Extracted from ui/src/components/MobileBottomNav.tsx (stroke-[2.3]). */
   --blur-1px: 1px; /* backdrop-blur-[1px] */
   --blur-2px: 2px; /* backdrop-blur-[2px] */
-  --drop-shadow-extract-1: 0 1px 2px rgba(0,0,0,0.65); /* drop-shadow (filter) */
+  --drop-shadow-icon: 0 1px 2px rgba(0,0,0,0.65); /* drop-shadow (filter) */
   --code-bg-resolved: var(--paperclip-code-bg, var(--muted)); /* Extracted from ui/src/components/FileViewerSheet.tsx (bg-[var(--paperclip-code-bg,theme(colors.muted.DEFAULT))]). */
   --paperclip-code-highlight-bg: rgba(250,204,21,0.12); /* DECISION-SHEET.md A5: FileViewerSheet.tsx referenced this var without it ever being defined, relying on the var() fallback; minted here at exactly the former fallback value (zero pixels). */
   --paperclip-code-highlight-border: rgb(234,179,8); /* DECISION-SHEET.md A5: same as --paperclip-code-highlight-bg — minted at the former fallback value. */
   --code-highlight-bg-resolved: var(--paperclip-code-highlight-bg); /* Extracted from ui/src/components/FileViewerSheet.tsx; fallback dropped in A5 now that --paperclip-code-highlight-bg is a real token (was var(--paperclip-code-highlight-bg, rgba(250,204,21,0.12))). */
   --code-gutter-fg-resolved: var(--paperclip-code-gutter-fg, var(--muted-foreground)); /* Extracted from ui/src/components/FileViewerSheet.tsx (text-[var(--paperclip-code-gutter-fg,theme(colors.muted.foreground))]). */
   --code-highlight-border-resolved: var(--paperclip-code-highlight-border); /* Extracted from ui/src/components/FileViewerSheet.tsx; fallback dropped in A5 now that --paperclip-code-highlight-border is a real token (was var(--paperclip-code-highlight-border, rgb(234,179,8))). */
-  --gradient-extract-25: linear-gradient(135deg,hsl(var(--primary)) 0%,hsl(var(--accent)) 55%,hsl(var(--muted)) 100%); /* brand gradient */
-  --gradient-extract-26: linear-gradient(135deg,hsl(var(--primary)) 0%,hsl(var(--accent)) 58%,color-mix(in oklab,hsl(var(--background)) 76%,white 24%) 100%); /* brand gradient */
+  --gradient-brand: linear-gradient(135deg,hsl(var(--primary)) 0%,hsl(var(--accent)) 55%,hsl(var(--muted)) 100%); /* brand gradient */
+  --gradient-brand-alt: linear-gradient(135deg,hsl(var(--primary)) 0%,hsl(var(--accent)) 58%,color-mix(in oklab,hsl(var(--background)) 76%,white 24%) 100%); /* brand gradient */
 }
 
 /* ── ALLOWLIST (consumed by scripts/check-token-gates.mjs) ──────────

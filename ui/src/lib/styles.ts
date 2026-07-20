@@ -128,7 +128,7 @@ export const radiusBase = 'rounded-[var(--radius)]'
 
 // ─────────────────────────────────────────────
 // Shadow tokens (extracted, grouped by pattern)
-// Maps to --shadow-extract-* groupings.
+// Maps to --shadow-* semantic names.
 // ─────────────────────────────────────────────
 
 /** ChatComposer overlay popup shadow */
@@ -149,7 +149,7 @@ export const shadowDrag =
 
 // ─────────────────────────────────────────────
 // Gradient tokens (extracted, grouped by pattern)
-// Maps to --gradient-extract-* groupings.
+// Maps to --gradient-* semantic names.
 // ─────────────────────────────────────────────
 
 /** Red-tint card gradient */
