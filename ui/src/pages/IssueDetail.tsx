@@ -122,9 +122,16 @@ import { ProductivityReviewBadge } from "../components/ProductivityReviewBadge";
 import { Identity } from "../components/Identity";
 import { PluginSlotMount, PluginSlotOutlet, usePluginSlots } from "@/plugins/slots";
 import { PluginLauncherOutlet } from "@/plugins/launchers";
-import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarGroup, AvatarImage } from "@/components/ui/avatar";
@@ -627,6 +634,46 @@ function IssueSectionSkeleton({
         ))}
       </div>
     </div>
+  );
+}
+
+function IssueDetailSection({
+  icon,
+  title,
+  description,
+  action,
+  children,
+  className,
+  contentClassName,
+}: {
+  icon: ReactNode;
+  title: string;
+  description?: string;
+  action?: ReactNode;
+  children: ReactNode;
+  className?: string;
+  contentClassName?: string;
+}) {
+  return (
+    <Card className={cn("gap-0 overflow-hidden py-0", className)}>
+      <CardHeader className="border-b border-border/60 px-4 py-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40 text-muted-foreground">
+            {icon}
+          </div>
+          <div className="min-w-0 flex-1 space-y-1">
+            <CardTitle className="text-sm">{title}</CardTitle>
+            {description ? (
+              <CardDescription className="text-xs leading-5">{description}</CardDescription>
+            ) : null}
+          </div>
+        </div>
+        {action ? <CardAction>{action}</CardAction> : null}
+      </CardHeader>
+      <CardContent className={cn("space-y-3 p-3", contentClassName)}>
+        {children}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -4879,25 +4926,6 @@ export function IssueDetail() {
           as="h2"
           className="text-xl font-bold"
         />
-
-        <InlineEditor
-          value={issue.description ?? ""}
-          onSave={(description) => updateIssue.mutateAsync({ description })}
-          as="p"
-          className="text-sm leading-7 text-foreground"
-          placeholder={t("ui.issueDetail.toast.addDescriptionPlaceholder")}
-          multiline
-          foldable
-          mentions={mentionOptions}
-          externalReferences={externalObjectsState.isEnabled ? externalObjectsState.markdownReferences : undefined}
-          imageUploadHandler={async (file) => {
-            const attachment = await uploadAttachment.mutateAsync(file);
-            return attachment.contentPath;
-          }}
-          onDropFile={async (file) => {
-            await uploadAttachment.mutateAsync(file);
-          }}
-        />
       </div>
 
       <IssueDecisionSummary
@@ -4952,11 +4980,43 @@ export function IssueDetail() {
         missingBehavior="placeholder"
       />
 
-      {showRichSubIssuesSection ? (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-medium text-muted-foreground">{t("ui.issueDetail.sections.subTasks")}</h3>
-          </div>
+      <IssueDetailSection
+        icon={<ScanEye className="h-4 w-4" />}
+        title={t("ui.issueDetail.sections.taskContent")}
+        description={t("ui.issueDetail.sections.taskContentDescription")}
+      >
+        <InlineEditor
+          value={issue.description ?? ""}
+          onSave={(description) => updateIssue.mutateAsync({ description })}
+          as="p"
+          className="text-sm leading-7 text-foreground"
+          placeholder={t("ui.issueDetail.toast.addDescriptionPlaceholder")}
+          multiline
+          foldable
+          mentions={mentionOptions}
+          externalReferences={externalObjectsState.isEnabled ? externalObjectsState.markdownReferences : undefined}
+          imageUploadHandler={async (file) => {
+            const attachment = await uploadAttachment.mutateAsync(file);
+            return attachment.contentPath;
+          }}
+          onDropFile={async (file) => {
+            await uploadAttachment.mutateAsync(file);
+          }}
+        />
+      </IssueDetailSection>
+
+      <IssueDetailSection
+        icon={<ListTree className="h-4 w-4" />}
+        title={t("ui.issueDetail.sections.workBreakdown")}
+        description={t("ui.issueDetail.sections.workBreakdownDescription")}
+        action={!showRichSubIssuesSection ? (
+          <Button variant="outline" size="sm" onClick={openNewSubIssue} className="shrink-0 shadow-none">
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            {t("ui.issueDetail.actions.newSubtask")}
+          </Button>
+        ) : null}
+      >
+        {showRichSubIssuesSection ? (
           <IssuesList
             issues={childIssues}
             isLoading={childIssuesLoading}
@@ -4971,103 +5031,129 @@ export function IssueDetail() {
             searchFilters={{ descendantOf: issue.id, includeBlockedBy: true }}
             searchWithinLoadedIssues
             baseCreateIssueDefaults={buildSubIssueDefaultsForViewer(issue, currentUserId)}
-            createIssueLabel={t("ui.issueDetail.buttons.newSubtaskButton")}
+            createIssueLabel={t("ui.issueDetail.labels.subTask")}
             defaultSortField="workflow"
             showProgressSummary
             parentIssueIdForCostSummary={issue.id}
             onUpdateIssue={handleChildIssueUpdate}
           />
-        </div>
-      ) : (
-        <div className="flex flex-wrap items-center justify-end gap-2 min-w-0">
-          <Button variant="outline" size="sm" onClick={openNewSubIssue} className="shrink-0 shadow-none">
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            {t("ui.issueDetail.actions.newSubtask")}
-          </Button>
-        </div>
-      )}
+        ) : (
+          <p className="text-sm text-muted-foreground">{t("ui.issueDetail.sections.noSubTasksDescription")}</p>
+        )}
 
-      {showPlanDecompositionsSection ? (
-        <IssuePlanDecompositionsSection
-          issueId={issue.id}
-          issueIdentifier={issue.identifier}
+        {showPlanDecompositionsSection ? (
+          <IssuePlanDecompositionsSection
+            issueId={issue.id}
+            issueIdentifier={issue.identifier}
+            agentMap={agentMap}
+          />
+        ) : null}
+      </IssueDetailSection>
+
+      <IssueDetailSection
+        icon={<Paperclip className="h-4 w-4" />}
+        title={t("ui.issueDetail.sections.deliverables")}
+        description={t("ui.issueDetail.sections.deliverablesDescription")}
+      >
+        <IssueDocumentsSection
+          issue={issue}
+          canDeleteDocuments={Boolean(session?.user?.id)}
+          canManageDocumentLocks={Boolean(session?.user?.id)}
+          feedbackVotes={feedbackVotes}
+          feedbackDataSharingPreference={feedbackDataSharingPreference}
+          feedbackTermsUrl={FEEDBACK_TERMS_URL}
+          mentions={mentionOptions}
+          externalReferences={externalObjectsState.isEnabled ? externalObjectsState.markdownReferences : undefined}
+          imageUploadHandler={async (file) => {
+            const attachment = await uploadAttachment.mutateAsync(file);
+            return attachment.contentPath;
+          }}
+          onVote={async (revisionId, vote, options) => {
+            await feedbackVoteMutation.mutateAsync({
+              targetType: "issue_document_revision",
+              targetId: revisionId,
+              vote,
+              reason: options?.reason,
+              allowSharing: options?.allowSharing,
+              sharingPreferenceAtSubmit: feedbackDataSharingPreference,
+            });
+          }}
+          extraActions={!hasAttachments ? attachmentUploadButton : null}
           agentMap={agentMap}
+          userProfileMap={userProfileMap}
         />
-      ) : null}
 
-      <IssueDocumentsSection
-        issue={issue}
-        canDeleteDocuments={Boolean(session?.user?.id)}
-        canManageDocumentLocks={Boolean(session?.user?.id)}
-        feedbackVotes={feedbackVotes}
-        feedbackDataSharingPreference={feedbackDataSharingPreference}
-        feedbackTermsUrl={FEEDBACK_TERMS_URL}
-        mentions={mentionOptions}
-        externalReferences={externalObjectsState.isEnabled ? externalObjectsState.markdownReferences : undefined}
-        imageUploadHandler={async (file) => {
-          const attachment = await uploadAttachment.mutateAsync(file);
-          return attachment.contentPath;
-        }}
-        onVote={async (revisionId, vote, options) => {
-          await feedbackVoteMutation.mutateAsync({
-            targetType: "issue_document_revision",
-            targetId: revisionId,
-            vote,
-            reason: options?.reason,
-            allowSharing: options?.allowSharing,
-            sharingPreferenceAtSubmit: feedbackDataSharingPreference,
-          });
-        }}
-        extraActions={!hasAttachments ? attachmentUploadButton : null}
-        agentMap={agentMap}
-        userProfileMap={userProfileMap}
-      />
-
-      <IssueOutputSection
-        workProducts={workProducts}
-        onMediaClick={(item) => {
-          const meta = item.metadata;
-          if (!meta) return;
-          const idx = mediaGalleryItems.findIndex((galleryItem) => (
-            galleryItem.contentPath === meta.contentPath ||
-            galleryItem.id === `work-product-${item.id}` ||
-            galleryItem.id === meta.attachmentId
-          ));
-          setGalleryIndex(idx >= 0 ? idx : 0);
-          setGalleryOpen(true);
-        }}
-      />
-
-      {attachmentsInitialLoading ? (
-        <IssueSectionSkeleton titleWidth="w-24" rows={2} />
-      ) : hasAttachments ? (
-        <IssueAttachmentsSection
-          attachments={attachmentList}
-          uploadButton={attachmentUploadButton}
-          error={attachmentError}
-          dragActive={attachmentDragActive}
-          deletePending={deleteAttachment.isPending}
-          onDelete={(attachmentId) => deleteAttachment.mutate(attachmentId)}
-          onImageClick={(attachment) => {
-            const idx = mediaGalleryItems.findIndex((a) => a.id === attachment.id);
+        <IssueOutputSection
+          workProducts={workProducts}
+          onMediaClick={(item) => {
+            const meta = item.metadata;
+            if (!meta) return;
+            const idx = mediaGalleryItems.findIndex((galleryItem) => (
+              galleryItem.contentPath === meta.contentPath ||
+              galleryItem.id === `work-product-${item.id}` ||
+              galleryItem.id === meta.attachmentId
+            ));
             setGalleryIndex(idx >= 0 ? idx : 0);
             setGalleryOpen(true);
           }}
-          onDragEnter={(evt) => {
-            evt.preventDefault();
-            setAttachmentDragActive(true);
-          }}
-          onDragOver={(evt) => {
-            evt.preventDefault();
-            setAttachmentDragActive(true);
-          }}
-          onDragLeave={(evt) => {
-            if (evt.currentTarget.contains(evt.relatedTarget as Node | null)) return;
-            setAttachmentDragActive(false);
-          }}
-          onDrop={(evt) => void handleAttachmentDrop(evt)}
         />
-      ) : null}
+
+        {attachmentsInitialLoading ? (
+          <IssueSectionSkeleton titleWidth="w-24" rows={2} />
+        ) : hasAttachments ? (
+          <IssueAttachmentsSection
+            attachments={attachmentList}
+            uploadButton={attachmentUploadButton}
+            error={attachmentError}
+            dragActive={attachmentDragActive}
+            deletePending={deleteAttachment.isPending}
+            onDelete={(attachmentId) => deleteAttachment.mutate(attachmentId)}
+            onImageClick={(attachment) => {
+              const idx = mediaGalleryItems.findIndex((a) => a.id === attachment.id);
+              setGalleryIndex(idx >= 0 ? idx : 0);
+              setGalleryOpen(true);
+            }}
+            onDragEnter={(evt) => {
+              evt.preventDefault();
+              setAttachmentDragActive(true);
+            }}
+            onDragOver={(evt) => {
+              evt.preventDefault();
+              setAttachmentDragActive(true);
+            }}
+            onDragLeave={(evt) => {
+              if (evt.currentTarget.contains(evt.relatedTarget as Node | null)) return;
+              setAttachmentDragActive(false);
+            }}
+            onDrop={(evt) => void handleAttachmentDrop(evt)}
+          />
+        ) : null}
+
+        {fileViewerEnabled && issue.workProducts && issue.workProducts.length > 0 && (() => {
+          const workProductsWithFileRefs = issue.workProducts
+            .map((product) => ({ product, fileRef: extractWorkspaceFileRefFromWorkProduct(product) }))
+            .filter(({ fileRef }) => fileRef !== null);
+
+          if (workProductsWithFileRefs.length === 0) return null;
+
+          return (
+            <div className="space-y-3 rounded-lg border border-border/70 bg-muted/20 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-medium text-muted-foreground">{t("ui.issueDetail.sections.artifacts")}</h3>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {workProductsWithFileRefs.map(({ product, fileRef }) => (
+                  <ArtifactFileChip
+                    key={product.id}
+                    workspaceFileRef={fileRef!}
+                    title={product.title}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+      </IssueDetailSection>
 
       <ImageGalleryModal
         items={mediaGalleryItems}
@@ -5076,41 +5162,26 @@ export function IssueDetail() {
         onOpenChange={setGalleryOpen}
       />
 
-      <IssueWorkspaceCard
-        issue={issue}
-        project={resolvedProject}
-        onUpdate={(data) => updateIssue.mutate(data)}
-        onBrowseFiles={fileViewerEnabled ? () => setFileViewerPromptOpen(true) : undefined}
-        onOpenFileByPath={fileViewerEnabled ? () => setFileViewerPromptOpen(true) : undefined}
-      />
+      <IssueDetailSection
+        icon={<FileCode2 className="h-4 w-4" />}
+        title={t("ui.issueDetail.sections.workEnvironment")}
+        description={t("ui.issueDetail.sections.workEnvironmentDescription")}
+      >
+        <IssueWorkspaceCard
+          issue={issue}
+          project={resolvedProject}
+          onUpdate={(data) => updateIssue.mutate(data)}
+          onBrowseFiles={fileViewerEnabled ? () => setFileViewerPromptOpen(true) : undefined}
+          onOpenFileByPath={fileViewerEnabled ? () => setFileViewerPromptOpen(true) : undefined}
+        />
+      </IssueDetailSection>
 
-      {fileViewerEnabled && issue.workProducts && issue.workProducts.length > 0 && (() => {
-        const workProductsWithFileRefs = issue.workProducts
-          .map((product) => ({ product, fileRef: extractWorkspaceFileRefFromWorkProduct(product) }))
-          .filter(({ fileRef }) => fileRef !== null);
-
-        if (workProductsWithFileRefs.length === 0) return null;
-
-        return (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Artifacts</h3>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {workProductsWithFileRefs.map(({ product, fileRef }) => (
-                <ArtifactFileChip
-                  key={product.id}
-                  workspaceFileRef={fileRef!}
-                  title={product.title}
-                />
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-
-      <Separator />
-
+      <IssueDetailSection
+        icon={<MessageSquare className="h-4 w-4" />}
+        title={t("ui.issueDetail.sections.communicationHistory")}
+        description={t("ui.issueDetail.sections.communicationHistoryDescription")}
+        contentClassName="pt-2"
+      >
       <Tabs value={detailTab} onValueChange={setDetailTab} className="space-y-3">
         <TabsList variant="line" className="w-full justify-start gap-1">
           <TabsTrigger value="chat" className="gap-1.5">
@@ -5274,6 +5345,7 @@ export function IssueDetail() {
           </TabsContent>
         )}
       </Tabs>
+      </IssueDetailSection>
 
       <Dialog open={treeControlOpen} onOpenChange={setTreeControlOpen}>
         <DialogContent className="flex max-h-(--sz-calc-18) flex-col gap-0 overflow-hidden p-0 sm:max-w-(--sz-560px)">

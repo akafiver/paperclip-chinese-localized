@@ -5266,6 +5266,7 @@ export const uiMessages = {
         assignee: "Assignee",
         originating: "Originating",
         menuTaskProperties: "Task properties",
+        subTask: "sub-task",
       },
       buttons: {
         archiveFromInboxAction: "Archive from inbox",
@@ -5288,6 +5289,18 @@ export const uiMessages = {
       },
       sections: {
         subTasks: "Sub-tasks",
+        taskContent: "Task content",
+        taskContentDescription: "Original request, editable task description, and any user-provided context.",
+        workBreakdown: "Work breakdown",
+        workBreakdownDescription: "Sub-tasks, decomposition plans, and the structure Paperclip uses to move the task forward.",
+        noSubTasksDescription: "No sub-tasks yet. Add one when this task needs separate ownership or trackable steps.",
+        deliverables: "Results and deliverables",
+        deliverablesDescription: "Documents, outputs, attachments, and workspace artifacts produced for this task.",
+        artifacts: "Artifacts",
+        workEnvironment: "Work environment",
+        workEnvironmentDescription: "Workspace, files, and execution boundary used by agents while working on this task.",
+        communicationHistory: "Communication and history",
+        communicationHistoryDescription: "Conversation, run log, relations, and technical trace for deeper review.",
       },
       actions: {
         uploading: "Uploading...",
@@ -5296,9 +5309,9 @@ export const uiMessages = {
         newSubtask: "New Sub-task",
       },
       tabs: {
-        chat: "Chat",
-        activity: "Activity",
-        relatedWork: "Related work",
+        chat: "Conversation",
+        activity: "Run log",
+        relatedWork: "Relations & references",
       },
       summary: {
         ariaLabel: "Task summary",
@@ -11131,6 +11144,7 @@ export const uiMessages = {
         assignee: "负责人",
         originating: "发起方",
         menuTaskProperties: "任务属性",
+        subTask: "子任务",
       },
       buttons: {
         archiveFromInboxAction: "从收件箱归档",
@@ -11153,6 +11167,18 @@ export const uiMessages = {
       },
       sections: {
         subTasks: "子任务",
+        taskContent: "任务内容",
+        taskContentDescription: "原始需求、可编辑任务描述，以及用户补充的上下文。",
+        workBreakdown: "工作拆解",
+        workBreakdownDescription: "子任务、拆解计划，以及 Paperclip 推进此任务所使用的结构。",
+        noSubTasksDescription: "还没有子任务。需要拆分负责人或跟踪步骤时，可以新建子任务。",
+        deliverables: "结果与交付物",
+        deliverablesDescription: "此任务产出的文档、结果、附件和工作区文件。",
+        artifacts: "工作区文件",
+        workEnvironment: "工作环境",
+        workEnvironmentDescription: "Agent 处理此任务时使用的工作区、文件和执行边界。",
+        communicationHistory: "沟通与历史",
+        communicationHistoryDescription: "用于深入复核的沟通内容、运行记录、关系引用和技术追踪。",
       },
       actions: {
         uploading: "上传中...",
@@ -11161,9 +11187,9 @@ export const uiMessages = {
         newSubtask: "新建子任务",
       },
       tabs: {
-        chat: "聊天",
-        activity: "活动",
-        relatedWork: "相关工作",
+        chat: "沟通",
+        activity: "运行记录",
+        relatedWork: "关系与引用",
       },
       summary: {
         ariaLabel: "任务概览",
