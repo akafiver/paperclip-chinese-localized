@@ -3084,6 +3084,7 @@ interface VirtualizedIssueChatThreadListProps {
   stoppingRunId?: string | null;
   interruptingQueuedRunId?: string | null;
   variant: "full" | "embedded";
+  timelineLayout?: boolean;
 }
 
 interface VirtualizedIssueChatThreadListHandle {
@@ -3348,6 +3349,7 @@ const VirtualizedIssueChatThreadListInner = forwardRef<
   stoppingRunId,
   interruptingQueuedRunId,
   variant,
+  timelineLayout = false,
   mode,
   probeRef,
 }, ref) {
@@ -3505,6 +3507,7 @@ const VirtualizedIssueChatThreadListInner = forwardRef<
               activeRunIds={activeRunIds}
               stoppingRunId={stoppingRunId}
               interruptingQueuedRunId={interruptingQueuedRunId}
+              timelineLayout={timelineLayout}
             />
           </div>
         );
@@ -3519,6 +3522,7 @@ interface IssueChatMessageRowProps {
   activeRunIds: ReadonlySet<string>;
   stoppingRunId?: string | null;
   interruptingQueuedRunId?: string | null;
+  timelineLayout?: boolean;
 }
 
 function IssueChatDeletedComment({
@@ -3554,6 +3558,7 @@ const IssueChatMessageRow = memo(function IssueChatMessageRow({
   activeRunIds,
   stoppingRunId,
   interruptingQueuedRunId,
+  timelineLayout = false,
 }: IssueChatMessageRowProps) {
   const kind = issueChatMessageKind(message);
   const deletedAt = issueChatMessageDeletedAt(message);
@@ -3586,6 +3591,13 @@ const IssueChatMessageRow = memo(function IssueChatMessageRow({
       data-testid="issue-chat-message-row"
       data-message-role={message.role}
       data-message-kind={kind}
+      className={cn(
+        timelineLayout
+          && "relative pl-5 before:absolute before:left-1.5 before:top-0 before:bottom-0 before:w-px before:bg-border/70 after:absolute after:left-[3px] after:top-4 after:h-2.5 after:w-2.5 after:rounded-full after:border-2 after:border-background",
+        timelineLayout && message.role === "user" && "after:bg-primary",
+        timelineLayout && message.role === "assistant" && "after:bg-emerald-500",
+        timelineLayout && message.role === "system" && "after:bg-muted-foreground",
+      )}
     >
       {renderedMessage}
     </div>
@@ -3597,6 +3609,7 @@ function areIssueChatMessageRowPropsEqual(
   next: IssueChatMessageRowProps,
 ) {
   if (prev.message !== next.message) return false;
+  if (prev.timelineLayout !== next.timelineLayout) return false;
   if (issueChatMessageActiveVote(prev.message, prev.feedbackVoteByTargetId) !== issueChatMessageActiveVote(next.message, next.feedbackVoteByTargetId)) return false;
   if (issueChatMessageRunIsActive(prev.message, prev.activeRunIds) !== issueChatMessageRunIsActive(next.message, next.activeRunIds)) return false;
   if (issueChatMessageRunIsStopping(prev.message, prev.stoppingRunId) !== issueChatMessageRunIsStopping(next.message, next.stoppingRunId)) return false;
@@ -4514,6 +4527,7 @@ export function IssueChatThread({
         : messages,
     [messageOrder, messages, useVirtualizedThread],
   );
+  const useTimelineLayout = variant === "full" && composerPlacement === "top";
   const messageAnchorIndex = useMemo(() => {
     const map = new Map<string, number>();
     messages.forEach((message, index) => {
@@ -5034,6 +5048,7 @@ export function IssueChatThread({
                   stoppingRunId={stoppingRunId}
                   interruptingQueuedRunId={interruptingQueuedRunId}
                   variant={variant}
+                  timelineLayout={useTimelineLayout}
                 />
               ) : (
                 // Keep transcript rendering independent from assistant-ui's
@@ -5047,6 +5062,7 @@ export function IssueChatThread({
                     activeRunIds={activeRunIds}
                     stoppingRunId={stoppingRunId}
                     interruptingQueuedRunId={interruptingQueuedRunId}
+                    timelineLayout={useTimelineLayout}
                   />
               ))
             )}

@@ -5310,7 +5310,7 @@ export const uiMessages = {
       },
       tabs: {
         chat: "Conversation",
-        activity: "Timeline",
+        activity: "Activity log",
         relatedWork: "Relations & references",
       },
       summary: {
@@ -5372,12 +5372,12 @@ export const uiMessages = {
         progressLabel: "Progress",
         ownerLabel: "Owner",
         openConversation: "Conversation",
-        openRunLog: "Timeline",
+        openRunLog: "Activity log",
         diagnostics: "System diagnostics",
         diagnosticBlocked: "Blocked reason: {{reason}} · severity {{severity}}.",
         diagnosticRecovery: "Recovery action: {{kind}} · {{status}}.",
         diagnosticProductivity: "Productivity review: {{review}} · {{trigger}}.",
-        diagnosticLive: "A live run is present; technical output remains in the Activity tab.",
+        diagnosticLive: "A live run is present; technical output remains in the Activity log tab.",
       },
       toast: {
         moreTaskActions: "More task actions",
@@ -11188,7 +11188,7 @@ export const uiMessages = {
       },
       tabs: {
         chat: "沟通",
-        activity: "时间线",
+        activity: "活动日志",
         relatedWork: "关系与引用",
       },
       summary: {
@@ -11250,12 +11250,12 @@ export const uiMessages = {
         progressLabel: "进度",
         ownerLabel: "负责人",
         openConversation: "对话",
-        openRunLog: "时间线",
+        openRunLog: "活动日志",
         diagnostics: "系统诊断",
         diagnosticBlocked: "阻塞原因：{{reason}} · 严重性 {{severity}}。",
         diagnosticRecovery: "恢复动作：{{kind}} · {{status}}。",
         diagnosticProductivity: "生产力复盘：{{review}} · {{trigger}}。",
-        diagnosticLive: "当前存在实时运行；技术输出保留在“活动”标签中。",
+        diagnosticLive: "当前存在实时运行；技术输出保留在“活动日志”标签中。",
       },
       toast: {
         moreTaskActions: "更多任务操作",
