@@ -840,7 +840,7 @@ export function Costs() {
             <p className="text-sm text-destructive">{(budgetError as Error).message}</p>
           ) : (
             <>
-              <Card className="border-border/70 bg-(image:--gradient-extract-2)">
+              <Card className="border-border/70 bg-(image:--gradient-white-card)">
                 <CardHeader className="px-5 pt-5 pb-3">
                   <CardTitle className="text-base">{t("ui.costs.budgetControlPlane")}</CardTitle>
                   <CardDescription>

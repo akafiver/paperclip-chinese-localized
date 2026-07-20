@@ -69,27 +69,29 @@ with open(css_path, "r") as f:
 content = replace_refs(content, all_map)
 with open(css_path, "w") as f:
     f.write(content)
-print(f"✅ Renamed {len(all_map)} variables in {css_path}")
+print(f"✅ {css_path}")
 
-# Update styles.ts references
-styles_path = "ui/src/lib/styles.ts"
-with open(styles_path, "r") as f:
-    content = f.read()
+# 2. All .tsx/.ts files in ui/src/
+import pathlib as _pl
+changed = 0
+for fpath in sorted(_pl.Path("ui/src").rglob("*.tsx")) + sorted(_pl.Path("ui/src").rglob("*.ts")):
+    if "node_modules" in str(fpath):
+        continue
+    content = fpath.read_text()
+    new_content = replace_refs(content, all_map)
+    if new_content != content:
+        fpath.write_text(new_content)
+        changed += 1
+print(f"✅ {changed} .tsx/.ts files updated")
+
+# 3. styles.ts comment fix
+styles_path = _pl.Path("ui/src/lib/styles.ts")
+content = styles_path.read_text()
 content = content.replace(
-    "Maps to --shadow-extract-* groupings.",
-    "Maps to --shadow-* semantic names."
+    "Maps to --shadow-extract-* groupings.", "Maps to --shadow-* semantic names."
 )
 content = content.replace(
-    "Maps to --gradient-extract-* groupings.",
-    "Maps to --gradient-* semantic names."
+    "Maps to --gradient-extract-* groupings.", "Maps to --gradient-* semantic names."
 )
-with open(styles_path, "w") as f:
-    f.write(content)
-print(f"✅ Updated styles.ts")
-
-print(f"\nShadow map (15 vars):")
-for old, new in shadow_map.items():
-    print(f"  {old:30s} → {new}")
-print(f"\nGradient map (7 vars):")
-for old, new in gradient_map.items():
-    print(f"  {old:30s} → {new}")
+styles_path.write_text(content)
+print(f"✅ {styles_path}")

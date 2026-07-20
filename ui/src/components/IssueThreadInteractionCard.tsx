@@ -1037,7 +1037,7 @@ function AskUserQuestionsCard({
           {questions.map((question, index) => (
             <div
               key={question.id}
-              className="rounded-2xl border border-border/70 bg-background/82 p-4 shadow-(--shadow-extract-9)"
+              className="rounded-2xl border border-border/70 bg-background/82 p-4 shadow-(--shadow-card)"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>

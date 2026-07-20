@@ -1465,7 +1465,7 @@ function LatestRunCard({ runs, agentId }: { runs: HeartbeatRun[]; agentId: strin
         to={`/agents/${agentId}/runs/${run.id}`}
         className={cn(
           "block border rounded-lg p-4 space-y-2 w-full no-underline transition-colors hover:bg-muted/50 cursor-pointer",
-          isLive ? "border-blue-500/30 shadow-(--shadow-extract-14)" : "border-border"
+          isLive ? "border-blue-500/30 shadow-(--shadow-glow-blue-sm)" : "border-border"
         )}
       >
         <div className="flex items-center gap-2">

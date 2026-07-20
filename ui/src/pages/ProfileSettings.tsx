@@ -162,10 +162,10 @@ export function ProfileSettings() {
 
       <section className="space-y-8">
         <Card className="block relative overflow-hidden rounded-(--rad-28) border-border/70">
-          <div className="absolute inset-x-0 top-0 h-32 bg-(image:--gradient-extract-26)" />
-          <div className="absolute inset-0 bg-(image:--gradient-extract-7)" />
+          <div className="absolute inset-x-0 top-0 h-32 bg-(image:--gradient-brand-alt)" />
+          <div className="absolute inset-0 bg-(image:--gradient-radial-page)" />
           <div className="relative p-6 pt-10">
-            <div className="flex flex-wrap items-end gap-5 rounded-(--rad-24) border border-border/70 bg-background/92 p-5 shadow-(--shadow-extract-18) backdrop-blur-sm">
+            <div className="flex flex-wrap items-end gap-5 rounded-(--rad-24) border border-border/70 bg-background/92 p-5 shadow-(--shadow-heavy-sm) backdrop-blur-sm">
               <div className="space-y-3">
                 <label
                   htmlFor={avatarInputId}

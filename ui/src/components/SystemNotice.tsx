@@ -261,7 +261,7 @@ export function SystemNotice({
       role="status"
       aria-label={resolvedLabel}
       className={cn(
-        "relative w-full overflow-hidden rounded-lg border text-sm shadow-(--shadow-extract-8)",
+        "relative w-full overflow-hidden rounded-lg border text-sm shadow-(--shadow-line)",
         tokens.container,
         className,
       )}

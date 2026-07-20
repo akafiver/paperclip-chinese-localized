@@ -1039,7 +1039,7 @@ export function IssueRecoveryActionCard({
       data-recovery-state={cardState}
       data-recovery-kind={action.kind}
       className={cn(
-        "relative w-full overflow-hidden rounded-lg border text-sm shadow-(--shadow-extract-8)",
+        "relative w-full overflow-hidden rounded-lg border text-sm shadow-(--shadow-line)",
         tone.containerClass,
         className,
       )}

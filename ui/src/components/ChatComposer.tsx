@@ -231,7 +231,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
         "relative rounded-xl border px-3 pt-2.5 pb-2 transition-colors duration-150 focus-within:border-muted-foreground/40",
         // Surface: opaque card vs the task glass recipe (IssueChatThread.tsx shell).
         surface === "translucent"
-          ? "border-border/70 bg-background/95 shadow-(--shadow-extract-4) backdrop-blur supports-[backdrop-filter]:bg-background/85 dark:shadow-(--shadow-extract-5)"
+          ? "border-border/70 bg-background/95 shadow-(--shadow-overlay) backdrop-blur supports-[backdrop-filter]:bg-background/85 dark:shadow-(--shadow-overlay-dark)"
           : "border-border bg-card",
         // No blue focus ring — neutral border darkening only.
         isAsk &&

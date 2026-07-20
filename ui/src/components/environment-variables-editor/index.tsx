@@ -524,7 +524,7 @@ export const EnvironmentVariablesEditor = forwardRef<EnvironmentVariablesEditorH
         >
           <div className="flex min-w-0 flex-col gap-0.5">
             <div className="flex items-center gap-2 text-sm font-medium">
-              <span className="size-2 rounded-full bg-amber-500 shadow-(--shadow-extract-13)" />
+              <span className="size-2 rounded-full bg-amber-500 shadow-(--shadow-amber)" />
               <span>Unsaved changes</span>
             </div>
             {changeSummaryText ? (
