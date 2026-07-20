@@ -1746,24 +1746,15 @@ span.paperclip-mention-chip[data-mention-kind="external-object"] {
   --pct-70: 70%; /* Extracted from ui/src/components/CaseFieldsPanel.tsx (max-w-[70%]). */
   --pct-neg-50: -50%; /* Extracted from ui/src/components/ui/alert-dialog.tsx (translate-x-[-50%]). */
   --pct-72: 72%; /* Extracted from ui/src/pages/IssueDetail.tsx (w-[72%]). */
-  /* shadow-* groups (15 total): */
-  /* --shadow-glow-blue (1,11,14)  → blue glow  rgba(37,99,235,0.08)  (ActiveAgentsPanel, LiveRunWidget, AgentDetail)
-  /* --shadow-heavy (2,18)         → deep float dark rgba, offset blur (BudgetPolicyCard, ProfileSettings)
-  /* --shadow-outline* (3,6,10,12) → 0-0-0 line 1-2px outline        (BudgetSidebarMarker, DocAnnotation, KeyboardShortcuts, SidebarNavItem)
-  /* --shadow-overlay (4,5)        → overlay pop -12px vertical      (ChatComposer light/dark)
-  /* --shadow-drag (7)             → overlay pop + primary border    (IssueChatThread drag state)
-  /* --shadow-line (8,10)          → line shadow 1px top only        (IssueRecoveryActionCard, KeyboardShortcuts)
-  /* --shadow-card (9)             → card float 18px blur           (IssueThreadInteractionCard)
-  /* --shadow-amber (13)           → amber outline 3px               (env-var editor active indicator)
-  */
-     --shadow-glow-blue,11,14  → blue glow    rgba(37,99,235,0.08)  (ActiveAgentsPanel, LiveRunWidget, AgentDetail)
-     --shadow-heavy,18     → deep float   dark rgba, offset blur (BudgetPolicyCard, ProfileSettings)
-     --shadow-outline-w,6,10,12 → 0-0-0 line  1-2px outline        (BudgetSidebarMarker, DocAnnotation, KeyboardShortcuts, SidebarNavItem)
-     --shadow-overlay,5      → overlay pop   -12px vertical      (ChatComposer light/dark)
-     --shadow-drag        → overlay pop + primary border (IssueChatThread drag state)
-     --shadow-line,10     → line shadow  1px top only        (IssueRecoveryActionCard, KeyboardShortcuts)
-     --shadow-card        → card float    18px blur           (IssueThreadInteractionCard)
-     --shadow-amber       → amber outline 3px                 (env-var editor active indicator)
+  /* shadow-* groups (15 total):
+     --shadow-glow-blue (1,11,14)  → blue glow   rgba(37,99,235,0.08)  (ActiveAgentsPanel, LiveRunWidget, AgentDetail)
+     --shadow-heavy (2,18)         → deep float  dark rgba offset blur (BudgetPolicyCard, ProfileSettings)
+     --shadow-outline* (3,6,10,12) → 0-0-0 line  1-2px outline        (BudgetSidebarMarker, DocAnnotation, KeyboardShortcuts, SidebarNavItem)
+     --shadow-overlay (4,5)        → overlay pop -12px vertical       (ChatComposer light/dark)
+     --shadow-drag (7)             → overlay pop + primary border     (IssueChatThread drag state)
+     --shadow-line (8,10)          → line shadow 1px top only         (IssueRecoveryActionCard, KeyboardShortcuts)
+     --shadow-card (9)             → card float  18px blur            (IssueThreadInteractionCard)
+     --shadow-amber (13)           → amber outline 3px                (env-var editor active indicator)
   */
   --shadow-glow-blue: 0 16px 40px rgba(37,99,235,0.08); /* blue glow */
   --shadow-heavy: 0 20px 80px -40px rgba(0,0,0,0.55); /* deep float */
