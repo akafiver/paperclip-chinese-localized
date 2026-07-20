@@ -2926,14 +2926,18 @@ function RunsTab({
     );
   }
 
-  // Desktop: side-by-side layout
+  // Desktop: console-style layout
   return (
-    <div className="flex gap-0">
-      {/* Left: run list — border stretches full height, content sticks */}
-      <div className={cn(
-        "shrink-0 border border-border rounded-lg",
-        selectedRun ? "w-72" : "w-full",
-      )}>
+    <div className={cn(
+      "grid w-full max-w-7xl gap-4",
+      selectedRun ? "xl:grid-cols-[16rem_minmax(0,1fr)] 2xl:grid-cols-[20rem_minmax(0,1fr)]" : "grid-cols-1",
+    )}>
+      {/* Left: run list — stable navigation rail */}
+      <div className="min-w-0 rounded-xl border border-border bg-card/40">
+        <div className="border-b border-border px-3 py-2">
+          <div className="text-sm font-medium">{t("ui.agentDetail.runs")}</div>
+          <div className="text-(length:--text-micro) text-muted-foreground">{sorted.length} 次运行</div>
+        </div>
         <div className="sticky top-4 overflow-y-auto" style={{ maxHeight: "calc(100vh - 2rem)" }}>
         {sorted.map((run) => (
           <RunListItem key={run.id} run={run} isSelected={run.id === effectiveRunId} agentId={agentRouteId} />
@@ -2943,7 +2947,7 @@ function RunsTab({
 
       {/* Right: run detail — natural height, page scrolls */}
       {selectedRun && (
-        <div className="flex-1 min-w-0 pl-4">
+        <div className="min-w-0">
           <RunDetail key={selectedRun.id} run={selectedRun} agentRouteId={agentRouteId} adapterType={adapterType} adapterConfig={adapterConfig} />
         </div>
       )}
@@ -2952,6 +2956,96 @@ function RunsTab({
 }
 
 /* ---- Run Detail (expanded) ---- */
+
+function formatRunDuration(seconds: number | null) {
+  if (seconds === null) return "—";
+  if (seconds >= 60) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+  return `${seconds}s`;
+}
+
+function runOutcomeHeadline(run: HeartbeatRun) {
+  switch (run.status) {
+    case "succeeded":
+      return "运行已成功完成";
+    case "failed":
+      return "运行失败";
+    case "timed_out":
+      return "运行超时";
+    case "cancelled":
+      return "运行已取消";
+    case "running":
+      return "运行中";
+    case "queued":
+      return "等待运行";
+    case "scheduled_retry":
+      return "已安排重试";
+    default:
+      return `运行状态：${run.status}`;
+  }
+}
+
+function runOutcomeDetail(run: HeartbeatRun) {
+  if (run.error) return run.error;
+  const result = asRecord(run.resultJson);
+  const summary = asNonEmptyString(result?.summary) ?? asNonEmptyString(result?.result);
+  if (summary) return summary.split("\n").map((line) => line.trim()).find(Boolean) ?? summary;
+  if (run.status === "succeeded") return "Agent 已完成这次执行。";
+  if (run.status === "cancelled") return "这次执行在完成前被取消。";
+  if (run.status === "running") return "Agent 当前仍在执行；下方 transcript 会继续更新。";
+  if (run.status === "queued") return "这次执行已经排队，正在等待可用执行槽。";
+  return "没有更多结果摘要。";
+}
+
+function RunDetailMetricCard({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: React.ReactNode;
+  detail?: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card/50 px-3 py-2.5">
+      <div className="text-(length:--text-micro) font-medium uppercase tracking-(--tracking-eyebrow) text-muted-foreground">
+        {label}
+      </div>
+      <div className="mt-1 min-w-0 truncate text-sm font-semibold text-foreground tabular-nums">
+        {value}
+      </div>
+      {detail ? <div className="mt-0.5 min-w-0 truncate text-(length:--text-micro) text-muted-foreground">{detail}</div> : null}
+    </div>
+  );
+}
+
+function RunDetailSection({
+  title,
+  description,
+  children,
+  tone = "default",
+}: {
+  title: string;
+  description?: React.ReactNode;
+  children: React.ReactNode;
+  tone?: "default" | "danger";
+}) {
+  return (
+    <section
+      className={cn(
+        "rounded-xl border bg-card/40",
+        tone === "danger"
+          ? "border-red-300 bg-red-50/70 dark:border-red-500/30 dark:bg-red-950/20"
+          : "border-border",
+      )}
+    >
+      <div className="border-b border-border/70 px-4 py-3">
+        <div className={cn("text-sm font-semibold", tone === "danger" && "text-red-700 dark:text-red-300")}>{title}</div>
+        {description ? <div className="mt-0.5 text-xs text-muted-foreground">{description}</div> : null}
+      </div>
+      <div className="p-4">{children}</div>
+    </section>
+  );
+}
 
 function RunDetail({ run: initialRun, agentRouteId, adapterType, adapterConfig }: { run: HeartbeatRun; agentRouteId: string; adapterType: string; adapterConfig: Record<string, unknown> }) {
   const queryClient = useQueryClient();
@@ -3111,6 +3205,12 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType, adapterConfig }
     : null;
   const displayDurationSec = durationSec ?? (isRunning ? elapsedSec : null);
   const hasMetrics = metrics.input > 0 || metrics.output > 0 || metrics.cached > 0 || metrics.cost > 0;
+  const displayProvider = metrics.provider
+    ?? asNonEmptyString(adapterConfig?.provider);
+  const displayModel = metrics.model
+    ?? asNonEmptyString(adapterConfig?.model);
+  const outcomeHeadline = runOutcomeHeadline(run);
+  const outcomeDetail = runOutcomeDetail(run);
   const hasSession = !!(run.sessionIdBefore || run.sessionIdAfter);
   const sessionChanged = run.sessionIdBefore && run.sessionIdAfter && run.sessionIdBefore !== run.sessionIdAfter;
   const sessionId = run.sessionIdAfter || run.sessionIdBefore;
@@ -3123,117 +3223,83 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType, adapterConfig }
           git workspace it could not validate, wired to the same reconcile / repair / re-issue /
           break-glass handlers as the task detail page. */}
       <RunWorkspaceRecoverySurface run={run} />
-      {/* Run summary card */}
-      <div className="border border-border rounded-lg overflow-hidden">
-        <div className="flex flex-col sm:flex-row">
-          {/* Left column: status + timing */}
-          <div className="flex-1 p-4 space-y-3">
-            <div className="flex items-center gap-2">
+      {/* Run outcome console */}
+      <section className="overflow-hidden rounded-2xl border border-border bg-card/50">
+        <div className="flex flex-col gap-4 border-b border-border/70 p-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
               <StatusBadge status={run.status} />
-              {(run.status === "running" || run.status === "queued") && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:text-destructive text-xs h-6 px-2"
-                  onClick={() => cancelRun.mutate()}
-                  disabled={cancelRun.isPending}
-                >
-                  {cancelRun.isPending ? t("ui.agentDetail.cancelling") : t("ui.agentDetail.cancel")}
-                </Button>
-              )}
-              {canResumeLostRun && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs h-6 px-2"
-                  onClick={() => resumeRun.mutate()}
-                  disabled={resumeRun.isPending}
-                >
-                  <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                  {resumeRun.isPending ? t("ui.agentDetail.resuming") : t("ui.agentDetail.resume")}
-                </Button>
-              )}
-              {canRetryRun && !canResumeLostRun && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs h-6 px-2"
-                  onClick={() => retryRun.mutate()}
-                  disabled={retryRun.isPending}
-                >
-                  <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                  {retryRun.isPending ? t("ui.agentDetail.retrying") : t("ui.agentDetail.retry")}
-                </Button>
-              )}
-            </div>
-            {/* Adapter type · provider · model */}
-            {(() => {
-              const displayProvider = metrics.provider
-                ?? asNonEmptyString(adapterConfig?.provider);
-              const displayModel = metrics.model
-                ?? asNonEmptyString(adapterConfig?.model);
-              if (!adapterType && !displayProvider && !displayModel) return null;
-              return (
-                <div className="text-(length:--text-micro) text-muted-foreground font-mono flex items-center gap-1.5 flex-wrap">
-                  {adapterType && (
-                    <span className="bg-muted rounded px-1.5 py-0.5 text-(length:--text-nano) font-medium uppercase tracking-wide">{adapterType.replace(/_/g, " ")}</span>
-                  )}
-                  {displayProvider && displayModel && (
-                    <span>{displayProvider}/{displayModel}</span>
-                  )}
-                  {!displayProvider && displayModel && (
-                    <span>{displayModel}</span>
-                  )}
-                </div>
-              );
-            })()}
-            {run.responsibleUserId && (
-              <div
-                data-testid="run-detail-on-behalf-of"
-                className="text-xs text-muted-foreground"
-              >
-                {t("ui.agentDetail.onBehalfOf")}{" "}
-                <span className="text-foreground">
-                  {responsibleUserName ?? responsibleUserLabel(null)}
+              <span className="font-mono text-xs text-muted-foreground">{run.id.slice(0, 8)}</span>
+              {adapterType ? (
+                <span className="rounded-md bg-muted px-1.5 py-0.5 text-(length:--text-nano) font-medium uppercase tracking-wide text-muted-foreground">
+                  {adapterType.replace(/_/g, " ")}
                 </span>
+              ) : null}
+              {run.invocationSource ? (
+                <Badge variant="outline" className="text-(length:--text-micro)">
+                  {t(`ui.agentDetail.source.${run.invocationSource}`, { defaultValue: run.invocationSource })}
+                </Badge>
+              ) : null}
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight">{outcomeHeadline}</h2>
+              <p className={cn(
+                "mt-1 max-w-3xl text-sm leading-6 text-muted-foreground",
+                (run.status === "failed" || run.status === "timed_out") && "text-red-700 dark:text-red-300",
+              )}>
+                {outcomeDetail}
+                {run.errorCode ? <span className="ml-1 text-muted-foreground">({run.errorCode})</span> : null}
+              </p>
+            </div>
+            {run.responsibleUserId ? (
+              <div data-testid="run-detail-on-behalf-of" className="text-xs text-muted-foreground">
+                {t("ui.agentDetail.onBehalfOf")}{" "}
+                <span className="text-foreground">{responsibleUserName ?? responsibleUserLabel(null)}</span>
               </div>
-            )}
-            {resumeRun.isError && (
+            ) : null}
+          </div>
+
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {(run.status === "running" || run.status === "queued") ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-destructive/40 text-destructive hover:text-destructive"
+                onClick={() => cancelRun.mutate()}
+                disabled={cancelRun.isPending}
+              >
+                {cancelRun.isPending ? t("ui.agentDetail.cancelling") : t("ui.agentDetail.cancel")}
+              </Button>
+            ) : null}
+            {canResumeLostRun ? (
+              <Button variant="outline" size="sm" onClick={() => resumeRun.mutate()} disabled={resumeRun.isPending}>
+                <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                {resumeRun.isPending ? t("ui.agentDetail.resuming") : t("ui.agentDetail.resume")}
+              </Button>
+            ) : null}
+            {canRetryRun && !canResumeLostRun ? (
+              <Button variant="outline" size="sm" onClick={() => retryRun.mutate()} disabled={retryRun.isPending}>
+                <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                {retryRun.isPending ? t("ui.agentDetail.retrying") : t("ui.agentDetail.retry")}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        {(resumeRun.isError || retryRun.isError || responsibleDenialCode || hasNonZeroExit || retryState || run.errorCode === "claude_auth_required") ? (
+          <div className="space-y-3 border-b border-border/70 p-4">
+            {resumeRun.isError ? (
               <div className="text-xs text-destructive">
                 {resumeRun.error instanceof Error ? resumeRun.error.message : t("ui.agentDetail.failedResumeRun")}
               </div>
-            )}
-            {retryRun.isError && (
+            ) : null}
+            {retryRun.isError ? (
               <div className="text-xs text-destructive">
                 {retryRun.error instanceof Error ? retryRun.error.message : t("ui.agentDetail.failedRetryRun")}
               </div>
-            )}
-            {startTime && (
-              <div className="space-y-0.5">
-                <div className="text-sm font-mono">
-                  {startTime}
-                  {endTime && <span className="text-muted-foreground"> &rarr; </span>}
-                  {endTime}
-                </div>
-                <div className="text-(length:--text-micro) text-muted-foreground">
-                  {relativeTime(run.startedAt!)}
-                  {run.finishedAt && <> &rarr; {relativeTime(run.finishedAt)}</>}
-                </div>
-                {displayDurationSec !== null && (
-                  <div className="text-xs text-muted-foreground">
-                    {t("ui.agentDetail.duration")}: {displayDurationSec >= 60 ? `${Math.floor(displayDurationSec / 60)}m ${displayDurationSec % 60}s` : `${displayDurationSec}s`}
-                  </div>
-                )}
-              </div>
-            )}
-            {run.error && (
-              <div className="text-xs">
-                <span className="text-red-600 dark:text-red-400">{run.error}</span>
-                {run.errorCode && <span className="text-muted-foreground ml-1">({run.errorCode})</span>}
-              </div>
-            )}
-            {run.errorCode === "claude_auth_required" && adapterType === "claude_local" && (
-              <div className="space-y-2">
+            ) : null}
+            {run.errorCode === "claude_auth_required" && adapterType === "claude_local" ? (
+              <div className="space-y-2 rounded-xl border border-border/70 bg-background/60 p-3">
                 <Button
                   variant="outline"
                   size="sm"
@@ -3243,70 +3309,45 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType, adapterConfig }
                 >
                   {runClaudeLogin.isPending ? t("ui.agentDetail.runningClaudeLogin") : t("ui.agentDetail.loginToClaudeCode")}
                 </Button>
-                {runClaudeLogin.isError && (
+                {runClaudeLogin.isError ? (
                   <p className="text-xs text-destructive">
                     {runClaudeLogin.error instanceof Error
                       ? runClaudeLogin.error.message
                       : t("ui.agentDetail.failedClaudeLogin")}
                   </p>
-                )}
-                {claudeLoginResult?.loginUrl && (
+                ) : null}
+                {claudeLoginResult?.loginUrl ? (
                   <p className="text-xs">
                     {t("ui.agentDetail.loginUrl")}:
                     <a
                       href={claudeLoginResult.loginUrl}
-                      className="text-blue-600 underline underline-offset-2 ml-1 break-all dark:text-blue-400"
+                      className="ml-1 break-all text-blue-600 underline underline-offset-2 dark:text-blue-400"
                       target="_blank"
                       rel="noreferrer"
                     >
                       {claudeLoginResult.loginUrl}
                     </a>
                   </p>
-                )}
-                {claudeLoginResult && (
-                  <>
-                    {!!claudeLoginResult.stdout && (
-                      <pre className="bg-neutral-100 dark:bg-neutral-950 rounded-md p-3 text-xs font-mono text-foreground overflow-x-auto whitespace-pre-wrap">
-                        {claudeLoginResult.stdout}
-                      </pre>
-                    )}
-                    {!!claudeLoginResult.stderr && (
-                      <pre className="bg-neutral-100 dark:bg-neutral-950 rounded-md p-3 text-xs font-mono text-red-700 dark:text-red-300 overflow-x-auto whitespace-pre-wrap">
-                        {claudeLoginResult.stderr}
-                      </pre>
-                    )}
-                  </>
-                )}
+                ) : null}
               </div>
-            )}
-            {responsibleDenialCode && (
-              <ResponsibleUserDenialNotice
-                code={responsibleDenialCode}
-                userName={responsibleUserName}
-              />
-            )}
-            {hasNonZeroExit && (
-                <div className="text-xs text-red-600 dark:text-red-400">
+            ) : null}
+            {responsibleDenialCode ? (
+              <ResponsibleUserDenialNotice code={responsibleDenialCode} userName={responsibleUserName} />
+            ) : null}
+            {hasNonZeroExit ? (
+              <div className="text-xs text-red-600 dark:text-red-400">
                 {t("ui.agentDetail.exitCode", { code: run.exitCode })}
-                {run.signal && <span className="text-muted-foreground ml-1">{t("ui.agentDetail.signal", { signal: run.signal })}</span>}
+                {run.signal ? <span className="ml-1 text-muted-foreground">{t("ui.agentDetail.signal", { signal: run.signal })}</span> : null}
               </div>
-            )}
-            {retryState && (
+            ) : null}
+            {retryState ? (
               <div className="rounded-md border border-border/70 bg-accent/20 px-3 py-2 text-xs leading-5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span
-                    className={cn(
-                      "rounded-md border px-1.5 py-0.5 text-(length:--text-micro) font-medium",
-                      retryState.tone,
-                    )}
-                  >
+                  <span className={cn("rounded-md border px-1.5 py-0.5 text-(length:--text-micro) font-medium", retryState.tone)}>
                     {retryState.badgeLabel}
                   </span>
                   {retryState.retryOfRunId ? (
-                    <Link
-                      to={`/agents/${agentRouteId}/runs/${retryState.retryOfRunId}`}
-                      className="font-mono text-foreground hover:underline"
-                    >
+                    <Link to={`/agents/${agentRouteId}/runs/${retryState.retryOfRunId}`} className="font-mono text-foreground hover:underline">
                       {retryState.retryOfRunId.slice(0, 8)}
                     </Link>
                   ) : null}
@@ -3314,34 +3355,34 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType, adapterConfig }
                 {retryState.detail ? <p className="mt-2 text-muted-foreground">{retryState.detail}</p> : null}
                 {retryState.secondary ? <p className="text-muted-foreground">{retryState.secondary}</p> : null}
               </div>
-            )}
+            ) : null}
           </div>
+        ) : null}
 
-          {/* Right column: metrics */}
-          {hasMetrics && (
-            <div className="border-t sm:border-t-0 sm:border-l border-border p-4 grid grid-cols-2 gap-x-4 sm:gap-x-8 gap-y-3 content-center tabular-nums">
-              <div>
-                <div className="text-xs text-muted-foreground">{t("ui.agentDetail.input")}</div>
-                <div className="text-sm font-medium font-mono">{formatTokens(metrics.input)}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground">{t("ui.agentDetail.output")}</div>
-                <div className="text-sm font-medium font-mono">{formatTokens(metrics.output)}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground">{t("ui.agentDetail.cached")}</div>
-                <div className="text-sm font-medium font-mono">{formatTokens(metrics.cached)}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground">{t("ui.agentDetail.cost")}</div>
-                <div className="text-sm font-medium font-mono">{metrics.cost > 0 ? `$${metrics.cost.toFixed(4)}` : "-"}</div>
-              </div>
-            </div>
-          )}
+        <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
+          <RunDetailMetricCard
+            label="耗时"
+            value={formatRunDuration(displayDurationSec)}
+            detail={startTime ? `${startTime}${endTime ? ` → ${endTime}` : ""}` : "未开始"}
+          />
+          <RunDetailMetricCard
+            label="Token"
+            value={metrics.totalTokens > 0 ? formatTokens(metrics.totalTokens) : "—"}
+            detail={hasMetrics ? `in ${formatTokens(metrics.input)} · out ${formatTokens(metrics.output)}` : undefined}
+          />
+          <RunDetailMetricCard
+            label="成本"
+            value={metrics.cost > 0 ? `$${metrics.cost.toFixed(4)}` : "—"}
+            detail={metrics.cached > 0 ? `cached ${formatTokens(metrics.cached)}` : undefined}
+          />
+          <RunDetailMetricCard
+            label="模型"
+            value={displayModel ?? "—"}
+            detail={displayProvider ?? adapterType?.replace(/_/g, " ") ?? undefined}
+          />
         </div>
 
-        {/* Collapsible session row */}
-        {hasSession && (
+        {hasSession ? (
           <div className="border-t border-border">
             <button
               className="flex items-center gap-1.5 w-full px-4 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -3396,13 +3437,15 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType, adapterConfig }
               </div>
             )}
           </div>
-        )}
-      </div>
+        ) : null}
+      </section>
 
       {/* Issues touched by this run */}
       {touchedIssues && touchedIssues.length > 0 && (
-        <div className="space-y-2">
-          <span className="text-xs font-medium text-muted-foreground">{t("ui.agentDetail.tasksTouched", { count: touchedIssues.length })}</span>
+        <RunDetailSection
+          title="关联任务"
+          description={t("ui.agentDetail.tasksTouched", { count: touchedIssues.length })}
+        >
           <div className="border border-border rounded-lg divide-y divide-border">
             {touchedIssues.map((issue) => (
               <Link
@@ -3418,23 +3461,21 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType, adapterConfig }
               </Link>
             ))}
           </div>
-        </div>
+        </RunDetailSection>
       )}
 
       {/* stderr excerpt for failed runs */}
       {run.stderrExcerpt && (
-        <div className="space-y-1">
-          <span className="text-xs font-medium text-red-600 dark:text-red-400">{t("ui.agentDetail.stderr")}</span>
+        <RunDetailSection title={t("ui.agentDetail.stderr")} tone="danger">
           <pre className="bg-neutral-100 dark:bg-neutral-950 rounded-md p-3 text-xs font-mono text-red-700 dark:text-red-300 overflow-x-auto whitespace-pre-wrap">{run.stderrExcerpt}</pre>
-        </div>
+        </RunDetailSection>
       )}
 
       {/* stdout excerpt when no log is available */}
       {run.stdoutExcerpt && !run.logRef && (
-        <div className="space-y-1">
-          <span className="text-xs font-medium text-muted-foreground">{t("ui.agentDetail.stdout")}</span>
+        <RunDetailSection title={t("ui.agentDetail.stdout")}>
           <pre className="bg-neutral-100 dark:bg-neutral-950 rounded-md p-3 text-xs font-mono text-foreground overflow-x-auto whitespace-pre-wrap">{run.stdoutExcerpt}</pre>
-        </div>
+        </RunDetailSection>
       )}
 
       {(() => {
@@ -3908,10 +3949,14 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
         <RunInvocationCard payload={adapterInvokePayload} censorUsernameInLogs={censorUsernameInLogs} />
       )}
 
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">
-          Transcript ({transcript.length})
-        </span>
+      <RunDetailSection
+        title={`运行输出 · Transcript (${transcript.length})`}
+        description="优先阅读这里的用户可读输出；需要排障时再查看 raw 和下方技术事件。"
+      >
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="text-xs text-muted-foreground">
+          {isLive ? "实时输出" : "已保存输出"}
+        </div>
         <div className="flex items-center gap-2">
           <div className="inline-flex rounded-lg border border-border/70 bg-background/70 p-0.5">
             {(["nice", "raw"] as const).map((mode) => (
@@ -3956,7 +4001,7 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
           )}
         </div>
       </div>
-      <div className="max-h-(--sz-38rem) overflow-y-auto rounded-2xl border border-border/70 bg-background/40 p-3 sm:p-4">
+      <div className="max-h-(--sz-38rem) overflow-y-auto rounded-xl border border-border/70 bg-background/40 p-3 sm:p-4">
         <RunTranscriptView
           entries={transcript}
           toolDecisions={toolDecisionLookup.data?.decisions ?? []}
@@ -3991,10 +4036,11 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
         )}
         <div ref={logEndRef} />
       </div>
+      </RunDetailSection>
 
       {(run.status === "failed" || run.status === "timed_out") && (
-        <div className="rounded-lg border border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-950/20 p-3 space-y-2">
-          <div className="text-xs font-medium text-red-700 dark:text-red-300">{t("ui.agentDetail.failureDetails")}</div>
+        <RunDetailSection title={t("ui.agentDetail.failureDetails")} tone="danger">
+          <div className="space-y-2">
           {run.error && (
             <div className="text-xs text-red-600 dark:text-red-200">
               <span className="text-red-700 dark:text-red-300">{t("ui.agentDetail.error")}: </span>
@@ -4025,12 +4071,15 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
               </pre>
             </div>
           )}
-        </div>
+          </div>
+        </RunDetailSection>
       )}
 
       {events.length > 0 && (
-        <div>
-          <div className="mb-2 text-xs font-medium text-muted-foreground">Events ({events.length})</div>
+        <RunDetailSection
+          title={`技术事件 · Events (${events.length})`}
+          description="底层事件流用于排障；普通复核优先看运行结论和运行输出。"
+        >
           <div className="bg-neutral-100 dark:bg-neutral-950 rounded-lg p-3 font-mono text-xs space-y-0.5">
             {events.map((evt) => {
               const color = evt.color
@@ -4057,7 +4106,7 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
               );
             })}
           </div>
-        </div>
+        </RunDetailSection>
       )}
     </div>
   );
