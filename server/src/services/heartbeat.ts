@@ -5780,7 +5780,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
     return interaction.id;
   }
 
-  const productivityReviews = productivityReviewService(db, { enqueueWakeup });
+  const productivityReviews = productivityReviewService(db);
   const taskWatchdogs = taskWatchdogService(db, { enqueueWakeup });
   let unsafeTextProjectionPromise: Promise<boolean> | null = null;
 

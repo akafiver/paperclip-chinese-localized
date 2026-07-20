@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { shouldCreateProductivityReviewForEvidence } from "./productivity-review.js";
+import {
+  PRODUCTIVITY_REVIEW_AUTOMATION_POLICY,
+  shouldCreateProductivityReviewForEvidence,
+} from "./productivity-review.js";
+
+describe("PRODUCTIVITY_REVIEW_AUTOMATION_POLICY", () => {
+  it("keeps productivity reviews as board-visible review work instead of automatic agent work", () => {
+    expect(PRODUCTIVITY_REVIEW_AUTOMATION_POLICY).toEqual({
+      owner: "unassigned_board_review",
+      enqueueAgentWakeup: false,
+    });
+  });
+});
 
 describe("shouldCreateProductivityReviewForEvidence", () => {
   it("does not create manager review work while the source issue already has active execution", () => {

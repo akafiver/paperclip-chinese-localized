@@ -9,17 +9,11 @@ import {
   heartbeatRuns,
   issueComments,
   issues,
-  projects,
 } from "@paperclipai/db";
 import { logger } from "../middleware/logger.js";
 import { logActivity } from "./activity-log.js";
-import { budgetService } from "./budgets.js";
 import { issueService } from "./issues.js";
 import { visibleIssueCondition } from "./issue-visibility.js";
-import {
-  recoveryAssigneeAdapterOverrides,
-  withRecoveryModelProfileHint,
-} from "./recovery/model-profile-hint.js";
 import { RECOVERY_ORIGIN_KINDS } from "./recovery/origins.js";
 
 export const PRODUCTIVITY_REVIEW_ORIGIN_KIND = RECOVERY_ORIGIN_KINDS.issueProductivityReview;
@@ -33,6 +27,10 @@ export const DEFAULT_PRODUCTIVITY_REVIEW_MAX_REFRESH_COMMENTS = 3;
 export const DEFAULT_PRODUCTIVITY_REVIEW_CREATION_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const DEFAULT_PRODUCTIVITY_REVIEW_MAX_CREATIONS_PER_WINDOW = 1;
 export const DEFAULT_PRODUCTIVITY_REVIEW_MAX_CONSECUTIVE_NO_ACTION_REVIEWS = 3;
+export const PRODUCTIVITY_REVIEW_AUTOMATION_POLICY = {
+  owner: "unassigned_board_review",
+  enqueueAgentWakeup: false,
+} as const;
 
 const TERMINAL_RUN_STATUSES = ["succeeded", "interrupted", "failed", "cancelled", "timed_out"] as const;
 const ACTIVE_RUN_STATUSES = ["queued", "running", "scheduled_retry"] as const;
@@ -82,19 +80,6 @@ type ProductivityReviewEvidence = {
   thresholds: ProductivityReviewThresholds;
   generatedAt: Date;
 };
-
-type EnqueueWakeup = (
-  agentId: string,
-  opts?: {
-    source?: "timer" | "assignment" | "on_demand" | "automation";
-    triggerDetail?: "manual" | "ping" | "callback" | "system";
-    reason?: string | null;
-    payload?: Record<string, unknown> | null;
-    requestedByActorType?: "user" | "agent" | "system";
-    requestedByActorId?: string | null;
-    contextSnapshot?: Record<string, unknown>;
-  },
-) => Promise<unknown | null>;
 
 function productivityReviewFingerprint(sourceIssueId: string) {
   return `productivity-review:${sourceIssueId}`;
@@ -214,9 +199,8 @@ function formatTrigger(trigger: ProductivityReviewTrigger) {
   return "Long active duration";
 }
 
-export function productivityReviewService(db: Db, deps?: { enqueueWakeup?: EnqueueWakeup }) {
+export function productivityReviewService(db: Db) {
   const issuesSvc = issueService(db);
-  const budgets = budgetService(db);
 
   async function getCompanyIssuePrefix(companyId: string) {
     return db
@@ -232,10 +216,6 @@ export function productivityReviewService(db: Db, deps?: { enqueueWakeup?: Enque
       .from(agents)
       .where(eq(agents.id, agentId))
       .then((rows) => rows[0] ?? null);
-  }
-
-  function isAgentInvokable(agent: AgentRow | null | undefined) {
-    return Boolean(agent && !["paused", "terminated", "pending_approval"].includes(agent.status));
   }
 
   async function isProductivityReviewDescendant(issue: Pick<IssueRow, "companyId" | "parentId">) {
@@ -585,40 +565,6 @@ export function productivityReviewService(db: Db, deps?: { enqueueWakeup?: Enque
     };
   }
 
-  async function resolveReviewOwnerAgentId(sourceIssue: IssueRow, sourceAgent: AgentRow) {
-    const candidateIds: string[] = [];
-    if (sourceAgent.reportsTo) candidateIds.push(sourceAgent.reportsTo);
-    if (sourceIssue.createdByAgentId) candidateIds.push(sourceIssue.createdByAgentId);
-    if (sourceIssue.projectId) {
-      const project = await db
-        .select({ leadAgentId: projects.leadAgentId })
-        .from(projects)
-        .where(and(eq(projects.companyId, sourceIssue.companyId), eq(projects.id, sourceIssue.projectId)))
-        .then((rows) => rows[0] ?? null);
-      if (project?.leadAgentId) candidateIds.push(project.leadAgentId);
-    }
-    const roleCandidates = await db
-      .select({ id: agents.id })
-      .from(agents)
-      .where(and(eq(agents.companyId, sourceIssue.companyId), inArray(agents.role, ["cto", "ceo"])))
-      .orderBy(sql`case when ${agents.role} = 'cto' then 0 else 1 end`, asc(agents.createdAt), asc(agents.id));
-    candidateIds.push(...roleCandidates.map((agent) => agent.id));
-
-    const seen = new Set<string>();
-    for (const agentId of candidateIds) {
-      if (seen.has(agentId)) continue;
-      seen.add(agentId);
-      const candidate = await getAgent(agentId);
-      if (!candidate || candidate.companyId !== sourceIssue.companyId || !isAgentInvokable(candidate)) continue;
-      const budgetBlock = await budgets.getInvocationBlock(sourceIssue.companyId, candidate.id, {
-        issueId: sourceIssue.id,
-        projectId: sourceIssue.projectId ?? null,
-      });
-      if (!budgetBlock) return candidate.id;
-    }
-    return null;
-  }
-
   function buildReviewMarkdown(evidence: ProductivityReviewEvidence, prefix: string) {
     const latestRuns = evidence.latestRuns.length > 0
       ? evidence.latestRuns.map((run) =>
@@ -750,7 +696,6 @@ export function productivityReviewService(db: Db, deps?: { enqueueWakeup?: Enque
       return { kind: "no_action_suppressed" as const, reviewIssueId: null };
     }
 
-    const ownerAgentId = await resolveReviewOwnerAgentId(evidence.sourceIssue, evidence.sourceAgent);
     let review: Awaited<ReturnType<typeof issuesSvc.create>>;
     try {
       review = await issuesSvc.create(evidence.sourceIssue.companyId, {
@@ -762,8 +707,8 @@ export function productivityReviewService(db: Db, deps?: { enqueueWakeup?: Enque
         projectId: evidence.sourceIssue.projectId,
         goalId: evidence.sourceIssue.goalId,
         billingCode: evidence.sourceIssue.billingCode,
-        assigneeAgentId: ownerAgentId,
-        assigneeAdapterOverrides: recoveryAssigneeAdapterOverrides("status_only"),
+        assigneeAgentId: null,
+        assigneeUserId: null,
         originKind: PRODUCTIVITY_REVIEW_ORIGIN_KIND,
         originId: evidence.sourceIssue.id,
         originFingerprint: productivityReviewFingerprint(evidence.sourceIssue.id),
@@ -793,9 +738,10 @@ export function productivityReviewService(db: Db, deps?: { enqueueWakeup?: Enque
       action: "issue.productivity_review_created",
       entityType: "issue",
       entityId: review.id,
-      agentId: ownerAgentId,
+      agentId: null,
       details: {
         source: "productivity_review.reconcile",
+        automationPolicy: PRODUCTIVITY_REVIEW_AUTOMATION_POLICY,
         sourceIssueId: evidence.sourceIssue.id,
         trigger: evidence.trigger,
         noCommentStreak: evidence.noCommentStreak,
@@ -803,29 +749,6 @@ export function productivityReviewService(db: Db, deps?: { enqueueWakeup?: Enque
         commentCountLastHour: evidence.commentCountLastHour,
       },
     });
-
-    if (ownerAgentId && deps?.enqueueWakeup) {
-      await deps.enqueueWakeup(ownerAgentId, {
-        source: "assignment",
-        triggerDetail: "system",
-        reason: "issue_assigned",
-        payload: withRecoveryModelProfileHint({
-          issueId: review.id,
-          sourceIssueId: evidence.sourceIssue.id,
-          trigger: evidence.trigger,
-        }, "status_only"),
-        requestedByActorType: "system",
-        requestedByActorId: "productivity_review",
-        contextSnapshot: withRecoveryModelProfileHint({
-          issueId: review.id,
-          taskId: review.id,
-          wakeReason: "issue_assigned",
-          source: PRODUCTIVITY_REVIEW_ORIGIN_KIND,
-          sourceIssueId: evidence.sourceIssue.id,
-          productivityReviewTrigger: evidence.trigger,
-        }, "status_only"),
-      });
-    }
 
     return { kind: "created" as const, reviewIssueId: review.id };
   }
