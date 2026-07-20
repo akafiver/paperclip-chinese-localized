@@ -3,7 +3,7 @@
 
 @font-face {
   font-family: "InterVariable";
-  src: url("../fonts/InterVariable.woff2") format("woff2");
+  src: url("/fonts/InterVariable.woff2") format("woff2");
   font-display: swap;
   font-style: normal;
   font-weight: 100 900;
@@ -11,7 +11,7 @@
 
 @font-face {
   font-family: "InterVariable";
-  src: url("../fonts/InterVariable-Italic.woff2") format("woff2");
+  src: url("/fonts/InterVariable-Italic.woff2") format("woff2");
   font-display: swap;
   font-style: italic;
   font-weight: 100 900;
@@ -1835,6 +1835,9 @@ span.paperclip-mention-chip[data-mention-kind="external-object"] {
   --gtc-62: 1fr minmax(0,18rem);
   --gtc-63: 280px 1fr;
   --gtc-64: minmax(0,20rem) 1fr;
+  --gtc-65: 6.75rem 1.5rem minmax(0,1fr); /* Extracted from ui/src/components/IssueChatThread.tsx (issue communication vertical timeline). */
+  --gtc-66: 16rem minmax(0,1fr); /* Extracted from ui/src/pages/AgentDetail.tsx (agent run detail list rail). */
+  --gtc-67: 20rem minmax(0,1fr); /* Extracted from ui/src/pages/AgentDetail.tsx (agent run detail wide list rail). */
   --gtr-1: auto auto; /* Extracted from ui/src/components/ui/card.tsx (grid-rows-[auto_auto]). */
   --gtr-2: 1fr; /* Extracted from ui/src/pages/CompanySkills.tsx (grid-rows-[1fr]). */
   --gtr-3: 0fr; /* Extracted from ui/src/pages/CompanySkills.tsx (grid-rows-[0fr]). */

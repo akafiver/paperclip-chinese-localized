@@ -5,42 +5,10 @@ import {
   companyLogos,
   assets,
   agents,
-  agentApiKeys,
-  agentRuntimeState,
-  agentTaskSessions,
   agentWakeupRequests,
   issues,
-  issueComments,
-  issueThreadInteractions,
-  issueInboxArchives,
-  feedbackVotes,
-  projects,
-  projectGoals,
-  projectWorkspaces,
-  goals,
   heartbeatRuns,
-  heartbeatRunEvents,
   costEvents,
-  financeEvents,
-  issueReadStates,
-  approvalComments,
-  approvals,
-  activityLog,
-  companySecrets,
-  companySecretBindings,
-  joinRequests,
-  invites,
-  principalPermissionGrants,
-  companyMemberships,
-  companySkills,
-  budgetPolicies,
-  budgetIncidents,
-  agentConfigRevisions,
-  documents,
-  routineRuns,
-  routineTriggers,
-  routineRevisions,
-  routines,
 } from "@paperclipai/db";
 import { notFound, unprocessable } from "../errors.js";
 import { environmentService } from "./environments.js";
@@ -62,6 +30,17 @@ const SYSTEM_COMPANY_ACTOR: CompanyActivityActor = {
   runId: null,
 };
 
+function quotePgIdentifier(value: string): string {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(value)) {
+    throw new Error(`Unsafe PostgreSQL identifier: ${value}`);
+  }
+  return `"${value.replaceAll("\"", "\"\"")}"`;
+}
+
+function quotePublicTable(tableName: string): string {
+  return `${quotePgIdentifier("public")}.${quotePgIdentifier(tableName)}`;
+}
+
 export function companyService(db: Db) {
   const ISSUE_PREFIX_FALLBACK = "CMP";
   const environmentsSvc = environmentService(db);
@@ -69,6 +48,91 @@ export function companyService(db: Db) {
   const builtInAgents = builtInAgentService(db);
 
   type CompanyTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+  async function listCompanyScopedTables(tx: CompanyTx): Promise<string[]> {
+    const rows = Array.from(await tx.execute(sql<{ tableName: string }>`
+      select columns.table_name as "tableName"
+      from information_schema.columns as columns
+      join information_schema.tables as tables
+        on tables.table_schema = columns.table_schema
+       and tables.table_name = columns.table_name
+      where columns.table_schema = 'public'
+        and columns.column_name = 'company_id'
+        and tables.table_type = 'BASE TABLE'
+      order by columns.table_name
+    `));
+    return rows
+      .map((row) => row.tableName)
+      .filter((tableName): tableName is string => typeof tableName === "string" && tableName.length > 0);
+  }
+
+  async function listForeignKeyEdges(tx: CompanyTx): Promise<Array<{ childTable: string; parentTable: string }>> {
+    return Array.from(await tx.execute(sql<{ childTable: string; parentTable: string }>`
+      select
+        key_usage.table_name as "childTable",
+        constraint_usage.table_name as "parentTable"
+      from information_schema.table_constraints as constraints
+      join information_schema.key_column_usage as key_usage
+        on constraints.constraint_name = key_usage.constraint_name
+       and constraints.table_schema = key_usage.table_schema
+      join information_schema.constraint_column_usage as constraint_usage
+        on constraint_usage.constraint_name = constraints.constraint_name
+       and constraint_usage.table_schema = constraints.table_schema
+      where constraints.constraint_type = 'FOREIGN KEY'
+        and constraints.table_schema = 'public'
+    `));
+  }
+
+  function orderCompanyScopedTablesForDelete(
+    tableNames: readonly string[],
+    foreignKeyEdges: readonly { childTable: string; parentTable: string }[],
+  ) {
+    const tableSet = new Set(tableNames);
+    const childrenByParent = new Map<string, Set<string>>();
+    for (const edge of foreignKeyEdges) {
+      if (edge.childTable === edge.parentTable) continue;
+      if (!tableSet.has(edge.childTable) || !tableSet.has(edge.parentTable)) continue;
+      let children = childrenByParent.get(edge.parentTable);
+      if (!children) {
+        children = new Set();
+        childrenByParent.set(edge.parentTable, children);
+      }
+      children.add(edge.childTable);
+    }
+
+    const ordered: string[] = [];
+    const visiting = new Set<string>();
+    const visited = new Set<string>();
+
+    function visit(tableName: string) {
+      if (visited.has(tableName)) return;
+      if (visiting.has(tableName)) return;
+      visiting.add(tableName);
+      const children = [...(childrenByParent.get(tableName) ?? [])].sort((left, right) => left.localeCompare(right));
+      for (const child of children) visit(child);
+      visiting.delete(tableName);
+      visited.add(tableName);
+      ordered.push(tableName);
+    }
+
+    for (const tableName of [...tableNames].sort((left, right) => left.localeCompare(right))) {
+      visit(tableName);
+    }
+
+    return ordered;
+  }
+
+  async function purgeCompanyScopedRowsInTx(tx: CompanyTx, companyId: string) {
+    const tableNames = await listCompanyScopedTables(tx);
+    const foreignKeyEdges = await listForeignKeyEdges(tx);
+    const deleteOrder = orderCompanyScopedTablesForDelete(tableNames, foreignKeyEdges);
+    for (const tableName of deleteOrder) {
+      await tx.execute(sql`
+        delete from ${sql.raw(quotePublicTable(tableName))}
+        where ${sql.raw(quotePgIdentifier("company_id"))} = ${companyId}
+      `);
+    }
+  }
 
   async function applyArchiveCascadeInTx(tx: CompanyTx, id: string) {
     const pausedAgentRows = await tx
@@ -442,56 +506,7 @@ export function companyService(db: Db) {
 
     remove: (id: string) =>
       db.transaction(async (tx) => {
-        // Delete from child tables in dependency order
-        const companyRunIds = await tx
-          .select({ id: heartbeatRuns.id })
-          .from(heartbeatRuns)
-          .where(eq(heartbeatRuns.companyId, id));
-
-        await tx.delete(heartbeatRunEvents).where(eq(heartbeatRunEvents.companyId, id));
-        if (companyRunIds.length > 0) {
-          await tx
-            .delete(heartbeatRunEvents)
-            .where(inArray(heartbeatRunEvents.runId, companyRunIds.map((run) => run.id)));
-        }
-        await tx.delete(agentTaskSessions).where(eq(agentTaskSessions.companyId, id));
-        await tx.delete(activityLog).where(eq(activityLog.companyId, id));
-        await tx.delete(financeEvents).where(eq(financeEvents.companyId, id));
-        await tx.delete(costEvents).where(eq(costEvents.companyId, id));
-        await tx.delete(heartbeatRuns).where(eq(heartbeatRuns.companyId, id));
-        await tx.delete(agentWakeupRequests).where(eq(agentWakeupRequests.companyId, id));
-        await tx.delete(agentApiKeys).where(eq(agentApiKeys.companyId, id));
-        await tx.delete(agentRuntimeState).where(eq(agentRuntimeState.companyId, id));
-        await tx.delete(issueThreadInteractions).where(eq(issueThreadInteractions.companyId, id));
-        await tx.delete(issueInboxArchives).where(eq(issueInboxArchives.companyId, id));
-        await tx.delete(feedbackVotes).where(eq(feedbackVotes.companyId, id));
-        await tx.delete(issueComments).where(eq(issueComments.companyId, id));
-        await tx.delete(approvalComments).where(eq(approvalComments.companyId, id));
-        await tx.delete(approvals).where(eq(approvals.companyId, id));
-        await tx.delete(companySecretBindings).where(eq(companySecretBindings.companyId, id));
-        await tx.delete(companySecrets).where(eq(companySecrets.companyId, id));
-        await tx.delete(joinRequests).where(eq(joinRequests.companyId, id));
-        await tx.delete(invites).where(eq(invites.companyId, id));
-        await tx.delete(principalPermissionGrants).where(eq(principalPermissionGrants.companyId, id));
-        await tx.delete(companyMemberships).where(eq(companyMemberships.companyId, id));
-        await tx.delete(companySkills).where(eq(companySkills.companyId, id));
-        await tx.delete(budgetIncidents).where(eq(budgetIncidents.companyId, id));
-        await tx.delete(budgetPolicies).where(eq(budgetPolicies.companyId, id));
-        await tx.delete(agentConfigRevisions).where(eq(agentConfigRevisions.companyId, id));
-        await tx.delete(routineRuns).where(eq(routineRuns.companyId, id));
-        await tx.delete(routineTriggers).where(eq(routineTriggers.companyId, id));
-        await tx.delete(routineRevisions).where(eq(routineRevisions.companyId, id));
-        await tx.delete(routines).where(eq(routines.companyId, id));
-        await tx.delete(issueReadStates).where(eq(issueReadStates.companyId, id));
-        await tx.delete(documents).where(eq(documents.companyId, id));
-        await tx.delete(issues).where(eq(issues.companyId, id));
-        await tx.delete(companyLogos).where(eq(companyLogos.companyId, id));
-        await tx.delete(assets).where(eq(assets.companyId, id));
-        await tx.delete(projectGoals).where(eq(projectGoals.companyId, id));
-        await tx.delete(projectWorkspaces).where(eq(projectWorkspaces.companyId, id));
-        await tx.delete(projects).where(eq(projects.companyId, id));
-        await tx.delete(goals).where(eq(goals.companyId, id));
-        await tx.delete(agents).where(eq(agents.companyId, id));
+        await purgeCompanyScopedRowsInTx(tx, id);
         const rows = await tx
           .delete(companies)
           .where(eq(companies.id, id))

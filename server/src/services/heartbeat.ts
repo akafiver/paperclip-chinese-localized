@@ -9092,15 +9092,77 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
     };
   }
 
+  function isShutdownDatabaseDisconnectError(error: unknown, depth = 0): boolean {
+    if (depth > 4 || !error) return false;
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === "object" && "message" in error
+          ? String((error as { message?: unknown }).message ?? "")
+          : String(error);
+    if (
+      /socket has been ended/i.test(message) ||
+      /connection terminated/i.test(message) ||
+      /connection closed/i.test(message) ||
+      /client has encountered a connection error/i.test(message) ||
+      /write after end/i.test(message)
+    ) {
+      return true;
+    }
+    if (typeof error === "object" && "cause" in error) {
+      return isShutdownDatabaseDisconnectError((error as { cause?: unknown }).cause, depth + 1);
+    }
+    return false;
+  }
+
+  async function drainTrackedProcessesAfterDatabaseDisconnect(signal: "SIGINT" | "SIGTERM") {
+    const tracked = [...runningProcesses.entries()];
+    const interruptedRunIds: string[] = [];
+    for (const [runId, running] of tracked) {
+      requestRunCancellation(runId, `Paperclip shutdown: ${signal}`);
+      try {
+        await terminateHeartbeatRunProcess({
+          pid: running.child.pid,
+          processGroupId: running.processGroupId,
+          graceMs: Math.max(1, running.graceSec) * 1000,
+        });
+        interruptedRunIds.push(runId);
+      } finally {
+        runningProcesses.delete(runId);
+      }
+    }
+
+    logger.warn(
+      { signal, interrupted: interruptedRunIds.length, interruptedRunIds },
+      "heartbeat shutdown drain lost database connection; terminated locally tracked child processes only",
+    );
+
+    return {
+      interrupted: interruptedRunIds.length,
+      interruptedRunIds,
+      retryRunIds: [] as string[],
+      degraded: "database_disconnected" as const,
+    };
+  }
+
   async function drainRunningRunsForShutdown(signal: "SIGINT" | "SIGTERM", now = new Date()) {
-    const activeRuns = await db
-      .select({
-        run: heartbeatRuns,
-        agent: agents,
-      })
-      .from(heartbeatRuns)
-      .innerJoin(agents, eq(heartbeatRuns.agentId, agents.id))
-      .where(eq(heartbeatRuns.status, "running"));
+    let activeRuns: {
+      run: typeof heartbeatRuns.$inferSelect;
+      agent: typeof agents.$inferSelect;
+    }[];
+    try {
+      activeRuns = await db
+        .select({
+          run: heartbeatRuns,
+          agent: agents,
+        })
+        .from(heartbeatRuns)
+        .innerJoin(agents, eq(heartbeatRuns.agentId, agents.id))
+        .where(eq(heartbeatRuns.status, "running"));
+    } catch (error) {
+      if (!isShutdownDatabaseDisconnectError(error)) throw error;
+      return drainTrackedProcessesAfterDatabaseDisconnect(signal);
+    }
 
     const interruptedRunIds: string[] = [];
     const retryRunIds: string[] = [];

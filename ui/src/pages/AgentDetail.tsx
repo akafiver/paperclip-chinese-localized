@@ -2930,7 +2930,7 @@ function RunsTab({
   return (
     <div className={cn(
       "grid w-full max-w-7xl gap-4",
-      selectedRun ? "xl:grid-cols-[16rem_minmax(0,1fr)] 2xl:grid-cols-[20rem_minmax(0,1fr)]" : "grid-cols-1",
+      selectedRun ? "xl:grid-cols-(--gtc-66) 2xl:grid-cols-(--gtc-67)" : "grid-cols-1",
     )}>
       {/* Left: run list — stable navigation rail */}
       <div className="min-w-0 rounded-xl border border-border bg-card/40">

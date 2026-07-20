@@ -3675,7 +3675,7 @@ const IssueChatMessageRow = memo(function IssueChatMessageRow({
         data-testid="issue-chat-message-row"
         data-message-role={message.role}
         data-message-kind={kind}
-        className="grid grid-cols-[6.75rem_1.5rem_minmax(0,1fr)] gap-x-3"
+        className="grid grid-cols-(--gtc-65) gap-x-3"
       >
         <a
           href={anchorId ? `#${anchorId}` : undefined}
