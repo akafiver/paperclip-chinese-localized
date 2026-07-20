@@ -708,6 +708,21 @@ function issueAssigneeLabelForSummary(issue: Issue, agentMap: Map<string, Agent>
   return translate("ui.issueDetail.summary.unassigned");
 }
 
+function recoveryOwnerLabelForSummary(action: IssueRecoveryAction, agentMap: Map<string, Agent>) {
+  if (action.ownerType === "agent" && action.ownerAgentId) {
+    return agentMap.get(action.ownerAgentId)?.name ?? action.ownerAgentId.slice(0, 8);
+  }
+  if (action.ownerType === "board") return translate("ui.common.board");
+  if (action.ownerType === "system") return translate("ui.common.system");
+  if (action.ownerType === "user") return translate("ui.common.user");
+  return translate("ui.issueDetail.summary.unassigned");
+}
+
+function recoveryNextStepForSummary(action: IssueRecoveryAction) {
+  if (action.kind === "workspace_validation") return translate("ui.issueDetail.summary.workspaceRecoveryNextStep");
+  return action.nextAction || translate("ui.issueDetail.summary.recoveryNextStep");
+}
+
 function buildIssueDecisionSummary(input: {
   issue: Issue;
   childIssues: Issue[];
@@ -739,19 +754,30 @@ function buildIssueDecisionSummary(input: {
   }
 
   if (issue.activeRecoveryAction) {
+    const recoveryAction = issue.activeRecoveryAction;
+    const isWorkspaceRecovery = recoveryAction.kind === "workspace_validation";
+    const recoveryOwner = recoveryOwnerLabelForSummary(recoveryAction, agentMap);
     return {
       tone: "blocked" as const,
       eyebrow: translate("ui.issueDetail.summary.recoveryEyebrow"),
-      headline: translate("ui.issueDetail.summary.recoveryHeadline"),
-      nextStep: issue.activeRecoveryAction.nextAction || translate("ui.issueDetail.summary.recoveryNextStep"),
-      evidence: translate("ui.issueDetail.summary.recoveryEvidence", {
-        cause: issue.activeRecoveryAction.cause,
-        owner: issue.activeRecoveryAction.ownerType,
-      }),
+      headline: isWorkspaceRecovery
+        ? translate("ui.issueDetail.summary.workspaceRecoveryHeadline")
+        : translate("ui.issueDetail.summary.recoveryHeadline"),
+      nextStep: recoveryNextStepForSummary(recoveryAction),
+      evidence: isWorkspaceRecovery
+        ? translate("ui.issueDetail.summary.workspaceRecoveryEvidence", { owner: recoveryOwner })
+        : translate("ui.issueDetail.summary.recoveryEvidence", {
+          cause: recoveryAction.cause,
+          owner: recoveryOwner,
+        }),
       progress: totalChildren > 0
         ? translate("ui.issueDetail.summary.childProgress", { completed: completedChildren, total: totalChildren, open: openChildren })
         : translate("ui.issueDetail.summary.noSubtasks"),
-      diagnostic: translate("ui.issueDetail.summary.recoveryDiagnostic"),
+      diagnostic: isWorkspaceRecovery
+        ? translate("ui.issueDetail.summary.workspaceRecoveryDiagnostic", {
+          cause: recoveryAction.cause ?? recoveryAction.kind,
+        })
+        : translate("ui.issueDetail.summary.recoveryDiagnostic"),
     };
   }
 

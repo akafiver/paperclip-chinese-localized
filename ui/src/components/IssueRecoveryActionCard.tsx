@@ -142,11 +142,23 @@ function outcomeLabel(outcome: IssueRecoveryActionOutcome, t: Translate) {
 const KNOWN_RECOVERY_TEXT_KEYS: Record<string, string> = {
   "Restore a live execution path, fix the runtime/adapter failure, or record an intentional manual resolution.":
     "ui.recoveryActionCard.knownText.restoreLiveExecutionPath",
+  "Repair the source issue workspace link or project workspace before resuming adapter execution. If the task requires Git, also provide a Git checkout.":
+    "ui.recoveryActionCard.knownText.repairWorkspaceLink",
+  "Repair the source issue git worktree branch incoherence, or choose a new execution workspace, before resuming adapter execution.":
+    "ui.recoveryActionCard.knownText.repairGitWorktreeBranch",
+  "Bind the missing secret(s) named in the run failure to the agent/project/routine env before resuming adapter execution.":
+    "ui.recoveryActionCard.knownText.bindConfiguration",
 };
 
 function localizeKnownRecoveryText(text: string, t: Translate) {
   const key = KNOWN_RECOVERY_TEXT_KEYS[text.trim()];
   return key ? t(key) : text;
+}
+
+function recoveryExplanationKey(kind: IssueRecoveryActionKind) {
+  if (kind === "workspace_validation") return "workspace_validation";
+  if (kind === "configuration_validation") return "configuration_validation";
+  return null;
 }
 
 const STATE_TONE: Record<RecoveryCardCardState, {
@@ -921,6 +933,7 @@ export function IssueRecoveryActionCard({
     }
     return kindHeadline(action.kind, t);
   }, [action.kind, action.outcome, cardState, t]);
+  const explanationKey = recoveryExplanationKey(action.kind);
 
   const wakeSummary = readWakePolicySummary(action, t);
   const evidenceSummary = pickEvidenceSummary(action);
@@ -1040,6 +1053,15 @@ export function IssueRecoveryActionCard({
           <p className="mt-1 text-sm leading-6">{headline}</p>
         </div>
       </header>
+      {variant === "compact" || explanationKey === null ? null : (
+        <div className={cn("border-t px-3 py-2.5 text-xs leading-5 sm:px-4", tone.divider)}>
+          <ul className="space-y-1.5">
+            <li>{t(`ui.recoveryActionCard.explanation.${explanationKey}.what`)}</li>
+            <li>{t(`ui.recoveryActionCard.explanation.${explanationKey}.why`)}</li>
+            <li>{t(`ui.recoveryActionCard.explanation.${explanationKey}.fix`)}</li>
+          </ul>
+        </div>
+      )}
       {variant === "compact" ? null : (
       <dl className={cn("border-t bg-background/40 dark:bg-background/20", tone.divider)}>
         <MetadataRow label={t("ui.recoveryActionCard.metadata.owner")}>
@@ -1075,7 +1097,11 @@ export function IssueRecoveryActionCard({
           </MetadataRow>
         ) : null}
         <MetadataRow label={t("ui.recoveryActionCard.metadata.evidence")}>
-          {evidenceSummary ? (
+          {action.kind === "workspace_validation" ? (
+            <span className="text-xs leading-5 text-foreground/80">
+              {t("ui.recoveryActionCard.metadata.workspaceValidationEvidence")}
+            </span>
+          ) : evidenceSummary ? (
             evidenceSummary.isCode ? (
               <span className="break-words font-mono text-(length:--text-micro) text-foreground/80">
                 {evidenceSummary.text}
