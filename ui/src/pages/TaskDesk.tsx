@@ -1339,12 +1339,23 @@ export function TaskDesk() {
     [availableIssueColumnSet, visibleIssueColumnSet],
   );
 
-  const failedRuns = useMemo(
-    () =>
-      getLatestFailedRunsByAgent(heartbeatRuns ?? []).filter(
+  const { failedRuns, failedRunCountByIssueId } = useMemo(
+    () => {
+      const allFailedRuns = getLatestFailedRunsByAgent(heartbeatRuns ?? []);
+      const inboxIssueIds = new Set((issues ?? []).map((i) => i.id));
+      const countByIssueId = new Map<string, number>();
+      for (const run of allFailedRuns) {
+        const issueId = readIssueIdFromRun(run);
+        if (issueId) countByIssueId.set(issueId, (countByIssueId.get(issueId) ?? 0) + 1);
+      }
+      const displayRuns = allFailedRuns.filter(
         (r) => !isInboxEntityDismissed(dismissedAtByKey, `run:${r.id}`, r.createdAt),
-      ),
-    [heartbeatRuns, dismissedAtByKey],
+      ).filter(
+        (r) => !readIssueIdFromRun(r) || !inboxIssueIds.has(readIssueIdFromRun(r)!),
+      );
+      return { failedRuns: displayRuns, failedRunCountByIssueId: countByIssueId };
+    },
+    [heartbeatRuns, dismissedAtByKey, issues],
   );
   const approvalsToRender = useMemo(() => {
     let filtered = getApprovalsForTab(approvals ?? [], tab, allApprovalFilter, currentUserId);
@@ -2854,32 +2865,42 @@ export function TaskDesk() {
                       onArchive={allowArchive ? () => archiveIssueMutation.mutate(issue.id) : undefined}
                       archiveDisabled={isArchiving}
                       desktopTrailing={
-                        visibleTrailingIssueColumns.length > 0 ? (
-                          <InboxIssueTrailingColumns
-                            issue={issue}
-                            columns={visibleTrailingIssueColumns}
-                            projectName={project?.name ?? null}
-                            projectColor={project?.color ?? null}
-                            workspaceName={resolveIssueWorkspaceName(issue, {
-                              executionWorkspaceById,
-                              projectWorkspaceById,
-                              defaultProjectWorkspaceIdByProjectId,
-                            })}
-                            assigneeName={agentName(issue.assigneeAgentId)}
-                            assigneeUserName={
-                              formatAssigneeUserLabel(issue.assigneeUserId, currentUserId, companyUserLabelMap)
-                              ?? assigneeUserProfile?.label
-                              ?? null
-                            }
-                            assigneeUserAvatarUrl={assigneeUserProfile?.image ?? null}
-                            creatorAgentName={agentName(issue.createdByAgentId)}
-                            creatorUserName={originatingUserId ? (companyUserProfileMap.get(originatingUserId)?.label ?? null) : null}
-                            creatorUserAvatarUrl={originatingUserId ? (companyUserProfileMap.get(originatingUserId)?.image ?? null) : null}
-                            viaAgentName={originatingViaAgentId ? agentName(originatingViaAgentId) : null}
-                            currentUserId={currentUserId}
-                            parentIdentifier={issue.parentId ? (issueById.get(issue.parentId)?.identifier ?? null) : null}
-                            parentTitle={issue.parentId ? (issueById.get(issue.parentId)?.title ?? null) : null}
-                          />
+                        visibleTrailingIssueColumns.length > 0 || failedRunCountByIssueId.get(issue.id) ? (
+                          <>
+                            {visibleTrailingIssueColumns.length > 0 ? (
+                              <InboxIssueTrailingColumns
+                                issue={issue}
+                                columns={visibleTrailingIssueColumns}
+                                projectName={project?.name ?? null}
+                                projectColor={project?.color ?? null}
+                                workspaceName={resolveIssueWorkspaceName(issue, {
+                                  executionWorkspaceById,
+                                  projectWorkspaceById,
+                                  defaultProjectWorkspaceIdByProjectId,
+                                })}
+                                assigneeName={agentName(issue.assigneeAgentId)}
+                                assigneeUserName={
+                                  formatAssigneeUserLabel(issue.assigneeUserId, currentUserId, companyUserLabelMap)
+                                  ?? assigneeUserProfile?.label
+                                  ?? null
+                                }
+                                assigneeUserAvatarUrl={assigneeUserProfile?.image ?? null}
+                                creatorAgentName={agentName(issue.createdByAgentId)}
+                                creatorUserName={originatingUserId ? (companyUserProfileMap.get(originatingUserId)?.label ?? null) : null}
+                                creatorUserAvatarUrl={originatingUserId ? (companyUserProfileMap.get(originatingUserId)?.image ?? null) : null}
+                                viaAgentName={originatingViaAgentId ? agentName(originatingViaAgentId) : null}
+                                currentUserId={currentUserId}
+                                parentIdentifier={issue.parentId ? (issueById.get(issue.parentId)?.identifier ?? null) : null}
+                                parentTitle={issue.parentId ? (issueById.get(issue.parentId)?.title ?? null) : null}
+                              />
+                            ) : null}
+                            {failedRunCountByIssueId.get(issue.id) ? (
+                              <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 text-(length:--text-nano) font-medium text-red-700 dark:text-red-300">
+                                <XCircle className="h-3 w-3" />
+                                {failedRunCountByIssueId.get(issue.id)}
+                              </span>
+                            ) : null}
+                          </>
                         ) : undefined
                       }
                     />
