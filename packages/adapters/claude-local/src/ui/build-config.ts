@@ -77,7 +77,6 @@ export function buildClaudeLocalConfig(v: CreateConfigValues): Record<string, un
       ac.warmHandleIdleMs = v.claudeAcpWarmHandleIdleMs;
     }
   }
-  if (v.cwd) ac.cwd = v.cwd;
   if (v.instructionsFilePath) ac.instructionsFilePath = v.instructionsFilePath;
   if (v.model) ac.model = v.model;
   if (v.thinkingEffort) ac.effort = v.thinkingEffort;

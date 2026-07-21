@@ -54,11 +54,6 @@ export function buildHermesConfig(
   // Session persistence (default: on)
   ac.persistSession = true;
 
-  // Working directory
-  if (v.cwd) {
-    ac.cwd = v.cwd;
-  }
-
   // Custom hermes binary path
   if (v.command) {
     ac.hermesCommand = v.command;

@@ -53,7 +53,6 @@ function parseEnvBindings(bindings: unknown): Record<string, unknown> {
 
 export function buildGeminiLocalConfig(v: CreateConfigValues): Record<string, unknown> {
   const ac: Record<string, unknown> = {};
-  if (v.cwd) ac.cwd = v.cwd;
   if (v.instructionsFilePath) ac.instructionsFilePath = v.instructionsFilePath;
   if (v.geminiEngine === "cli" || v.geminiEngine === "acp") ac.engine = v.geminiEngine;
   if (v.geminiEngine === "acp") {

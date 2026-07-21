@@ -53,7 +53,6 @@ function parseEnvBindings(bindings: unknown): Record<string, unknown> {
 
 export function buildGrokLocalConfig(v: CreateConfigValues): Record<string, unknown> {
   const ac: Record<string, unknown> = {};
-  if (v.cwd) ac.cwd = v.cwd;
   if (v.instructionsFilePath) ac.instructionsFilePath = v.instructionsFilePath;
   ac.model = v.model || DEFAULT_GROK_LOCAL_MODEL;
   ac.timeoutSec = 0;

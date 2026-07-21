@@ -24,7 +24,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { FolderOpen, Heart, ChevronDown, X } from "lucide-react";
+import { Heart, ChevronDown, X } from "lucide-react";
 import { asBoolean, asFiniteNumber, asObject, cn } from "../lib/utils";
 import { extractModelName, extractProviderId } from "../lib/model-utils";
 import { queryKeys } from "../lib/queryKeys";
@@ -43,7 +43,7 @@ import { defaultCreateValues } from "./agent-config-defaults";
 import { getUIAdapter } from "../adapters";
 import { ClaudeLocalAdvancedFields } from "../adapters/claude-local/config-fields";
 import { MarkdownEditor } from "./MarkdownEditor";
-import { ChoosePathButton } from "./PathInstructionsModal";
+
 import { OpenCodeLogoIcon } from "./OpenCodeLogoIcon";
 import { ReportsToPicker } from "./ReportsToPicker";
 import {
@@ -376,8 +376,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
   const getCapabilities = useAdapterCapabilities();
   const adapterCaps = getCapabilities(adapterType);
   const isLocal = adapterCaps.supportsInstructionsBundle || adapterCaps.supportsSkills || adapterCaps.supportsLocalAgentJwt;
-  
-  const showWorkingDirectoryField = isLocal;
+
   const uiAdapter = useMemo(() => getUIAdapter(adapterType), [adapterType]);
   const supportedEnvironmentDrivers = useMemo(
     () => new Set(supportedEnvironmentDriversForAdapter(adapterType)),
@@ -1153,34 +1152,6 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
 
           {showInlineAdapterTestEnvironmentFeedback && testEnvironment.data && (
             <AdapterEnvironmentResult result={testEnvironment.data} />
-          )}
-
-          {/* Working directory */}
-          {showWorkingDirectoryField && (
-            <Field
-              label={t("ui.agentConfig.workingDirectoryAdvanced")}
-              hint={t("ui.agentConfig.workingDirectoryHint")}
-            >
-              <div className="flex items-center gap-2 rounded-md border border-border px-2.5 py-1.5">
-                <FolderOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <DraftInput
-                  value={
-                    isCreate
-                      ? val!.cwd
-                      : eff("adapterConfig", "cwd", String(config.cwd ?? ""))
-                  }
-                  onCommit={(v) =>
-                    isCreate
-                      ? set!({ cwd: v })
-                      : mark("adapterConfig", "cwd", v || undefined)
-                  }
-                  immediate
-                  className="w-full bg-transparent outline-none text-sm font-mono placeholder:text-muted-foreground/40"
-                  placeholder="/path/to/project"
-                />
-                <ChoosePathButton />
-              </div>
-            </Field>
           )}
 
           {!isLocal && <uiAdapter.ConfigFields {...adapterFieldProps} />}

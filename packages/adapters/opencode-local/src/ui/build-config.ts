@@ -52,7 +52,6 @@ function parseEnvBindings(bindings: unknown): Record<string, unknown> {
 
 export function buildOpenCodeLocalConfig(v: CreateConfigValues): Record<string, unknown> {
   const ac: Record<string, unknown> = {};
-  if (v.cwd) ac.cwd = v.cwd;
   if (v.instructionsFilePath) ac.instructionsFilePath = v.instructionsFilePath;
   if (v.model) ac.model = v.model;
   if (v.thinkingEffort) ac.variant = v.thinkingEffort;
