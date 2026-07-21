@@ -140,6 +140,17 @@ async function resolveScopeRecord(db: Db, scopeType: BudgetScopeType, scopeId: s
   };
 }
 
+async function resolveExistingScopeRecord(db: Db, scopeType: BudgetScopeType, scopeId: string): Promise<ScopeRecord | null> {
+  try {
+    return await resolveScopeRecord(db, scopeType, scopeId);
+  } catch (err) {
+    if (err instanceof Error && "status" in err && (err as { status?: unknown }).status === 404) {
+      return null;
+    }
+    throw err;
+  }
+}
+
 async function computeObservedAmount(
   db: Db,
   policy: Pick<PolicyRow, "companyId" | "scopeType" | "scopeId" | "windowKind" | "metric">,
@@ -316,6 +327,16 @@ export function budgetService(db: Db, hooks: BudgetServiceHooks = {}) {
 
   async function buildPolicySummary(policy: PolicyRow): Promise<BudgetPolicySummary> {
     const scope = await resolveScopeRecord(db, policy.scopeType as BudgetScopeType, policy.scopeId);
+    return buildPolicySummaryForScope(policy, scope);
+  }
+
+  async function buildExistingPolicySummary(policy: PolicyRow): Promise<BudgetPolicySummary | null> {
+    const scope = await resolveExistingScopeRecord(db, policy.scopeType as BudgetScopeType, policy.scopeId);
+    if (!scope) return null;
+    return buildPolicySummaryForScope(policy, scope);
+  }
+
+  async function buildPolicySummaryForScope(policy: PolicyRow, scope: ScopeRecord): Promise<BudgetPolicySummary> {
     const observedAmount = await computeObservedAmount(db, policy);
     const { start, end } = resolveWindow(policy.windowKind as BudgetWindowKind);
     const amount = policy.isActive ? policy.amount : 0;
@@ -345,6 +366,10 @@ export function budgetService(db: Db, hooks: BudgetServiceHooks = {}) {
       windowStart: start,
       windowEnd: end,
     };
+  }
+
+  function presentSummaries<T>(items: Array<T | null>): T[] {
+    return items.filter((item): item is T => item !== null);
   }
 
   async function createIncidentIfNeeded(
@@ -466,9 +491,10 @@ export function budgetService(db: Db, hooks: BudgetServiceHooks = {}) {
       : [];
     const approvalStatusById = new Map(approvalRows.map((row) => [row.id, row.status]));
 
-    return Promise.all(
+    const incidents = await Promise.all(
       rows.map(async (row) => {
-        const scope = await resolveScopeRecord(db, row.scopeType as BudgetScopeType, row.scopeId);
+        const scope = await resolveExistingScopeRecord(db, row.scopeType as BudgetScopeType, row.scopeId);
+        if (!scope) return null;
         return {
           id: row.id,
           companyId: row.companyId,
@@ -492,6 +518,8 @@ export function budgetService(db: Db, hooks: BudgetServiceHooks = {}) {
         };
       }),
     );
+
+    return presentSummaries(incidents);
   }
 
   return {
@@ -629,7 +657,8 @@ export function budgetService(db: Db, hooks: BudgetServiceHooks = {}) {
 
     overview: async (companyId: string): Promise<BudgetOverview> => {
       const rows = await listPolicyRows(companyId);
-      const policies = await Promise.all(rows.map((row) => buildPolicySummary(row)));
+      const policySummaries = await Promise.all(rows.map((row) => buildExistingPolicySummary(row)));
+      const policies = presentSummaries(policySummaries);
       const activeIncidentRows = await db
         .select()
         .from(budgetIncidents)

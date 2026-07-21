@@ -9,6 +9,8 @@ import {
   agentTaskSessions,
   agentWakeupRequests,
   activityLog,
+  budgetIncidents,
+  budgetPolicies,
   costEvents,
   financeEvents,
   heartbeatRunEvents,
@@ -783,6 +785,8 @@ export function agentService(db: Db) {
         );
         await tx.delete(issueExecutionDecisions).where(eq(issueExecutionDecisions.actorAgentId, id));
         await tx.delete(issueComments).where(eq(issueComments.authorAgentId, id));
+        await tx.delete(budgetIncidents).where(and(eq(budgetIncidents.scopeType, "agent"), eq(budgetIncidents.scopeId, id)));
+        await tx.delete(budgetPolicies).where(and(eq(budgetPolicies.scopeType, "agent"), eq(budgetPolicies.scopeId, id)));
         await tx
           .update(financeEvents)
           .set({ agentId: null, heartbeatRunId: null })
