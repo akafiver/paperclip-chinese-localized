@@ -63,6 +63,7 @@ import {
   snapshotInboxIssueCaches,
   type InboxIssueCacheSnapshot,
 } from "../lib/inboxArchiveCache";
+import { removeIssueFromAllIssueListCaches } from "../lib/removeIssueFromCaches";
 import { EmptyState } from "../components/EmptyState";
 import { IssueGroupHeader } from "../components/IssueGroupHeader";
 import { PageSkeleton } from "../components/PageSkeleton";
@@ -1079,6 +1080,7 @@ export function TaskDesk() {
     mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
       issuesApi.update(id, data),
     onSuccess: () => {
+      // Invalidate all list queries so board columns and list views update.
       queryClient.invalidateQueries({ queryKey: queryKeys.issues.list(selectedCompanyId!) });
     },
   });
@@ -1090,13 +1092,21 @@ export function TaskDesk() {
   });
   const hideTaskListIssue = useMutation({
     mutationFn: (id: string) => issuesApi.update(id, { hiddenAt: new Date().toISOString() }),
-    onSuccess: () => {
+    onSuccess: (_, issueId) => {
+      // Remove the hidden issue from list caches so it disappears immediately
+      // instead of waiting for the refetch (which might re-fetch from the
+      // server in a cached form and show it briefly).
+      removeIssueFromAllIssueListCaches(queryClient, selectedCompanyId!, issueId);
       queryClient.invalidateQueries({ queryKey: queryKeys.issues.list(selectedCompanyId!) });
     },
   });
   const deleteTaskListIssue = useMutation({
     mutationFn: (id: string) => issuesApi.remove(id),
-    onSuccess: () => {
+    onSuccess: (_, issueId) => {
+      // Optimistically remove the deleted issue from all list caches so the
+      // UI updates immediately instead of waiting for the refetch to arrive.
+      removeIssueFromAllIssueListCaches(queryClient, selectedCompanyId!, issueId);
+      // Invalidate so every affected query refetches stale data.
       queryClient.invalidateQueries({ queryKey: queryKeys.issues.list(selectedCompanyId!) });
     },
   });

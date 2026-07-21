@@ -24,6 +24,7 @@ import {
   issueRelations,
   issueThreadInteractions,
   issues,
+  routines,
 } from "@paperclipai/db";
 import { parseObject, asBoolean, asNumber } from "../../adapters/utils.js";
 import { runningProcesses } from "../../adapters/index.js";
@@ -73,6 +74,11 @@ import {
   recoveryAssigneeAdapterOverrides,
   withRecoveryModelProfileHint,
 } from "./model-profile-hint.js";
+import {
+  decideSuccessfulRunHandoff,
+  isSuccessfulRunHandoffValidPathSkip,
+} from "./successful-run-handoff.js";
+import type { RunLivenessState } from "@paperclipai/shared";
 import { isAutomaticRecoverySuppressedByPauseHold } from "./pause-hold-guard.js";
 
 const EXECUTION_PATH_HEARTBEAT_RUN_STATUSES = ["queued", "running", "scheduled_retry"] as const;
@@ -3950,9 +3956,11 @@ export function recoveryService(db: Db, deps: { enqueueWakeup: RecoveryWakeup })
 
         if (isRepeatedProductiveContinuationRecovery(successfulRun)) {
           // GGU-809: skip escalation if the assignee has shown visible progress
-          // (comment or attachment) within the exemption window. Falling
-          // through here lets the normal continuation-retry path enqueue the
-          // next wake, which is the correct behaviour for batch workflows.
+          // (comment or attachment) within the exemption window. With the new
+          // handoff-based approach, batch workflows that need multi-round
+          // continuation should record the progress explicitly; if they don't,
+          // the handoff decision will handle them safely (skip due to other
+          // conditions like hasActiveExecutionPath or hasQueuedWake).
           const exempted = await hasRecentVisibleProgress(
             issue.companyId,
             issue.id,
@@ -3976,26 +3984,85 @@ export function recoveryService(db: Db, deps: { enqueueWakeup: RecoveryWakeup })
             }
             continue;
           }
-          result.recentProgressExempted += 1;
-        }
-
-        if (await isInvocationBudgetBlocked(issue, agentId)) {
+          // Exempted: skip handoff — the recent progress means the workflow
+          // may still be actively running. The handoff decision below will
+          // likely skip due to hasQueuedWake or other conditions.
           result.skipped += 1;
           continue;
         }
 
-        const queued = await enqueueStrandedIssueRecovery({
-          issueId: issue.id,
-          agentId,
-          reason: "issue_continuation_needed",
-          retryReason: "issue_continuation_needed",
-          source: "issue.productive_terminal_continuation_recovery",
-          retryOfRunId: successfulRun.id,
+        // First-time productive successful run: use the unified handoff
+        // decision instead of blindly enqueueing a continuation recovery.
+        const [hasQueuedWakeForHandoff, hasPersistedMonitorForHandoff,
+          hasExplicitBlockerForHandoff, hasOpenRecoveryIssueForHandoff,
+          hasActiveRoutineContinuationForHandoff, budgetBlockForHandoff] = await Promise.all([
+          hasQueuedIssueWake(issue.companyId, issue.id, agentId),
+          hasPersistedDurableWaitPath(issue),
+          existingUnresolvedBlockerIssueIds(issue.companyId, issue.id).then((rows) => rows.length > 0),
+          findOpenStrandedIssueRecoveryIssue(issue.companyId, issue.id).then((r) => r !== null),
+          db.select({ id: routines.id })
+            .from(routines)
+            .where(
+              and(
+                eq(routines.companyId, issue.companyId),
+                eq(routines.parentIssueId, issue.id),
+                eq(routines.status, "active"),
+              ),
+            )
+            .limit(1)
+            .then((rows) => rows.length > 0),
+          isInvocationBudgetBlocked(issue, agentId),
+        ]);
+
+        const handoffDecision = decideSuccessfulRunHandoff({
+          run: successfulRun as typeof heartbeatRuns.$inferSelect,
+          issue,
+          agent: agent || null,
+          livenessState: successfulRun.livenessState as RunLivenessState | null,
+          detectedProgressSummary: null,
+          hasActiveExecutionPath: false, // already checked at line ~3514 above
+          hasQueuedWake: hasQueuedWakeForHandoff,
+          hasPendingInteractionOrApproval: false, // already checked at line ~3523 above
+          hasPersistedMonitor: Boolean(issue.monitorNextCheckAt),
+          hasExplicitBlockerPath: hasExplicitBlockerForHandoff,
+          hasOpenRecoveryIssue: hasOpenRecoveryIssueForHandoff,
+          hasPauseHold: false, // already checked at line ~3528 above
+          hasActiveRoutineContinuation: hasActiveRoutineContinuationForHandoff,
+          budgetBlocked: budgetBlockForHandoff,
         });
-        if (queued) {
-          result.continuationRequeued += 1;
-          result.issueIds.push(issue.id);
+
+        if (isSuccessfulRunHandoffValidPathSkip(handoffDecision)) {
+          result.skipped += 1;
+          continue;
+        }
+
+        if (handoffDecision.kind === "require_user_disposition") {
+          // First-time handoff: escalate to a recovery issue with
+          // SUCCESSFUL_RUN_MISSING_STATE_REASON so the recovery owner or
+          // board operator must choose the next step.
+          const handoffEvidence: SuccessfulRunHandoffRecoveryEvidence = {
+            sourceRunId: successfulRun.id,
+            correctiveRunId: successfulRun.id,
+            missingDisposition: handoffDecision.missingDisposition,
+            handoffAttempt: 1,
+            maxHandoffAttempts: DEFAULT_MAX_SUCCESSFUL_RUN_HANDOFF_ATTEMPTS,
+          };
+          const updated = await escalateStrandedAssignedIssue({
+            issue,
+            previousStatus: "in_progress",
+            latestRun: successfulRun,
+            recoveryCause: SUCCESSFUL_RUN_MISSING_STATE_REASON,
+            successfulRunHandoffEvidence: handoffEvidence,
+          });
+          if (updated) {
+            result.successfulRunHandoffEscalated += 1;
+            result.issueIds.push(issue.id);
+          } else {
+            result.skipped += 1;
+          }
         } else {
+          // Not a valid path for handoff (unexpected branch — should not happen
+          // since decideSuccessfulRunHandoff only returns "require" or valid-skip).
           result.skipped += 1;
         }
         continue;

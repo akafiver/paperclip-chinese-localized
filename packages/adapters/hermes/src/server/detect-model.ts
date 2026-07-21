@@ -1,8 +1,10 @@
 /**
- * Detect the current model and provider from the user's Hermes config.
+ * Detect the current model, provider, and custom providers from the user's Hermes config.
  *
  * Reads ~/.hermes/config.yaml and extracts the default model,
- * provider, base_url, api_key presence, and api_mode settings.
+ * provider, base_url, api_key presence, api_mode settings,
+ * as well as any custom providers defined under the providers:
+ * and custom_providers: sections.
  *
  * Also provides provider resolution logic that merges explicit config,
  * Hermes config detection, and model-name prefix inference.
@@ -214,4 +216,88 @@ export function resolveProvider(options: {
 
   // 5. Let Hermes auto-detect
   return { provider: "auto", resolvedFrom: "auto" };
+}
+
+/**
+ * Parse custom provider names from the providers: and custom_providers: sections
+ * of a Hermes config file.
+ *
+ * providers: section — keys at indent 2 are provider names:
+ * ```yaml
+ * providers:
+ *   vllm-spark:
+ *     name: vllm-spark
+ * ```
+ *
+ * custom_providers: section — list items with a name: field:
+ * ```yaml
+ * custom_providers:
+ *   - name: 192.168.1.100:8000
+ * ```
+ *
+ * Returns names that are not already in VALID_PROVIDERS.
+ */
+export function parseCustomProvidersFromConfig(content: string): string[] {
+  const lines = content.split("\n");
+  const customProviders: string[] = [];
+  const supportedProviders = VALID_PROVIDERS as readonly string[];
+
+  let inProvidersSection = false;
+  let inCustomProvidersSection = false;
+
+  for (const line of lines) {
+    const trimmed = line.trimEnd();
+    const indent = line.length - line.trimStart().length;
+
+    if (/^providers:\s*$/.test(trimmed) && indent === 0) {
+      inProvidersSection = true;
+      inCustomProvidersSection = false;
+      continue;
+    }
+
+    if (/^custom_providers:\s*$/.test(trimmed) && indent === 0) {
+      inCustomProvidersSection = true;
+      inProvidersSection = false;
+      continue;
+    }
+
+    if (indent === 0 && trimmed && !trimmed.startsWith("#")) {
+      inProvidersSection = false;
+      inCustomProvidersSection = false;
+    }
+
+    // In providers: section, keys at indent 2 are provider names
+    if (inProvidersSection && indent === 2) {
+      const match = trimmed.trim().match(/^(\S+):/);
+      if (match) {
+        customProviders.push(match[1]);
+      }
+    }
+
+    // In custom_providers: section, look for "- name: <value>" patterns
+    if (inCustomProvidersSection) {
+      const nameMatch = trimmed.match(/^\s{2}-\s+name:\s*(.+)$/);
+      if (nameMatch) {
+        customProviders.push(nameMatch[1].trim().replace(/^['"]|['"]$/g, ""));
+      }
+    }
+  }
+
+  return customProviders.filter((name) => !supportedProviders.includes(name));
+}
+
+/**
+ * Read custom provider names from ~/.hermes/config.yaml.
+ */
+export async function detectCustomProviders(
+  configPath?: string,
+): Promise<string[]> {
+  const filePath = configPath ?? join(homedir(), ".hermes", "config.yaml");
+  let content: string;
+  try {
+    content = await readFile(filePath, "utf-8");
+  } catch {
+    return [];
+  }
+  return parseCustomProvidersFromConfig(content);
 }

@@ -116,9 +116,15 @@ export async function discoverOpenCodeModels(input: {
   env?: unknown;
 } = {}): Promise<AdapterModel[]> {
   const command = resolveOpenCodeCommand(input.command);
-  const cwd = asString(input.cwd, "");
+  let cwd = asString(input.cwd, "");
   if (!path.isAbsolute(cwd)) {
-    throw new Error("workspace_validation_failed: OpenCode model discovery requires an absolute cwd");
+    // When called from listOpenCodeModels (no cwd available), fall back
+    // to process.cwd() so the CLI can still enumerate models.  This is
+    // purely for listing — actual execution will validate cwd separately.
+    cwd = process.cwd();
+    if (!path.isAbsolute(cwd)) {
+      cwd = os.homedir() || ".";
+    }
   }
   const env = normalizeEnv(input.env);
   // Ensure HOME points to the actual running user's home directory.
@@ -166,9 +172,12 @@ export async function discoverOpenCodeModelsCached(input: {
   env?: unknown;
 } = {}): Promise<AdapterModel[]> {
   const command = resolveOpenCodeCommand(input.command);
-  const cwd = asString(input.cwd, "");
+  let cwd = asString(input.cwd, "");
   if (!path.isAbsolute(cwd)) {
-    throw new Error("workspace_validation_failed: OpenCode model discovery requires an absolute cwd");
+    cwd = process.cwd();
+    if (!path.isAbsolute(cwd)) {
+      cwd = os.homedir() || ".";
+    }
   }
   const env = normalizeEnv(input.env);
   const key = discoveryCacheKey(command, cwd, env);

@@ -5,6 +5,7 @@ import {
   DEFAULT_TIMEOUT_SEC,
   VALID_PROVIDERS,
 } from "../shared/constants.js";
+import { detectCustomProviders } from "./detect-model.js";
 
 function providerLabel(provider: string): string {
   if (provider === "auto") return "Auto";
@@ -17,7 +18,13 @@ function providerLabel(provider: string): string {
     .join(" ");
 }
 
-export function getConfigSchema(): AdapterConfigSchema {
+export async function getConfigSchema(): Promise<AdapterConfigSchema> {
+  const customProviders = await detectCustomProviders();
+  const allProviders = [
+    ...VALID_PROVIDERS,
+    ...customProviders,
+  ];
+
   return {
     fields: [
       {
@@ -25,7 +32,7 @@ export function getConfigSchema(): AdapterConfigSchema {
         label: "Provider",
         type: "select",
         default: "auto",
-        options: VALID_PROVIDERS.map((provider) => ({
+        options: allProviders.map((provider) => ({
           value: provider,
           label: providerLabel(provider),
         })),

@@ -2,8 +2,8 @@ import { Router, type Request, type Response } from "express";
 import { generateKeyPairSync, randomUUID } from "node:crypto";
 import path from "node:path";
 import type { Db } from "@paperclipai/db";
-import { agents as agentsTable, companies, heartbeatRuns, issues as issuesTable, projects as projectsTable } from "@paperclipai/db";
-import { and, desc, eq, inArray, not, sql } from "drizzle-orm";
+import { agents as agentsTable, companies, heartbeatRuns, issues as issuesTable, projects as projectsTable, projectWorkspaces } from "@paperclipai/db";
+import { and, desc, eq, inArray, isNotNull, not, sql } from "drizzle-orm";
 import {
   agentSkillSyncSchema,
   agentMineInboxQuerySchema,
@@ -1775,6 +1775,22 @@ export function agentRoutes(
         undefined,
         { adapterType: type },
       );
+
+      // Inject company's project workspace cwd into the adapter config so that
+      // adapters which require a working directory (e.g. opencode_local) can
+      // test against the correct sandbox directory instead of an empty string.
+      if (!runtimeAdapterConfig.cwd) {
+        const ws = await db.query.projectWorkspaces.findFirst({
+          where: and(
+            eq(projectWorkspaces.companyId, companyId),
+            isNotNull(projectWorkspaces.cwd),
+          ),
+          orderBy: [desc(projectWorkspaces.isPrimary)],
+        });
+        if (ws?.cwd) {
+          runtimeAdapterConfig.cwd = ws.cwd;
+        }
+      }
 
       const { executionTarget, environmentName, fallbackChecks, sandboxIdentityCheck, release } =
         await resolveAdapterTestExecutionContext({
